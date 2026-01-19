@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from math import floor
+from django.contrib.auth.models import User
 
 # ----- Phases de match -----
 class MatchPhase(models.TextChoices):
@@ -19,6 +20,7 @@ class Team(models.Model):
 
 # ----- Joueurs -----
 class Player(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=100)
 
     def __str__(self):
