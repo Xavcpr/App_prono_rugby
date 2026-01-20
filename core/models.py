@@ -80,8 +80,8 @@ class ScoringConfig(models.Model):
 
 # ----- Pronostics -----
 class Prediction(models.Model):
-    match = models.ForeignKey(Match, on_delete=models.CASCADE, related_name="predictions")
-    player = models.ForeignKey(Player, on_delete=models.CASCADE)
+    match = models.ForeignKey(Match, on_delete=models.CASCADE)
+    player = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     home_score_pred = models.IntegerField()
     away_score_pred = models.IntegerField()
     bonus_offense_pred = models.BooleanField(default=False)
