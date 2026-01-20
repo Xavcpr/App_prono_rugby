@@ -1,0 +1,14 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Connexion</title>
+  </head>
+  <body>
+    <h1>Connexion</h1>
+
+    <form method="post">
+      {% csrf_token %} {{ form.as_p }}
+      <button type="submit">Se connecter</button>
+    </form>
+  </body>
+</html>

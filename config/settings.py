@@ -125,3 +125,6 @@ STATIC_URL = 'static/'
 ALLOWED_HOSTS = ['XavFabiani.pythonanywhere.com']
 STATIC_ROOT = BASE_DIR / "staticfiles"
 DEBUG = False  # pour la prod
+
+LOGIN_REDIRECT_URL = "/pronos/"
+LOGOUT_REDIRECT_URL = "/accounts/login/"
