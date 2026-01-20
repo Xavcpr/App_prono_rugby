@@ -54,6 +54,12 @@ class Match(models.Model):
     away_score = models.IntegerField(null=True, blank=True)
     weight = models.IntegerField(default=680)
     phase = models.CharField(max_length=10, choices=MatchPhase.choices, default=MatchPhase.POOL)
+    bonus_offense_home = models.BooleanField(default=False)
+    bonus_offense_away = models.BooleanField(default=False)
+
+    bonus_defense_home = models.BooleanField(default=False)
+    bonus_defense_away = models.BooleanField(default=False)
+    
 
     def total_score(self):
         if self.home_score is not None and self.away_score is not None:
@@ -80,11 +86,15 @@ class ScoringConfig(models.Model):
 
 # ----- Pronostics -----
 class Prediction(models.Model):
+    player = models.ForeignKey(Player, on_delete=models.CASCADE)
     match = models.ForeignKey(Match, on_delete=models.CASCADE)
-    player = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+
     home_score_pred = models.IntegerField()
     away_score_pred = models.IntegerField()
-    bonus_offense_pred = models.BooleanField(default=False)
+
+    bonus_home_pred = models.BooleanField(default=False)
+    bonus_away_pred = models.BooleanField(default=False)
+
     points = models.IntegerField(default=0)
 
 # ----- Bonus journée -----
