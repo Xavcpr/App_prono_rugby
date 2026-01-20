@@ -1,0 +1,19 @@
+Ce qu’il me reste à faire
+-	Appliquer le scoring
+-	Admin
+        Générer une journée
+-	Une fois les matches dispo, l’utilisateur doit avoir accès à tous les matches. Il peut avoir plusieurs filtres
+        Matches à venir / matches passés
+        Compétition 
+        Journée
+        Classements qu’il avait prédits en début de saison
+-	Bonus journée
+-	Vue commune
+        Affichage par journée, filtre par match
+        Classement par journée
+        Classement total + filtres compétitions
+        Affichage du barème
+-	Chopes
+-	Stats par joueur
+-	Stats par compétition
+-	Classements par compétition

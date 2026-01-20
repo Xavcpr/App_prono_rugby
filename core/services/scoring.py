@@ -1,5 +1,3 @@
-# backend/core/services/scoring.py
-
 from math import floor
 
 PHASE_MULTIPLIERS = {
@@ -23,47 +21,38 @@ def calculate_points(prediction, match):
     # =========================
     # BONUS OFFENSIFS
     # =========================
-
-    # Domicile
     if prediction.bonus_home_pred:
-        if match.bonus_offense_home:
-            points += BONUS_OFF_SUCCESS
-        else:
-            points += BONUS_OFF_FAIL
-
-    # Extérieur
+        points += BONUS_OFF_SUCCESS if match.bonus_offense_home else BONUS_OFF_FAIL
     if prediction.bonus_away_pred:
-        if match.bonus_offense_away:
-            points += BONUS_OFF_SUCCESS
-        else:
-            points += BONUS_OFF_FAIL
-    
+        points += BONUS_OFF_SUCCESS if match.bonus_offense_away else BONUS_OFF_FAIL
+
     # =========================
-    # # BONUS DÉFENSIF (AUTO)
+    # BONUS DÉFENSIF (AUTO)
     # =========================
+    # uniquement en phase POOL
+    if match.phase == "POOL":
+        threshold = match.round.competition.bonus_defense_threshold
 
-    real_home_def, real_away_def = get_defensive_bonus_teams(match)
-    pred_home_def, pred_away_def = predicted_defensive_bonus(prediction, match)
+        # équipes perdantes avec score ≤ seuil
+        real_home_def = match.home_score < match.away_score and (match.away_score - match.home_score) <= threshold
+        real_away_def = match.away_score < match.home_score and (match.home_score - match.away_score) <= threshold
 
-    # Home
-    if pred_home_def:
-        if real_home_def:
-            points += BONUS_DEF_SUCCESS
-        else:
-            points += BONUS_DEF_FAIL
+        # prédiction “bonus défensif” si diff pronostiquée ≤ seuil
+        pred_home_def = prediction.home_score_pred < prediction.away_score_pred and \
+                        (prediction.away_score_pred - prediction.home_score_pred) <= threshold
+        pred_away_def = prediction.away_score_pred < prediction.home_score_pred and \
+                        (prediction.home_score_pred - prediction.away_score_pred) <= threshold
 
-    # Away
-    if pred_away_def:
-        if real_away_def:
-            points += BONUS_DEF_SUCCESS
-        else:
-            points += BONUS_DEF_FAIL
+        # points
+        points += BONUS_DEF_SUCCESS if pred_home_def and real_home_def else 0
+        points += BONUS_DEF_FAIL if pred_home_def and not real_home_def else 0
 
+        points += BONUS_DEF_SUCCESS if pred_away_def and real_away_def else 0
+        points += BONUS_DEF_FAIL if pred_away_def and not real_away_def else 0
 
     # =========================
     # DIFFÉRENCE DE POINTS
     # =========================
-
     if match.home_score is not None and match.away_score is not None:
         real_diff = match.home_score - match.away_score
         pred_diff = prediction.home_score_pred - prediction.away_score_pred
@@ -75,7 +64,6 @@ def calculate_points(prediction, match):
         # =========================
         # SOMME DES SCORES
         # =========================
-
         real_sum = match.home_score + match.away_score
         pred_sum = prediction.home_score_pred + prediction.away_score_pred
         sum_delta = abs(real_sum - pred_sum)
@@ -86,59 +74,40 @@ def calculate_points(prediction, match):
     # =========================
     # SCORE EXACT / TOUT-PIL
     # =========================
-
     if prediction.home_score_pred == match.home_score:
         points += 40
     if prediction.away_score_pred == match.away_score:
         points += 40
-
-    if (
-        prediction.home_score_pred == match.home_score
-        and prediction.away_score_pred == match.away_score
-    ):
+    if prediction.home_score_pred == match.home_score and prediction.away_score_pred == match.away_score:
         points += 680
 
     # =========================
     # VICTOIRE À L’EXTÉRIEUR
     # =========================
-
-    if (
-        match.home_score is not None
-        and match.away_score is not None
-        and match.away_score > match.home_score
-        and prediction.away_score_pred > prediction.home_score_pred
-    ):
-        points += 15
+    if match.home_score is not None and match.away_score is not None:
+        if match.away_score > match.home_score and prediction.away_score_pred > prediction.home_score_pred:
+            points += 15
 
     # =========================
     # MATCH NUL
     # =========================
-
-    if (
-        match.home_score == match.away_score
-        and prediction.home_score_pred == prediction.away_score_pred
-    ):
+    if match.home_score == match.away_score and prediction.home_score_pred == prediction.away_score_pred:
         points += 100
 
     # =========================
     # POIDS DU MATCH
     # =========================
-
     winner_real = match.winner()
     if winner_real is not None:
         correct_preds = match.prediction_set.filter(
-            home_score_pred__gt=match.away_score
-            if winner_real == match.home_team
-            else match.home_score
+            home_score_pred__gt=match.away_score if winner_real == match.home_team else match.home_score
         ).count()
-
         correct_preds = max(correct_preds, 1)
         points += floor(match.weight / correct_preds)
 
     # =========================
     # PONDÉRATION PHASE
     # =========================
-
     points = floor(points * PHASE_MULTIPLIERS.get(match.phase, 1))
 
     prediction.points = points
