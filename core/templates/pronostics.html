@@ -1,10 +1,30 @@
 <!doctype html>
-<html>
+<html lang="fr">
   <head>
-    <title>Pronostics</title>
+    <meta charset="UTF-8" />
+    <title>Pronostics Rugby</title>
   </head>
   <body>
-    <h1>Page Pronostics</h1>
-    <p>Si tu vois ça, tout fonctionne 🎉</p>
+    <h1>Pronostics Rugby</h1>
+    <form method="post">
+      {% csrf_token %}
+      <table border="1">
+        <tr>
+          <th>Match</th>
+          <th>Score domicile</th>
+          <th>Score extérieur</th>
+          <th>Bonus offensif</th>
+        </tr>
+        {% for match in matches %}
+        <tr>
+          <td>{{ match.home_team.name }} - {{ match.away_team.name }}</td>
+          <td><input type="number" name="home_{{ match.id }}" required /></td>
+          <td><input type="number" name="away_{{ match.id }}" required /></td>
+          <td><input type="checkbox" name="bonus_{{ match.id }}" /></td>
+        </tr>
+        {% endfor %}
+      </table>
+      <button type="submit">Envoyer mes pronostics</button>
+    </form>
   </body>
 </html>
