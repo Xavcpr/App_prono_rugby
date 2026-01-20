@@ -6,44 +6,28 @@
   </head>
   <body>
     <h1>Pronostics Rugby</h1>
-
+    <a href="{% url 'logout' %}">Déconnexion</a>
     <form method="post">
       {% csrf_token %}
-
-      <table border="1" cellpadding="5">
+      <table border="1">
         <tr>
           <th>Match</th>
-          <th>Bonus off. domicile</th>
+          <th>Bonus offensif domicile</th>
           <th>Score domicile</th>
           <th>Score extérieur</th>
-          <th>Bonus off. extérieur</th>
+          <th>Bonus offensif extérieur</th>
         </tr>
-
         {% for match in matches %}
         <tr>
-          <td>{{ match.home_team.name }} – {{ match.away_team.name }}</td>
-
-          <td style="text-align: center">
-            <input type="checkbox" name="bonus_home_{{ match.id }}" />
-          </td>
-
-          <td>
-            <input type="number" name="home_{{ match.id }}" min="0" required />
-          </td>
-
-          <td>
-            <input type="number" name="away_{{ match.id }}" min="0" required />
-          </td>
-
-          <td style="text-align: center">
-            <input type="checkbox" name="bonus_away_{{ match.id }}" />
-          </td>
+          <td>{{ match.home_team.name }} - {{ match.away_team.name }}</td>
+          <td><input type="checkbox" name="bonus_home_{{ match.id }}" /></td>
+          <td><input type="number" name="home_{{ match.id }}" required /></td>
+          <td><input type="number" name="away_{{ match.id }}" required /></td>
+          <td><input type="checkbox" name="bonus_away_{{ match.id }}" /></td>
         </tr>
         {% endfor %}
       </table>
-
-      <br />
-      <button type="submit">Valider mes pronostics</button>
+      <button type="submit">Envoyer mes pronostics</button>
     </form>
   </body>
 </html>
