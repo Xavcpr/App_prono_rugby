@@ -26,5 +26,11 @@
       </table>
       <button type="submit">Envoyer mes pronostics</button>
     </form>
+    {% if user.is_authenticated %}
+    <p>
+      Bonjour {{ user.username }} !
+      <a href="{% url 'logout' %}?next=/">Se déconnecter</a>
+    </p>
+    {% endif %}
   </body>
 </html>
