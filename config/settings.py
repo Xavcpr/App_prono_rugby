@@ -122,7 +122,7 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-ALLOWED_HOSTS = ['XavFabiani.pythonanywhere.com']
+ALLOWED_HOSTS = ['xavFabiani.pythonanywhere.com']
 STATIC_ROOT = BASE_DIR / "staticfiles"
 DEBUG = False  # pour la prod
 
