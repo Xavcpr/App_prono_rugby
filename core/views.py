@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from .models import Match, Prediction
 from .services.scoring import calculate_points  # ta fonction existante
 
-@login_required(login_url='/admin/login/')
+@login_required
 def pronos_view(request):
     # On prend tous les matchs à venir ou non encore pronostiqués par l'utilisateur
     matches = Match.objects.all().order_by('round__date')
