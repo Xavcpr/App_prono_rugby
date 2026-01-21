@@ -209,7 +209,9 @@ class CreateRoundForm(forms.Form):
     )
 
 class RoundAdmin(admin.ModelAdmin):
-    list_display = ('competition', 'number', 'date')
+    list_display = ('competition', 'round_number', 'date')
+
+    change_list_template = "admin/round_changelist.html"  # custom template pour ajouter un bouton
 
     def get_urls(self):
         urls = super().get_urls()
@@ -220,52 +222,40 @@ class RoundAdmin(admin.ModelAdmin):
 
     def create_round_with_teams(self, request):
         if request.method == 'POST':
-            competition_id = request.POST.get('competition')
-            round_number = int(request.POST.get('round_number'))
-            date = request.POST.get('date')
-            team_names_raw = request.POST.get('team_names')
+            form = CreateRoundForm(request.POST)
+            if form.is_valid():
+                competition = form.cleaned_data['competition']
+                round_number = form.cleaned_data['round_number']
+                match_date = form.cleaned_data['match_date']
+                teams = list(form.cleaned_data['teams'])
 
-            competition = Competition.objects.get(pk=competition_id)
-            team_names = [name.strip() for name in team_names_raw.split(',') if name.strip()]
-
-            # Création de la journée
-            round_obj = Round.objects.create(
-                competition=competition,
-                number=round_number,
-                date=date
-            )
-
-            # Création des équipes si elles n'existent pas encore
-            teams = []
-            for name in team_names:
-                team, _ = Team.objects.get_or_create(name=name)
-                if team not in competition.teams.all():
-                    competition.teams.add(team)
-                teams.append(team)
-
-            # Nombre de matches selon la compétition
-            match_counts = {
-                "Top 14": 7,
-                "Champions Cup": 12,
-                "Tournoi des 6 Nations": 3
-            }
-            n_matches = match_counts.get(competition.name, 0)
-
-            # Crée les matches vierges
-            for i in range(n_matches):
-                home_team = teams[i * 2]
-                away_team = teams[i * 2 + 1]
-                Match.objects.create(
-                    round=round_obj,
-                    home_team=home_team,
-                    away_team=away_team
+                # Crée la journée
+                round_obj = Round.objects.create(
+                    competition=competition,
+                    round_number=round_number,
+                    date=match_date
                 )
 
-            return redirect('/admin/core/round/')  # retourne à la liste des journées
+                # Crée les matches automatiquement
+                for i in range(0, len(teams), 2):
+                    home = teams[i]
+                    away = teams[i+1]
+                    Match.objects.create(
+                        round=round_obj,
+                        home_team=home,
+                        away_team=away
+                    )
 
-        competitions = Competition.objects.all()
-        return render(request, 'admin/create_round_with_teams.html', {'competitions': competitions})
+                self.message_user(request, f"Journée {round_number} créée avec {len(teams)//2} matches !")
+                return redirect('..')
+        else:
+            form = CreateRoundForm()
 
-admin.site.register(Round, RoundAdmin)
+        context = dict(
+            self.admin_site.each_context(request),
+            form=form
+        )
+        return render(request, "admin/create_round_with_teams.html", context)
+
 
 
