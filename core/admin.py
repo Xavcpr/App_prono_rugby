@@ -207,38 +207,93 @@ class CreateRoundForm(forms.Form):
         widget=admin.widgets.FilteredSelectMultiple("Teams", is_stacked=False)
     )
 
+class RoundForm(forms.ModelForm):
+    competition = forms.ModelChoiceField(queryset=Competition.objects.all(), required=True)
+    season = forms.ModelChoiceField(queryset=Season.objects.none(), required=True)
 
+    class Meta:
+        model = Round
+        fields = ("competition", "season", "number", "date")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Si on édite un Round existant
+        if self.instance.pk:
+            self.fields['competition'].initial = self.instance.season.competition
+            self.fields['season'].queryset = Season.objects.filter(competition=self.instance.season.competition)
+
+        # Si le formulaire POST contient déjà une compétition sélectionnée
+        elif 'competition' in self.data:
+            try:
+                competition_id = int(self.data.get('competition'))
+                self.fields['season'].queryset = Season.objects.filter(competition_id=competition_id)
+            except (ValueError, TypeError):
+                self.fields['season'].queryset = Season.objects.none()
+        else:
+            self.fields['season'].queryset = Season.objects.none()
+
+# =========================
+# Admin custom pour Round
+# =========================
 @admin.register(Round)
 class RoundAdmin(admin.ModelAdmin):
     form = RoundForm
-    list_display = ("competition", "number", "date")
+    list_display = ("__str__", "number", "date", "competition")
     list_filter = ("season__competition", "season")
-    fields = ("season", "number", "date")
-    actions = ["generate_matches", "create_empty_matches"]
+    fields = ("competition", "season", "number", "date")
+    actions = ["create_empty_matches", "generate_matches"]
 
     @admin.action(description="Créer les matchs vides de la journée")
     def create_empty_matches(self, request, queryset):
         for round_obj in queryset:
-            if round_obj.match_set.exists():
+            if round_obj.matches.exists():
                 self.message_user(
                     request,
                     f"{round_obj} a déjà des matchs",
-                    level=messages.WARNING
+                    level=admin.messages.WARNING
                 )
                 continue
 
             nb_matches = round_obj.competition.matches_per_round
-
-            Match.objects.bulk_create([
-                Match(round=round_obj)
-                for _ in range(nb_matches)
-            ])
+            Match.objects.bulk_create([Match(round=round_obj) for _ in range(nb_matches)])
 
             self.message_user(
                 request,
                 f"{nb_matches} matchs créés pour {round_obj}",
-                level=messages.SUCCESS
+                level=admin.messages.SUCCESS
             )
+# @admin.register(Round)
+# class RoundAdmin(admin.ModelAdmin):
+#     form = RoundForm
+#     list_display = ("competition", "number", "date")
+#     list_filter = ("season__competition", "season")
+#     fields = ("season", "number", "date")
+#     actions = ["generate_matches", "create_empty_matches"]
+
+#     @admin.action(description="Créer les matchs vides de la journée")
+#     def create_empty_matches(self, request, queryset):
+#         for round_obj in queryset:
+#             if round_obj.match_set.exists():
+#                 self.message_user(
+#                     request,
+#                     f"{round_obj} a déjà des matchs",
+#                     level=messages.WARNING
+#                 )
+#                 continue
+
+#             nb_matches = round_obj.competition.matches_per_round
+
+#             Match.objects.bulk_create([
+#                 Match(round=round_obj)
+#                 for _ in range(nb_matches)
+#             ])
+
+#             self.message_user(
+#                 request,
+#                 f"{nb_matches} matchs créés pour {round_obj}",
+#                 level=messages.SUCCESS
+#             )
 
     @admin.action(description="Générer les matchs automatiquement si équipes disponibles")
     def generate_matches(self, request, queryset):
