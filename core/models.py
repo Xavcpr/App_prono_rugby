@@ -22,6 +22,7 @@ class Player(models.Model):
 # ----- Compétitions -----
 class Competition(models.Model):
     name = models.CharField(max_length=100)
+    matches_per_round = models.PositiveIntegerField()
     season = models.CharField(max_length=20)
     bonus_defense_threshold = models.IntegerField(default=7)
     match_weight = models.IntegerField(default=680)
@@ -40,22 +41,66 @@ class Team(models.Model):
 
     def __str__(self):
         return self.name
+ 
+class Season(models.Model):
+    competition = models.ForeignKey(
+        Competition,
+        on_delete=models.CASCADE,
+        related_name="seasons"
+    )
+    name = models.CharField(max_length=50)  # ex: "2024-2025"
+    start_date = models.DateField()
+    end_date = models.DateField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["competition", "name"],
+                name="unique_season_per_competition"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.competition.name} {self.name}"
 
 # ----- Journées / Rounds -----
 class Round(models.Model):
-    competition = models.ForeignKey(Competition, on_delete=models.CASCADE,
-        related_name="rounds")
-    number = models.IntegerField()
-    date = models.DateField()
+    season = models.ForeignKey(
+        Season,
+        on_delete=models.CASCADE,
+        related_name="rounds"
+    )
+    number = models.PositiveIntegerField()
+    date = models.DateField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["season", "number"],
+                name="unique_round_per_season"
+            )
+        ]
+        ordering = ["season", "number"]
 
     def __str__(self):
-        return f"Journée {self.number} - {self.competition.name}"
+        return f"{self.season} – Journée {self.number}"
+   
 
 # ----- Matchs -----
 class Match(models.Model):
     round = models.ForeignKey(Round, on_delete=models.CASCADE, null=True, related_name="matches")
-    home_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='home_matches', null=True)
-    away_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='away_matches', null=True)
+    home_team = models.ForeignKey(
+        Team,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="home_matches")
+    away_team = models.ForeignKey(
+        Team,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="away_matches")    
     home_score = models.IntegerField(null=True, blank=True)
     away_score = models.IntegerField(null=True, blank=True)
     weight = models.IntegerField(default=680)
@@ -81,6 +126,11 @@ class Match(models.Model):
             return self.away_team
         else:
             return None  # match nul
+    
+    def __str__(self):
+        if self.home_team and self.away_team:
+            return f"{self.home_team} vs {self.away_team}"
+        return f"Match à définir ({self.round})"
 
 # ----- Configuration de scoring -----
 class ScoringConfig(models.Model):
@@ -142,3 +192,5 @@ class SeasonScore(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.competition} : {self.points} pts"
+
+

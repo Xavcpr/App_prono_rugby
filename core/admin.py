@@ -1,9 +1,8 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from .models import (
     Team, Player, Competition, Round, Match, ScoringConfig,
     Prediction, DailyBonus, CompetitionBonus, DailyScore, SeasonScore
 )
-from django.contrib import messages
 from core.services.scoring import calculate_points
 from django.db.models import Sum
 from .admin_views import import_teams_view
@@ -208,54 +207,32 @@ class CreateRoundForm(forms.Form):
         widget=admin.widgets.FilteredSelectMultiple("Teams", is_stacked=False)
     )
 
+@admin.register(Round)
 class RoundAdmin(admin.ModelAdmin):
-    list_display = ('competition', 'round_number', 'date')
+    list_display = ("season", "number", "date")
+    list_filter = ("season__competition", "season")
+    actions = ["create_empty_matches"]
 
-    change_list_template = "admin/round_changelist.html"  # custom template pour ajouter un bouton
-
-    def get_urls(self):
-        urls = super().get_urls()
-        custom_urls = [
-            path('create_round_with_teams/', self.admin_site.admin_view(self.create_round_with_teams))
-        ]
-        return custom_urls + urls
-
-    def create_round_with_teams(self, request):
-        if request.method == 'POST':
-            form = CreateRoundForm(request.POST)
-            if form.is_valid():
-                competition = form.cleaned_data['competition']
-                round_number = form.cleaned_data['round_number']
-                match_date = form.cleaned_data['match_date']
-                teams = list(form.cleaned_data['teams'])
-
-                # Crée la journée
-                round_obj = Round.objects.create(
-                    competition=competition,
-                    round_number=round_number,
-                    date=match_date
+    @admin.action(description="Créer les matchs vides de la journée")
+    def create_empty_matches(self, request, queryset):
+        for round_obj in queryset:
+            if round_obj.matches.exists():
+                self.message_user(
+                    request,
+                    f"{round_obj} a déjà des matchs",
+                    level=messages.WARNING
                 )
+                continue
 
-                # Crée les matches automatiquement
-                for i in range(0, len(teams), 2):
-                    home = teams[i]
-                    away = teams[i+1]
-                    Match.objects.create(
-                        round=round_obj,
-                        home_team=home,
-                        away_team=away
-                    )
+            nb_matches = round_obj.season.competition.matches_per_round
 
-                self.message_user(request, f"Journée {round_number} créée avec {len(teams)//2} matches !")
-                return redirect('..')
-        else:
-            form = CreateRoundForm()
+            Match.objects.bulk_create([
+                Match(round=round_obj)
+                for _ in range(nb_matches)
+            ])
 
-        context = dict(
-            self.admin_site.each_context(request),
-            form=form
-        )
-        return render(request, "admin/create_round_with_teams.html", context)
-
-
-
+            self.message_user(
+                request,
+                f"{nb_matches} matchs créés pour {round_obj}",
+                level=messages.SUCCESS
+            )
