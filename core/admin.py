@@ -209,8 +209,11 @@ class CreateRoundForm(forms.Form):
 
 @admin.register(Round)
 class RoundAdmin(admin.ModelAdmin):
-    list_display = ("number", "season", "date")
-    list_filter = ("season",)
+    # list_display = ("number", "season", "date")
+    # list_filter = ("season",)
+    list_display = ("competition", "number", "date")
+    list_filter = ("competition",)
+    fields = ("competition", "number", "date") 
     actions = [generate_matches, "create_empty_matches"]
 
     @admin.action(description="Créer les matchs vides de la journée")
