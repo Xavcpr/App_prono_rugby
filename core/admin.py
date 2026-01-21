@@ -207,19 +207,18 @@ class CreateRoundForm(forms.Form):
         widget=admin.widgets.FilteredSelectMultiple("Teams", is_stacked=False)
     )
 
+
 @admin.register(Round)
 class RoundAdmin(admin.ModelAdmin):
-    # list_display = ("number", "season", "date")
-    # list_filter = ("season",)
     list_display = ("competition", "number", "date")
-    list_filter = ("competition",)
-    fields = ("competition", "number", "date") 
-    actions = [generate_matches, "create_empty_matches"]
+    list_filter = ("season__competition", "season")
+    fields = ("season", "number", "date")
+    actions = ["generate_matches", "create_empty_matches"]
 
     @admin.action(description="Créer les matchs vides de la journée")
     def create_empty_matches(self, request, queryset):
         for round_obj in queryset:
-            if round_obj.matches.exists():
+            if round_obj.match_set.exists():
                 self.message_user(
                     request,
                     f"{round_obj} a déjà des matchs",
@@ -227,7 +226,6 @@ class RoundAdmin(admin.ModelAdmin):
                 )
                 continue
 
-            # nombre de matchs dépendant de la compétition
             nb_matches = round_obj.competition.matches_per_round
 
             Match.objects.bulk_create([
@@ -240,4 +238,39 @@ class RoundAdmin(admin.ModelAdmin):
                 f"{nb_matches} matchs créés pour {round_obj}",
                 level=messages.SUCCESS
             )
+
+    @admin.action(description="Générer les matchs automatiquement si équipes disponibles")
+    def generate_matches(self, request, queryset):
+        for round_obj in queryset:
+            teams = list(round_obj.season.competition.teams.all())
+
+            if len(teams) % 2 != 0:
+                self.message_user(
+                    request,
+                    f"Nombre d'équipes impair pour {round_obj.competition}",
+                    level=messages.ERROR
+                )
+                continue
+
+            if round_obj.match_set.exists():
+                self.message_user(
+                    request,
+                    f"Les matchs existent déjà pour {round_obj}",
+                    level=messages.WARNING
+                )
+                continue
+
+            for i in range(0, len(teams), 2):
+                Match.objects.create(
+                    round=round_obj,
+                    home_team=teams[i],
+                    away_team=teams[i + 1]
+                )
+
+            self.message_user(
+                request,
+                f"Matchs créés pour {round_obj}",
+                level=messages.SUCCESS
+            )
+
 

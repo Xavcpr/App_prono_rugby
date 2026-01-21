@@ -24,8 +24,8 @@ class Competition(models.Model):
     name = models.CharField(max_length=100)
     matches_per_round = models.PositiveIntegerField(default=0)
     season = models.CharField(max_length=20)
-    # bonus_defense_threshold = models.IntegerField(default=7)
-    # match_weight = models.IntegerField(default=680)
+    bonus_defense_threshold = models.IntegerField(default=7)
+    match_weight = models.IntegerField(default=680)
 
     def __str__(self):
         return f"{self.name} {self.season}"
