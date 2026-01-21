@@ -218,6 +218,16 @@ class RoundForm(forms.ModelForm):
         model = Round
         fields = ("competition", "number", "date")  # plus de 'season'
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Si on édite un Round existant
+        if self.instance.pk:
+            # On affiche la compétition liée à la saison
+            comp = Competition.objects.filter(season=self.instance.season).first()
+            if comp:
+                self.fields['competition'].initial = comp
+
     def save(self, commit=True):
         round_obj = super().save(commit=False)
         # On assigne automatiquement la saison depuis la compétition
@@ -225,23 +235,6 @@ class RoundForm(forms.ModelForm):
         if commit:
             round_obj.save()
         return round_obj
-
-    # def __init__(self, *args, **kwargs):
-    #     super().__init__(*args, **kwargs)
-
-    #     # Si on édite un Round existant
-    #     if self.instance.pk:
-    #         self.fields['competition'].initial = self.instance.season.competition
-            
-    #     # Si le formulaire POST contient déjà une compétition sélectionnée
-    #     elif 'competition' in self.data:
-    #         try:
-    #             competition_id = int(self.data.get('competition'))
-    #             self.fields['season'].queryset = Season.objects.filter(competition_id=competition_id)
-    #         except (ValueError, TypeError):
-    #             self.fields['season'].queryset = Season.objects.none()
-    #     else:
-    #         self.fields['season'].queryset = Season.objects.none()
 
 # =========================
 # Admin custom pour Round
