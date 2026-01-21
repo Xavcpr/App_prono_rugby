@@ -214,6 +214,14 @@ class RoundForm(forms.ModelForm):
     class Meta:
         model = Round
         fields = ("competition", "number", "date")
+        
+    def save(self, commit=True):
+        # On déduit la season de la competition choisie
+        round_obj = super().save(commit=False)
+        round_obj.season = self.cleaned_data['competition']  # si Season est en réalité un objet lié à Competition
+        if commit:
+            round_obj.save()
+        return round_obj
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -239,8 +247,8 @@ class RoundForm(forms.ModelForm):
 class RoundAdmin(admin.ModelAdmin):
     form = RoundForm
     list_display = ("__str__", "number", "date", "competition")
-    list_filter = ("season__competition",)
-    fields = ("competition", "number", "date")  # on enlève 'season'
+    list_filter = ("season__competition",)  # on peut garder pour filtrer
+    fields = ("competition", "number", "date")  # plus de 'season'
     actions = ["create_empty_matches", "generate_matches"]
 
     @admin.action(description="Créer les matchs vides de la journée")
