@@ -31,11 +31,11 @@ class Competition(models.Model):
     
 # ----- Équipes -----
 class Team(models.Model):
-    name = models.CharField(max_length=100)
-    competition = models.ForeignKey(
+    name = models.CharField(max_length=100, unique=True)
+    competitions = models.ManyToManyField(
         Competition,
-        on_delete=models.CASCADE,
-        related_name="teams"
+        related_name="teams",
+        blank=True
     )
 
     def __str__(self):
