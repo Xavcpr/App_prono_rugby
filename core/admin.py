@@ -207,6 +207,36 @@ class CreateRoundForm(forms.Form):
         widget=admin.widgets.FilteredSelectMultiple("Teams", is_stacked=False)
     )
 
+# class RoundForm(forms.ModelForm):
+#     competition = forms.ModelChoiceField(
+#         queryset=Competition.objects.all(),
+#         required=True,
+#         label="Compétition"
+#     )
+
+#     class Meta:
+#         model = Round
+#         fields = ("competition", "number", "date")  # plus de 'season'
+
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+
+#         # Si on édite un Round existant
+#         if self.instance.pk:
+#             # On affiche la compétition liée à la saison
+#             comp = Competition.objects.filter(season=self.instance.season).first()
+#             if comp:
+#                 self.fields['competition'].initial = comp
+
+#     def save(self, commit=True):
+#         round_obj = super().save(commit=False)
+#         # On assigne automatiquement la saison depuis la compétition
+#         round_obj.season = round_obj.competition.season
+#         if commit:
+#             round_obj.save()
+#         return round_obj
+
+
 class RoundForm(forms.ModelForm):
     competition = forms.ModelChoiceField(
         queryset=Competition.objects.all(),
@@ -216,24 +246,31 @@ class RoundForm(forms.ModelForm):
 
     class Meta:
         model = Round
-        fields = ("competition", "number", "date")  # plus de 'season'
+        fields = ("competition", "number", "date")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Si on édite un Round existant
+        # En édition : on pré-remplit la compétition
         if self.instance.pk:
-            # On affiche la compétition liée à la saison
-            comp = Competition.objects.filter(season=self.instance.season).first()
-            if comp:
-                self.fields['competition'].initial = comp
+            self.fields["competition"].initial = self.instance.season.competition
 
     def save(self, commit=True):
         round_obj = super().save(commit=False)
-        # On assigne automatiquement la saison depuis la compétition
-        round_obj.season = round_obj.competition.season
+
+        competition = self.cleaned_data["competition"]
+
+        # 🔑 On récupère la saison liée à cette compétition
+        season, _ = Season.objects.get_or_create(
+            competition=competition,
+            year=competition.season
+        )
+
+        round_obj.season = season
+
         if commit:
             round_obj.save()
+
         return round_obj
 
 # =========================
