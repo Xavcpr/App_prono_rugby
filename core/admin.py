@@ -197,3 +197,64 @@ rugby_admin_site.register(Competition)
 rugby_admin_site.register(Team)
 rugby_admin_site.register(Round)
 rugby_admin_site.register(Match)
+
+
+class RoundAdmin(admin.ModelAdmin):
+    list_display = ('competition', 'number', 'date')
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('create_round_with_teams/', self.admin_site.admin_view(self.create_round_with_teams))
+        ]
+        return custom_urls + urls
+
+    def create_round_with_teams(self, request):
+        if request.method == 'POST':
+            competition_id = request.POST.get('competition')
+            round_number = int(request.POST.get('round_number'))
+            date = request.POST.get('date')
+            team_names_raw = request.POST.get('team_names')
+
+            competition = Competition.objects.get(pk=competition_id)
+            team_names = [name.strip() for name in team_names_raw.split(',') if name.strip()]
+
+            # Création de la journée
+            round_obj = Round.objects.create(
+                competition=competition,
+                number=round_number,
+                date=date
+            )
+
+            # Création des équipes si elles n'existent pas encore
+            teams = []
+            for name in team_names:
+                team, _ = Team.objects.get_or_create(name=name)
+                if team not in competition.teams.all():
+                    competition.teams.add(team)
+                teams.append(team)
+
+            # Nombre de matches selon la compétition
+            match_counts = {
+                "Top 14": 7,
+                "Champions Cup": 12,
+                "Tournoi des 6 Nations": 3
+            }
+            n_matches = match_counts.get(competition.name, 0)
+
+            # Crée les matches vierges
+            for i in range(n_matches):
+                home_team = teams[i * 2]
+                away_team = teams[i * 2 + 1]
+                Match.objects.create(
+                    round=round_obj,
+                    home_team=home_team,
+                    away_team=away_team
+                )
+
+            return redirect('/admin/core/round/')  # retourne à la liste des journées
+
+        competitions = Competition.objects.all()
+        return render(request, 'admin/create_round_with_teams.html', {'competitions': competitions})
+
+admin.site.register(Round, RoundAdmin)

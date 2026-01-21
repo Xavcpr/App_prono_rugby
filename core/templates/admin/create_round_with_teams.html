@@ -1,0 +1,29 @@
+{% extends "admin/base_site.html" %} {% block content %}
+<h1>Créer une journée et ses matches</h1>
+<form method="post">
+  {% csrf_token %}
+  <label>Compétition :</label>
+  <select name="competition">
+    {% for comp in competitions %}
+    <option value="{{ comp.id }}">{{ comp.name }}</option>
+    {% endfor %}</select
+  ><br /><br />
+
+  <label>Numéro de la journée :</label>
+  <input type="number" name="round_number" required /><br /><br />
+
+  <label>Date :</label>
+  <input type="date" name="date" required /><br /><br />
+
+  <label>Noms des équipes (séparés par des virgules) :</label><br />
+  <textarea
+    name="team_names"
+    rows="5"
+    cols="50"
+    placeholder="Equipe1, Equipe2, ..."
+  ></textarea
+  ><br /><br />
+
+  <button type="submit">Créer la journée et les matches</button>
+</form>
+{% endblock %}
