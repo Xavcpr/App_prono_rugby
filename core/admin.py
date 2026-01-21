@@ -213,8 +213,7 @@ class RoundForm(forms.ModelForm):
 
     class Meta:
         model = Round
-        fields = ("competition", 
-                #   "season", 
+        fields = ("competition",  
                   "number", "date")
 
     def __init__(self, *args, **kwargs):
@@ -223,8 +222,7 @@ class RoundForm(forms.ModelForm):
         # Si on édite un Round existant
         if self.instance.pk:
             self.fields['competition'].initial = self.instance.season.competition
-            self.fields['season'].queryset = Season.objects.filter(competition=self.instance.season.competition)
-
+            
         # Si le formulaire POST contient déjà une compétition sélectionnée
         elif 'competition' in self.data:
             try:
@@ -242,8 +240,8 @@ class RoundForm(forms.ModelForm):
 class RoundAdmin(admin.ModelAdmin):
     form = RoundForm
     list_display = ("__str__", "number", "date", "competition")
-    list_filter = ("season__competition", "season")
-    fields = ("competition", "season", "number", "date")
+    list_filter = ("season__competition")
+    fields = ("competition", "number", "date")
     actions = ["create_empty_matches", "generate_matches"]
 
     @admin.action(description="Créer les matchs vides de la journée")
