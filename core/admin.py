@@ -213,8 +213,7 @@ class RoundForm(forms.ModelForm):
 
     class Meta:
         model = Round
-        fields = ("competition",  
-                  "number", "date")
+        fields = ("competition", "number", "date")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -241,7 +240,7 @@ class RoundAdmin(admin.ModelAdmin):
     form = RoundForm
     list_display = ("__str__", "number", "date", "competition")
     list_filter = ("season__competition",)
-    fields = ("competition", "number", "date")
+    fields = ("competition", "number", "date")  # on enlève 'season'
     actions = ["create_empty_matches", "generate_matches"]
 
     @admin.action(description="Créer les matchs vides de la journée")
