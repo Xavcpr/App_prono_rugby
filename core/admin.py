@@ -1,7 +1,7 @@
 from django.contrib import admin, messages
 from .models import (
     Season, Team, Player, Competition, Round, Match, ScoringConfig,
-    Prediction, DailyBonus, CompetitionBonus, DailyScore, SeasonScore, RoundForm
+    Prediction, DailyBonus, CompetitionBonus, DailyScore, SeasonScore
 )
 from core.services.scoring import calculate_points
 from django.db.models import Sum
