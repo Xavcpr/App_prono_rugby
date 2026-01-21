@@ -226,22 +226,22 @@ class RoundForm(forms.ModelForm):
             round_obj.save()
         return round_obj
 
-    # def __init__(self, *args, **kwargs):
-    #     super().__init__(*args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    #     # Si on édite un Round existant
-    #     if self.instance.pk:
-    #         self.fields['competition'].initial = self.instance.season.competition
+        # Si on édite un Round existant
+        if self.instance.pk:
+            self.fields['competition'].initial = self.instance.season.competition
             
-    #     # Si le formulaire POST contient déjà une compétition sélectionnée
-    #     elif 'competition' in self.data:
-    #         try:
-    #             competition_id = int(self.data.get('competition'))
-    #             self.fields['season'].queryset = Season.objects.filter(competition_id=competition_id)
-    #         except (ValueError, TypeError):
-    #             self.fields['season'].queryset = Season.objects.none()
-    #     else:
-    #         self.fields['season'].queryset = Season.objects.none()
+        # Si le formulaire POST contient déjà une compétition sélectionnée
+        elif 'competition' in self.data:
+            try:
+                competition_id = int(self.data.get('competition'))
+                self.fields['season'].queryset = Season.objects.filter(competition_id=competition_id)
+            except (ValueError, TypeError):
+                self.fields['season'].queryset = Season.objects.none()
+        else:
+            self.fields['season'].queryset = Season.objects.none()
 
 # =========================
 # Admin custom pour Round
