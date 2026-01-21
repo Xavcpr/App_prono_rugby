@@ -240,7 +240,7 @@ class RoundForm(forms.ModelForm):
 class RoundAdmin(admin.ModelAdmin):
     form = RoundForm
     list_display = ("__str__", "number", "date", "competition")
-    list_filter = ("season__competition")
+    list_filter = ("season__competition",)
     fields = ("competition", "number", "date")
     actions = ["create_empty_matches", "generate_matches"]
 
