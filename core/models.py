@@ -201,21 +201,21 @@ class SeasonScore(models.Model):
         return f"{self.user} - {self.competition} : {self.points} pts"
 
 
-class RoundForm(forms.ModelForm):
-    class Meta:
-        model = Round
-        fields = ("competition", "season", "number", "date")
+# class RoundForm(forms.ModelForm):
+#     class Meta:
+#         model = Round
+#         fields = ("competition", "season", "number", "date")
 
-    competition = forms.ModelChoiceField(queryset=Competition.objects.all())
-    season = forms.ModelChoiceField(queryset=Season.objects.none())
+#     competition = forms.ModelChoiceField(queryset=Competition.objects.all())
+#     season = forms.ModelChoiceField(queryset=Season.objects.none())
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if 'competition' in self.data:
-            try:
-                competition_id = int(self.data.get('competition'))
-                self.fields['season'].queryset = Season.objects.filter(competition_id=competition_id)
-            except (ValueError, TypeError):
-                pass
-        elif self.instance.pk:
-            self.fields['season'].queryset = Season.objects.filter(competition=self.instance.season.competition)
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         if 'competition' in self.data:
+#             try:
+#                 competition_id = int(self.data.get('competition'))
+#                 self.fields['season'].queryset = Season.objects.filter(competition_id=competition_id)
+#             except (ValueError, TypeError):
+#                 pass
+#         elif self.instance.pk:
+#             self.fields['season'].queryset = Season.objects.filter(competition=self.instance.season.competition)
