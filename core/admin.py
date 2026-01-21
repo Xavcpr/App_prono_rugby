@@ -93,11 +93,11 @@ class CompetitionAdmin(admin.ModelAdmin):
     list_display = ('name', 'season', 'bonus_defense_threshold', 'match_weight')
     actions = [recalc_scores]
 
-@admin.register(Round)
-class RoundAdmin(admin.ModelAdmin):
-    list_display = ("number", "competition", "date")
-    actions = [generate_matches]
-    list_filter = ("competition",)
+# @admin.register(Round)
+# class RoundAdmin(admin.ModelAdmin):
+#     list_display = ("number", "competition", "date")
+#     actions = [generate_matches]
+#     list_filter = ("competition",)
 
 @admin.register(Match)
 class MatchAdmin(admin.ModelAdmin):
@@ -195,7 +195,7 @@ rugby_admin_site = RugbyAdminSite(name="rugby_admin")
 
 rugby_admin_site.register(Competition)
 rugby_admin_site.register(Team)
-rugby_admin_site.register(Round)
+# rugby_admin_site.register(Round)
 rugby_admin_site.register(Match)
 
 class CreateRoundForm(forms.Form):
@@ -209,9 +209,9 @@ class CreateRoundForm(forms.Form):
 
 @admin.register(Round)
 class RoundAdmin(admin.ModelAdmin):
-    list_display = ("season", "number", "date")
-    list_filter = ("season__competition", "season")
-    actions = ["create_empty_matches"]
+    list_display = ("number", "competition", "date")
+    list_filter = ("competition",)
+    actions = [generate_matches, "create_empty_matches"]
 
     @admin.action(description="Créer les matchs vides de la journée")
     def create_empty_matches(self, request, queryset):
@@ -224,7 +224,8 @@ class RoundAdmin(admin.ModelAdmin):
                 )
                 continue
 
-            nb_matches = round_obj.season.competition.matches_per_round
+            # nombre de matchs dépendant de la compétition
+            nb_matches = round_obj.competition.matches_per_round
 
             Match.objects.bulk_create([
                 Match(round=round_obj)
@@ -236,3 +237,4 @@ class RoundAdmin(admin.ModelAdmin):
                 f"{nb_matches} matchs créés pour {round_obj}",
                 level=messages.SUCCESS
             )
+
