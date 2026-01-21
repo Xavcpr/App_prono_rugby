@@ -26,4 +26,9 @@
 
   <button type="submit">Créer la journée et les matches</button>
 </form>
+<h1>Créer une journée + matches</h1>
+<form method="post">
+  {% csrf_token %} {{ form.as_p }}
+  <button type="submit" class="default">Créer</button>
+</form>
 {% endblock %}

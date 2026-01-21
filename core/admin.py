@@ -10,6 +10,7 @@ from .admin_views import import_teams_view
 from django.contrib.admin import AdminSite
 from django.shortcuts import render, redirect
 from django.urls import path
+from django import forms
 
 # Action pour recalculer tous les points d'une compétition
 def recalc_scores(modeladmin, request, queryset):
@@ -198,6 +199,14 @@ rugby_admin_site.register(Team)
 rugby_admin_site.register(Round)
 rugby_admin_site.register(Match)
 
+class CreateRoundForm(forms.Form):
+    competition = forms.ModelChoiceField(queryset=Competition.objects.all())
+    round_number = forms.IntegerField()
+    match_date = forms.DateField()
+    teams = forms.ModelMultipleChoiceField(
+        queryset=Team.objects.all(),
+        widget=admin.widgets.FilteredSelectMultiple("Teams", is_stacked=False)
+    )
 
 class RoundAdmin(admin.ModelAdmin):
     list_display = ('competition', 'number', 'date')
@@ -258,3 +267,5 @@ class RoundAdmin(admin.ModelAdmin):
         return render(request, 'admin/create_round_with_teams.html', {'competitions': competitions})
 
 admin.site.register(Round, RoundAdmin)
+
+
