@@ -11,13 +11,6 @@ class MatchPhase(models.TextChoices):
     SF = "SF", "Demi-finales"
     FINAL = "FINAL", "Finale"
 
-# ----- Équipes -----
-class Team(models.Model):
-    name = models.CharField(max_length=100)
-
-    def __str__(self):
-        return self.name
-
 # ----- Joueurs -----
 class Player(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
@@ -35,6 +28,18 @@ class Competition(models.Model):
 
     def __str__(self):
         return f"{self.name} {self.season}"
+    
+# ----- Équipes -----
+class Team(models.Model):
+    name = models.CharField(max_length=100)
+    competition = models.ForeignKey(
+        Competition,
+        on_delete=models.CASCADE,
+        related_name="teams"
+    )
+
+    def __str__(self):
+        return self.name
 
 # ----- Journées / Rounds -----
 class Round(models.Model):

@@ -1,0 +1,8 @@
+{% extends "admin/base_site.html" %} {% block content %}
+<h1>Importer des équipes</h1>
+
+<form method="post">
+  {% csrf_token %} {{ form.as_p }}
+  <button type="submit" class="default">Créer les équipes</button>
+</form>
+{% endblock %}
