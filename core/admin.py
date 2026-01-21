@@ -210,6 +210,7 @@ class CreateRoundForm(forms.Form):
 
 @admin.register(Round)
 class RoundAdmin(admin.ModelAdmin):
+    form = RoundForm
     list_display = ("competition", "number", "date")
     list_filter = ("season__competition", "season")
     fields = ("season", "number", "date")
@@ -274,9 +275,4 @@ class RoundAdmin(admin.ModelAdmin):
             )
 
 
-@admin.register(Round)
-class RoundAdmin(admin.ModelAdmin):
-    form = RoundForm
-    list_display = ("competition", "number", "date")
-    list_filter = ("season__competition", "season")
 
