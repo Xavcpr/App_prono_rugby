@@ -41,7 +41,8 @@ class Team(models.Model):
 
     def __str__(self):
         return self.name
- 
+
+# ----- Saison ----- 
 class Season(models.Model):
     competition = models.ForeignKey(
         Competition,

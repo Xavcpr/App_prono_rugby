@@ -102,12 +102,12 @@ class CompetitionAdmin(admin.ModelAdmin):
 @admin.register(Match)
 class MatchAdmin(admin.ModelAdmin):
     list_display = ("round", "home_team", "away_team", "home_score", "away_score", "phase")
-    list_filter = ("round__competition", "phase")
+    list_filter = ("round__season__competition", "phase")
 
 @admin.register(Prediction)
 class PredictionAdmin(admin.ModelAdmin):
     list_display = ("match", "player", "home_score_pred", "away_score_pred", "points")
-    list_filter = ("match__round__competition",)
+    list_filter = ("match__round__season__competition",)
 
 @admin.register(DailyBonus)
 class DailyBonusAdmin(admin.ModelAdmin):
@@ -209,8 +209,8 @@ class CreateRoundForm(forms.Form):
 
 @admin.register(Round)
 class RoundAdmin(admin.ModelAdmin):
-    list_display = ("number", "competition", "date")
-    list_filter = ("competition",)
+    list_display = ("number", "season", "date")
+    list_filter = ("season",)
     actions = [generate_matches, "create_empty_matches"]
 
     @admin.action(description="Créer les matchs vides de la journée")
