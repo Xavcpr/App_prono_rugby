@@ -43,7 +43,8 @@ class Team(models.Model):
 
 # ----- Journées / Rounds -----
 class Round(models.Model):
-    competition = models.ForeignKey(Competition, on_delete=models.CASCADE)
+    competition = models.ForeignKey(Competition, on_delete=models.CASCADE,
+        related_name="rounds")
     number = models.IntegerField()
     date = models.DateField()
 
@@ -52,7 +53,7 @@ class Round(models.Model):
 
 # ----- Matchs -----
 class Match(models.Model):
-    round = models.ForeignKey(Round, on_delete=models.CASCADE, null=True)
+    round = models.ForeignKey(Round, on_delete=models.CASCADE, null=True, related_name="matches")
     home_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='home_matches', null=True)
     away_team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='away_matches', null=True)
     home_score = models.IntegerField(null=True, blank=True)

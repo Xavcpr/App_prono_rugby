@@ -4,7 +4,8 @@ Ce qu’il me reste à faire
         on sait que la compétition de top14 c'est 7 journées, de 
 
 - Onglet pronos/user
-    - afficher la compétition et la journée 	
+    - le joueur peut envoyer un seul pronos
+     -afficher la compétition et la journée 	
     - Une fois les matches dispo, l’utilisateur doit avoir accès à tous les matches. Il peut avoir plusieurs filtres
         Matches à venir / matches passés
         Compétition 
