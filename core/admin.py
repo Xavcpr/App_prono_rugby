@@ -7,6 +7,8 @@ from django.contrib import messages
 from core.services.scoring import calculate_points
 from django.db.models import Sum
 from .admin_views import import_teams_view
+from django.contrib.admin import AdminSite
+from django.shortcuts import render, redirect
 
 # Action pour recalculer tous les points d'une compétition
 def recalc_scores(modeladmin, request, queryset):
@@ -133,8 +135,64 @@ class SeasonScoreAdmin(admin.ModelAdmin):
 class CustomAdminSite(admin.AdminSite):
     pass
 
-admin.site.register_view(
-    "import-teams/",
-    view=import_teams_view,
-    name="Importer des équipes"
-)
+class RugbyAdminSite(AdminSite):
+    site_header = "Admin Pronostics Rugby"
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "create-round/",
+                self.admin_view(self.create_round_view),
+                name="create-round",
+            ),
+        ]
+        return custom_urls + urls
+
+    def create_round_view(self, request):
+        competitions = Competition.objects.all()
+
+        if request.method == "POST":
+            competition_id = request.POST["competition"]
+            round_number = request.POST["round_number"]
+            date = request.POST["date"]
+            team_ids = request.POST.getlist("teams")
+
+            competition = Competition.objects.get(id=competition_id)
+
+            round_obj = Round.objects.create(
+                competition=competition,
+                number=round_number,
+                date=date,
+            )
+
+            teams = list(Team.objects.filter(id__in=team_ids))
+
+            if len(teams) % 2 != 0:
+                messages.error(request, "Nombre d'équipes impair")
+                return redirect(request.path)
+
+            for i in range(0, len(teams), 2):
+                Match.objects.create(
+                    round=round_obj,
+                    home_team=teams[i],
+                    away_team=teams[i + 1],
+                )
+
+            messages.success(request, "Journée et matchs créés avec succès")
+            return redirect("/admin/")
+
+        return render(
+            request,
+            "admin/create_round.html",
+            {"competitions": competitions},
+        )
+
+
+
+rugby_admin_site = RugbyAdminSite(name="rugby_admin")
+
+rugby_admin_site.register(Competition)
+rugby_admin_site.register(Team)
+rugby_admin_site.register(Round)
+rugby_admin_site.register(Match)
