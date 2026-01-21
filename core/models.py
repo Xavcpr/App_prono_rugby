@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from math import floor
 from django.contrib.auth.models import User
+from django import forms
 
 # ----- Phases de match -----
 class MatchPhase(models.TextChoices):
@@ -45,7 +46,7 @@ class Team(models.Model):
 # ----- Saison ----- 
 class Season(models.Model):
     competition = models.ForeignKey(Competition, on_delete=models.CASCADE, related_name="seasons")
-    year = models.CharField(max_length=20)  # ex: "2025/2026"
+    year = models.CharField(max_length=20, default="2025/2026")  # ex: "2025/2026"
 
     def __str__(self):
         return f"{self.competition.name} {self.year}"
@@ -201,3 +202,21 @@ class SeasonScore(models.Model):
         return f"{self.user} - {self.competition} : {self.points} pts"
 
 
+class RoundForm(forms.ModelForm):
+    class Meta:
+        model = Round
+        fields = ("competition", "season", "number", "date")
+
+    competition = forms.ModelChoiceField(queryset=Competition.objects.all())
+    season = forms.ModelChoiceField(queryset=Season.objects.none())
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'competition' in self.data:
+            try:
+                competition_id = int(self.data.get('competition'))
+                self.fields['season'].queryset = Season.objects.filter(competition_id=competition_id)
+            except (ValueError, TypeError):
+                pass
+        elif self.instance.pk:
+            self.fields['season'].queryset = Season.objects.filter(competition=self.instance.season.competition)

@@ -1,7 +1,7 @@
 from django.contrib import admin, messages
 from .models import (
-    Team, Player, Competition, Round, Match, ScoringConfig,
-    Prediction, DailyBonus, CompetitionBonus, DailyScore, SeasonScore
+    Season, Team, Player, Competition, Round, Match, ScoringConfig,
+    Prediction, DailyBonus, CompetitionBonus, DailyScore, SeasonScore, RoundForm
 )
 from core.services.scoring import calculate_points
 from django.db.models import Sum
@@ -273,4 +273,10 @@ class RoundAdmin(admin.ModelAdmin):
                 level=messages.SUCCESS
             )
 
+
+@admin.register(Round)
+class RoundAdmin(admin.ModelAdmin):
+    form = RoundForm
+    list_display = ("competition", "number", "date")
+    list_filter = ("season__competition", "season")
 
