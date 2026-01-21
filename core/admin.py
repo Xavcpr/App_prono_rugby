@@ -213,7 +213,9 @@ class RoundForm(forms.ModelForm):
 
     class Meta:
         model = Round
-        fields = ("competition", "season", "number", "date")
+        fields = ("competition", 
+                #   "season", 
+                  "number", "date")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
