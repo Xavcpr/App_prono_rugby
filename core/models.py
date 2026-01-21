@@ -22,7 +22,7 @@ class Player(models.Model):
 # ----- Compétitions -----
 class Competition(models.Model):
     name = models.CharField(max_length=100)
-    matches_per_round = models.PositiveIntegerField()
+    matches_per_round = models.PositiveIntegerField(default=0)
     season = models.CharField(max_length=20)
     bonus_defense_threshold = models.IntegerField(default=7)
     match_weight = models.IntegerField(default=680)
@@ -44,33 +44,35 @@ class Team(models.Model):
 
 # ----- Saison ----- 
 class Season(models.Model):
-    competition = models.ForeignKey(
-        Competition,
-        on_delete=models.CASCADE,
-        related_name="seasons"
-    )
-    name = models.CharField(max_length=50)  # ex: "2024-2025"
-    start_date = models.DateField()
-    end_date = models.DateField()
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["competition", "name"],
-                name="unique_season_per_competition"
-            )
-        ]
+    competition = models.ForeignKey(Competition, on_delete=models.CASCADE, related_name="seasons")
+    year = models.CharField(max_length=20)  # ex: "2025/2026"
 
     def __str__(self):
-        return f"{self.competition.name} {self.name}"
+        return f"{self.competition.name} {self.year}"
+# class Season(models.Model):
+#     competition = models.ForeignKey(
+#         Competition,
+#         on_delete=models.CASCADE,
+#         related_name="seasons"
+#     )
+#     name = models.CharField(max_length=50)  # ex: "2024-2025"
+#     start_date = models.DateField()
+#     end_date = models.DateField()
+
+#     class Meta:
+#         constraints = [
+#             models.UniqueConstraint(
+#                 fields=["competition", "name"],
+#                 name="unique_season_per_competition"
+#             )
+#         ]
+
+#     def __str__(self):
+#         return f"{self.competition.name} {self.name}"
 
 # ----- Journées / Rounds -----
 class Round(models.Model):
-    season = models.ForeignKey(
-        Season,
-        on_delete=models.CASCADE,
-        related_name="rounds"
-    )
+    season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="rounds")
     number = models.PositiveIntegerField()
     date = models.DateField(null=True, blank=True)
 
@@ -85,6 +87,10 @@ class Round(models.Model):
 
     def __str__(self):
         return f"{self.season} – Journée {self.number}"
+
+    @property
+    def competition(self):
+        return self.season.competition
    
 
 # ----- Matchs -----
