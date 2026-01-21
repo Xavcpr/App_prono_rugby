@@ -209,7 +209,7 @@ class CreateRoundForm(forms.Form):
 
 class RoundForm(forms.ModelForm):
     competition = forms.ModelChoiceField(queryset=Competition.objects.all(), required=True)
-    season = forms.ModelChoiceField(queryset=Season.objects.none(), required=True)
+    # season = forms.ModelChoiceField(queryset=Season.objects.none(), required=True)
 
     class Meta:
         model = Round
