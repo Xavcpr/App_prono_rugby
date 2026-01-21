@@ -9,6 +9,7 @@ from django.db.models import Sum
 from .admin_views import import_teams_view
 from django.contrib.admin import AdminSite
 from django.shortcuts import render, redirect
+from django.urls import path
 
 # Action pour recalculer tous les points d'une compétition
 def recalc_scores(modeladmin, request, queryset):
