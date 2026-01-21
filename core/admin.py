@@ -208,37 +208,40 @@ class CreateRoundForm(forms.Form):
     )
 
 class RoundForm(forms.ModelForm):
-    competition = forms.ModelChoiceField(queryset=Competition.objects.all(), required=True)
-    # season = forms.ModelChoiceField(queryset=Season.objects.none(), required=True)
+    competition = forms.ModelChoiceField(
+        queryset=Competition.objects.all(),
+        required=True,
+        label="Compétition"
+    )
 
     class Meta:
         model = Round
-        fields = ("competition", "number", "date")
-        
+        fields = ("competition", "number", "date")  # plus de 'season'
+
     def save(self, commit=True):
-        # On déduit la season de la competition choisie
         round_obj = super().save(commit=False)
-        round_obj.season = self.cleaned_data['competition']  # si Season est en réalité un objet lié à Competition
+        # On assigne automatiquement la saison depuis la compétition
+        round_obj.season = round_obj.competition.season
         if commit:
             round_obj.save()
         return round_obj
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
 
-        # Si on édite un Round existant
-        if self.instance.pk:
-            self.fields['competition'].initial = self.instance.season.competition
+    #     # Si on édite un Round existant
+    #     if self.instance.pk:
+    #         self.fields['competition'].initial = self.instance.season.competition
             
-        # Si le formulaire POST contient déjà une compétition sélectionnée
-        elif 'competition' in self.data:
-            try:
-                competition_id = int(self.data.get('competition'))
-                self.fields['season'].queryset = Season.objects.filter(competition_id=competition_id)
-            except (ValueError, TypeError):
-                self.fields['season'].queryset = Season.objects.none()
-        else:
-            self.fields['season'].queryset = Season.objects.none()
+    #     # Si le formulaire POST contient déjà une compétition sélectionnée
+    #     elif 'competition' in self.data:
+    #         try:
+    #             competition_id = int(self.data.get('competition'))
+    #             self.fields['season'].queryset = Season.objects.filter(competition_id=competition_id)
+    #         except (ValueError, TypeError):
+    #             self.fields['season'].queryset = Season.objects.none()
+    #     else:
+    #         self.fields['season'].queryset = Season.objects.none()
 
 # =========================
 # Admin custom pour Round
@@ -247,28 +250,32 @@ class RoundForm(forms.ModelForm):
 class RoundAdmin(admin.ModelAdmin):
     form = RoundForm
     list_display = ("__str__", "number", "date", "competition")
-    list_filter = ("season__competition",)  # on peut garder pour filtrer
+    list_filter = ("season__competition",)  # filtrage toujours possible
     fields = ("competition", "number", "date")  # plus de 'season'
-    actions = ["create_empty_matches", "generate_matches"]
+    actions = ["create_empty_matches"]
 
     @admin.action(description="Créer les matchs vides de la journée")
     def create_empty_matches(self, request, queryset):
         for round_obj in queryset:
-            if round_obj.matches.exists():
+            if round_obj.match_set.exists():
                 self.message_user(
                     request,
                     f"{round_obj} a déjà des matchs",
-                    level=admin.messages.WARNING
+                    level=messages.WARNING
                 )
                 continue
 
             nb_matches = round_obj.competition.matches_per_round
-            Match.objects.bulk_create([Match(round=round_obj) for _ in range(nb_matches)])
+
+            Match.objects.bulk_create([
+                Match(round=round_obj)
+                for _ in range(nb_matches)
+            ])
 
             self.message_user(
                 request,
                 f"{nb_matches} matchs créés pour {round_obj}",
-                level=admin.messages.SUCCESS
+                level=messages.SUCCESS
             )
 # @admin.register(Round)
 # class RoundAdmin(admin.ModelAdmin):
