@@ -1,8 +1,5 @@
 Ce qu’il me reste à faire
--	Admin
-        Générer une journée qui créé des matches automatiquement
-        on sait que la compétition de top14 c'est 7 journées, de 
-
+-	
 - Onglet pronos/user
     - le joueur peut envoyer un seul pronos
      -afficher la compétition et la journée 	

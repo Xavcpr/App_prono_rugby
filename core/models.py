@@ -93,6 +93,11 @@ class Match(models.Model):
         blank=True,
         related_name="away_matches"
     )
+    kickoff_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Date et heure du match"
+    )
     home_score = models.IntegerField(null=True, blank=True)
     away_score = models.IntegerField(null=True, blank=True)
     weight = models.IntegerField(default=680)
