@@ -36,7 +36,7 @@ def pronos_view(request):
         player = user.player
     except Player.DoesNotExist:
         messages.error(request, "Aucun profil joueur associé à votre compte.")
-        return redirect("/")
+        return redirect("admin:index")
 
     # ------------------
     # Filtres GET
