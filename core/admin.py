@@ -276,37 +276,67 @@ class RoundForm(forms.ModelForm):
 # =========================
 # Admin custom pour Round
 # =========================
+# @admin.register(Round)
+# class RoundAdmin(admin.ModelAdmin):
+#     form = RoundForm
+#     list_display = ("__str__", "number", "date", "competition")
+#     list_filter = ("season__competition",)  # filtrage toujours possible
+#     fields = ("competition", "number", "date")  # plus de 'season'
+#     actions = ["create_empty_matches"]
+
+#     @admin.action(description="Créer les matchs vides de la journée")
+#     def create_empty_matches(self, request, queryset):
+#         for round_obj in queryset:
+#             if round_obj.match_set.exists():
+#                 self.message_user(
+#                     request,
+#                     f"{round_obj} a déjà des matchs",
+#                     level=messages.WARNING
+#                 )
+#                 continue
+
+#             nb_matches = round_obj.competition.matches_per_round
+
+#             Match.objects.bulk_create([
+#                 Match(round=round_obj)
+#                 for _ in range(nb_matches)
+#             ])
+
+#             self.message_user(
+#                 request,
+#                 f"{nb_matches} matchs créés pour {round_obj}",
+#                 level=messages.SUCCESS
+#             )
+            
+            
 @admin.register(Round)
 class RoundAdmin(admin.ModelAdmin):
     form = RoundForm
     list_display = ("__str__", "number", "date", "competition")
-    list_filter = ("season__competition",)  # filtrage toujours possible
-    fields = ("competition", "number", "date")  # plus de 'season'
-    actions = ["create_empty_matches"]
+    list_filter = ("season__competition",)
+    fields = ("competition", "number", "date")
 
-    @admin.action(description="Créer les matchs vides de la journée")
-    def create_empty_matches(self, request, queryset):
-        for round_obj in queryset:
-            if round_obj.match_set.exists():
-                self.message_user(
-                    request,
-                    f"{round_obj} a déjà des matchs",
-                    level=messages.WARNING
-                )
-                continue
+    def save_model(self, request, obj, form, change):
+        is_new = obj.pk is None
 
-            nb_matches = round_obj.competition.matches_per_round
+        # Sauvegarde du Round
+        super().save_model(request, obj, form, change)
+
+        # 🎯 Si c'est une création → on génère les matchs vierges
+        if is_new:
+            nb_matches = obj.competition.matches_per_round
 
             Match.objects.bulk_create([
-                Match(round=round_obj)
+                Match(round=obj)
                 for _ in range(nb_matches)
             ])
 
             self.message_user(
                 request,
-                f"{nb_matches} matchs créés pour {round_obj}",
+                f"{nb_matches} matchs vierges créés pour {obj}",
                 level=messages.SUCCESS
             )
+            
 # @admin.register(Round)
 # class RoundAdmin(admin.ModelAdmin):
 #     form = RoundForm
