@@ -1,0 +1,47 @@
+<form
+  method="post"
+  action="{% url 'save_prediction' match.id %}"
+  class="prediction-form"
+>
+  {% csrf_token %}
+
+  <input
+    type="checkbox"
+    name="bonus_home"
+    {%
+    if
+    match.user_prediction.bonus_home_pred
+    %}checked{%
+    endif
+    %}
+  />
+
+  <input
+    type="number"
+    name="home_score"
+    value="{{ match.user_prediction.home_score_pred|default:'' }}"
+    min="0"
+    required
+  />
+
+  <input
+    type="number"
+    name="away_score"
+    value="{{ match.user_prediction.away_score_pred|default:'' }}"
+    min="0"
+    required
+  />
+
+  <input
+    type="checkbox"
+    name="bonus_away"
+    {%
+    if
+    match.user_prediction.bonus_away_pred
+    %}checked{%
+    endif
+    %}
+  />
+
+  <button type="submit">💾</button>
+</form>

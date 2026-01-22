@@ -1,33 +1,58 @@
-<!doctype html>
-<html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Pronostics Rugby</title>
-  </head>
-  <body>
-    <h1>Pronostics Rugby</h1>
-    <a href="{% url 'logout' %}">Déconnexion</a>
-    <form method="post">
-      {% csrf_token %}
-      <table border="1">
-        <tr>
-          <th>Match</th>
-          <th>Bonus offensif domicile</th>
-          <th>Score domicile</th>
-          <th>Score extérieur</th>
-          <th>Bonus offensif extérieur</th>
-        </tr>
-        {% for match in matches %}
-        <tr>
-          <td>{{ match.home_team.name }} - {{ match.away_team.name }}</td>
-          <td><input type="checkbox" name="bonus_home_{{ match.id }}" /></td>
-          <td><input type="number" name="home_{{ match.id }}" required /></td>
-          <td><input type="number" name="away_{{ match.id }}" required /></td>
-          <td><input type="checkbox" name="bonus_away_{{ match.id }}" /></td>
-        </tr>
-        {% endfor %}
-      </table>
-      <button type="submit">Envoyer mes pronostics</button>
-    </form>
-  </body>
-</html>
+{% extends "base.html" %} {% load static %} {% block content %}
+<h1>Mes pronostics</h1>
+
+<table border="1" cellpadding="6">
+  <thead>
+    <tr>
+      <th>Compétition</th>
+      <th>Journée</th>
+      <th>Date & heure</th>
+      <th>Match</th>
+      <th>BO dom</th>
+      <th>Score dom</th>
+      <th>Score ext</th>
+      <th>BO ext</th>
+      <th></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {% for match in matches %}
+    <tr>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="match_id" value="{{ match.id }}" />
+
+        <td>{{ match.round.season.competition }}</td>
+        <td>J{{ match.round.number }}</td>
+        <td>
+          {% if match.match_datetime %} {{ match.match_datetime|date:"d/m/Y H:i"
+          }} {% else %} — {% endif %}
+        </td>
+        <td>{{ match.home_team }} – {{ match.away_team }}</td>
+
+        <td>
+          <input type="checkbox" name="bonus_home" />
+        </td>
+
+        <td>
+          <input type="number" name="home_score" required style="width: 60px" />
+        </td>
+
+        <td>
+          <input type="number" name="away_score" required style="width: 60px" />
+        </td>
+
+        <td>
+          <input type="checkbox" name="bonus_away" />
+        </td>
+
+        <td>
+          <button type="submit">💾</button>
+        </td>
+      </form>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -110,6 +110,7 @@ class Match(models.Model):
     bonus_offense_away = models.BooleanField(default=False)
     bonus_defense_home = models.BooleanField(default=False)
     bonus_defense_away = models.BooleanField(default=False)
+    match_datetime = models.DateTimeField(null=True, blank=True)
 
     def total_score(self):
         if self.home_score is not None and self.away_score is not None:

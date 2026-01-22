@@ -1,4 +1,4 @@
-{% comment %} A supprimer a prio {% endcomment %}
+{% comment %} A supprimer a prio
 
 <!doctype html>
 <html lang="fr">
@@ -29,4 +29,70 @@
       <button type="submit">Envoyer mes pronostics</button>
     </form>
   </body>
-</html>
+</html> {% endcomment %}
+
+<form method="get" class="filters">
+    <select name="competition">
+        <option value="">Toutes les compétitions</option>
+        {% for comp in competitions %}
+            <option value="{{ comp.id }}"
+                {% if comp.id|stringformat:"s" == request.GET.competition %}selected{% endif %}>
+                {{ comp.name }}
+            </option>
+        {% endfor %}
+    </select>
+
+    <select name="round">
+        <option value="">Toutes les journées</option>
+        {% for r in rounds %}
+            <option value="{{ r.id }}"
+                {% if r.id|stringformat:"s" == request.GET.round %}selected{% endif %}>
+                {{ r }}
+            </option>
+        {% endfor %}
+    </select>
+
+    <button type="submit">Filtrer</button>
+</form>
+
+<table class="pronos-table">
+    <thead>
+        <tr>
+            <th>Compétition</th>
+            <th>Journée</th>
+            <th>Date & heure</th>
+            <th>Match</th>
+            <th>BO dom.</th>
+            <th>Score dom.</th>
+            <th>Score ext.</th>
+            <th>BO ext.</th>
+            <th></th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for match in matches %}
+        <tr>
+            <td>{{ match.round.season.competition.name }}</td>
+
+            <td>J{{ match.round.number }}</td>
+
+            <td>
+                {% if match.kickoff_at %}
+                    {{ match.kickoff_at|date:"d/m/Y H:i" }}
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+
+            <td>
+                {{ match.home_team }} vs {{ match.away_team }}
+            </td>
+
+            <td colspan="5">
+                {% include "pronos/_prediction_form.html" %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
