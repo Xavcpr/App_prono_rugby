@@ -16,6 +16,7 @@ from .models import (
     Prediction,
     Competition,
     Round,
+    Player
 )
 
 from .services.scoring import calculate_points
