@@ -57,7 +57,11 @@ class Season(models.Model):
 class Round(models.Model):
     season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="rounds")
     number = models.PositiveIntegerField()
-    date = models.DateField(null=True, blank=True)
+    date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date indicative de la journée"
+    )
 
     class Meta:
         constraints = [

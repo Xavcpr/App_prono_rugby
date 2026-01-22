@@ -101,8 +101,10 @@ class CompetitionAdmin(admin.ModelAdmin):
 
 @admin.register(Match)
 class MatchAdmin(admin.ModelAdmin):
-    list_display = ("round", "home_team", "away_team", "home_score", "away_score", "phase")
-    list_filter = ("round__season__competition", "phase")
+    list_display = ("round", "home_team", "away_team", "home_score", "away_score", "kickoff_at", "phase")
+    list_filter = ("round__season__competition", "round", "phase")
+    ordering = ("kickoff_at",)
+    search_fields = ("home_team__name", "away_team__name")
 
 @admin.register(Prediction)
 class PredictionAdmin(admin.ModelAdmin):
