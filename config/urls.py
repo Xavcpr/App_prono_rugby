@@ -30,6 +30,6 @@ from core.admin import rugby_admin_site
 urlpatterns = [
     # path("admin/", admin.site.urls),  # admin classique
     path("admin/", admin.site.urls),
-    path("rugby-admin/", rugby_admin_site.urls),  # admin custom
+    # path("rugby-admin/", rugby_admin_site.urls),  # admin custom
     path("", include("core.urls")),
 ]
