@@ -14,25 +14,7 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-# from django.contrib import admin
-# from django.urls import path, include
 
-# urlpatterns = [
-#     path('admin/', admin.site.urls),
-#     path('accounts/', include('django.contrib.auth.urls')),  # 👈 AJOUT
-#     path('', include('core.urls')),
-# ]
-
-# from django.contrib import admin
-# from django.urls import path, include
-# from core.admin import rugby_admin_site
-
-# urlpatterns = [
-#     # path("admin/", admin.site.urls),  # admin classique
-#     path("admin/", admin.site.urls),
-#     # path("rugby-admin/", rugby_admin_site.urls),  # admin custom
-#     path("", include("core.urls")),
-# ]
 
 from django.contrib import admin
 from django.urls import path, include
