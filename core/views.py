@@ -2,7 +2,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout as auth_logout
 from django.contrib import messages
-from .models import Match, Prediction, Competition, Round, Player
+from .models import Match, Prediction, Competition, Round
+# , Player
 from .services.scoring import calculate_points
 
 
