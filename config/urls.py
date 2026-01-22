@@ -23,9 +23,9 @@ Including another URLconf
 #     path('', include('core.urls')),
 # ]
 
-from django.contrib import admin
-from django.urls import path, include
-from core.admin import rugby_admin_site
+# from django.contrib import admin
+# from django.urls import path, include
+# from core.admin import rugby_admin_site
 
 # urlpatterns = [
 #     # path("admin/", admin.site.urls),  # admin classique
