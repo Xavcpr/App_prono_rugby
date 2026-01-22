@@ -1,98 +1,79 @@
-{% comment %} A supprimer a prio
+{% extends "base.html" %}
+{% load static %}
 
-<!doctype html>
-<html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Pronostics Rugby</title>
-  </head>
-  <body>
-    <h1>Pronostics Rugby</h1>
-    <form method="post">
-      {% csrf_token %}
-      <table border="1">
-        <tr>
-          <th>Match</th>
-          <th>Score domicile</th>
-          <th>Score extérieur</th>
-          <th>Bonus offensif</th>
-        </tr>
-        {% for match in matches %}
-        <tr>
-          <td>{{ match.home_team.name }} - {{ match.away_team.name }}</td>
-          <td><input type="number" name="home_{{ match.id }}" required /></td>
-          <td><input type="number" name="away_{{ match.id }}" required /></td>
-          <td><input type="checkbox" name="bonus_{{ match.id }}" /></td>
-        </tr>
-        {% endfor %}
-      </table>
-      <button type="submit">Envoyer mes pronostics</button>
-    </form>
-  </body>
-</html> {% endcomment %}
+{% block content %}
+<h1>Pronostics</h1>
 
-<form method="get" class="filters">
-    <select name="competition">
-        <option value="">Toutes les compétitions</option>
+<!-- FILTRES -->
+<form method="get" class="mb-4">
+    <label for="competition">Compétition:</label>
+    <select name="competition" id="competition" onchange="this.form.submit()">
+        <option value="">Toutes</option>
         {% for comp in competitions %}
-            <option value="{{ comp.id }}"
-                {% if comp.id|stringformat:"s" == request.GET.competition %}selected{% endif %}>
+            <option value="{{ comp.id }}" {% if request.GET.competition|default:'' == comp.id|stringformat:"s" %}selected{% endif %}>
                 {{ comp.name }}
             </option>
         {% endfor %}
     </select>
 
-    <select name="round">
-        <option value="">Toutes les journées</option>
+    <label for="round">Journée:</label>
+    <select name="round" id="round" onchange="this.form.submit()">
+        <option value="">Toutes</option>
         {% for r in rounds %}
-            <option value="{{ r.id }}"
-                {% if r.id|stringformat:"s" == request.GET.round %}selected{% endif %}>
+            <option value="{{ r.id }}" {% if request.GET.round|default:'' == r.id|stringformat:"s" %}selected{% endif %}>
                 {{ r }}
             </option>
         {% endfor %}
     </select>
-
-    <button type="submit">Filtrer</button>
 </form>
 
-<table class="pronos-table">
+<table class="table table-striped">
     <thead>
         <tr>
             <th>Compétition</th>
             <th>Journée</th>
-            <th>Date & heure</th>
+            <th>Date/Heure</th>
             <th>Match</th>
-            <th>BO dom.</th>
-            <th>Score dom.</th>
-            <th>Score ext.</th>
-            <th>BO ext.</th>
-            <th></th>
+            <th>BO domicile</th>
+            <th>Score domicile</th>
+            <th>Score extérieur</th>
+            <th>BO extérieur</th>
+            <th>Actions</th>
         </tr>
     </thead>
-
     <tbody>
         {% for match in matches %}
         <tr>
             <td>{{ match.round.season.competition.name }}</td>
+            <td>{{ match.round.number }}</td>
+            <td>{{ match.kickoff_at|date:"d/m/Y H:i" }}</td>
+            <td>{{ match.home_team }} vs {{ match.away_team }}</td>
 
-            <td>J{{ match.round.number }}</td>
-
-            <td>
-                {% if match.kickoff_at %}
-                    {{ match.kickoff_at|date:"d/m/Y H:i" }}
-                {% else %}
-                    -
-                {% endif %}
-            </td>
-
-            <td>
-                {{ match.home_team }} vs {{ match.away_team }}
-            </td>
-
-            <td colspan="5">
-                {% include "pronos/_prediction_form.html" %}
-            </td>
+            <form method="post">
+                {% csrf_token %}
+                <td>
+                    <input type="checkbox" name="bonus_home" {% if match.user_prediction and match.user_prediction.bonus_home_pred %}checked{% endif %}>
+                </td>
+                <td>
+                    <input type="number" name="home_score" value="{% if match.user_prediction %}{{ match.user_prediction.home_score_pred }}{% endif %}" style="width: 60px;">
+                </td>
+                <td>
+                    <input type="number" name="away_score" value="{% if match.user_prediction %}{{ match.user_prediction.away_score_pred }}{% endif %}" style="width: 60px;">
+                </td>
+                <td>
+                    <input type="checkbox" name="bonus_away" {% if match.user_prediction and match.user_prediction.bonus_away_pred %}checked{% endif %}>
+                </td>
+                <td>
+                    <input type="hidden" name="match_id" value="{{ match.id }}">
+                    <button type="submit" class="btn btn-primary btn-sm">Enregistrer</button>
+                </td>
+            </form>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="9">Aucun match disponible.</td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
+{% endblock %}
