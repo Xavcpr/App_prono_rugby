@@ -159,10 +159,10 @@ class MatchAdmin(admin.ModelAdmin):
     ordering = ("kickoff_at",)
     search_fields = ("home_team__name", "away_team__name")
 
-@admin.register(Prediction)
-class PredictionAdmin(admin.ModelAdmin):
-    list_display = ("match", "player", "home_score_pred", "away_score_pred", "points")
-    list_filter = ("match__round__season__competition",)
+# @admin.register(Prediction)
+# class PredictionAdmin(admin.ModelAdmin):
+#     list_display = ("match", "player", "home_score_pred", "away_score_pred", "points")
+#     list_filter = ("match__round__season__competition",)
 
 @admin.register(DailyBonus)
 class DailyBonusAdmin(admin.ModelAdmin):
