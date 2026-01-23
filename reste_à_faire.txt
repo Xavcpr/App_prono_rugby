@@ -1,12 +1,10 @@
 Ce qu’il me reste à faire
 -	
 - Onglet pronos/user
-    - le joueur peut envoyer un seul prono
-     -afficher la compétition et la journée 	
-    - Une fois les matches dispo, l’utilisateur doit avoir accès à tous les matches. Il peut avoir plusieurs filtres
-        Matches à venir / matches passés
-        Compétition 
-        Journée
+    - où va le prono
+
+sur la page prono, mettre un seul bouton enregistrer global, plutôt que 1 bouton par prono ?
+
 - Responsive mobile
 - Appliquer le scoring
 -	

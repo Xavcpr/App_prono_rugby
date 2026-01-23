@@ -187,6 +187,19 @@ class SeasonScoreAdmin(admin.ModelAdmin):
     ordering = ("-points",)
 
 
+@admin.register(Prediction)
+class PredictionAdmin(admin.ModelAdmin):
+    list_display = (
+        "player",
+        "match",
+        "home_score_pred",
+        "away_score_pred",
+        "bonus_home_pred",
+        "bonus_away_pred",
+        "points",
+    )
+    list_filter = ("match", "player")
+
 # from django.contrib import admin, messages
 # from .models import (
 #     Season, Team, Player, Competition, Round, Match, ScoringConfig,

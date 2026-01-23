@@ -100,8 +100,7 @@ def pronos_view(request):
         prediction.save()
 
         messages.success(request, f"Prono enregistré pour {match}")
-        return redirect("pronostics")
-
+        return redirect(request.path)
     # ------------------
     # Récupération des pronos existants pour l'utilisateur
     # ------------------
