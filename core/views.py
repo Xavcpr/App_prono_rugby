@@ -96,7 +96,8 @@ def pronos_view(request):
             prediction.bonus_home_pred = bonus_home
             prediction.bonus_away_pred = bonus_away
 
-        prediction.points = calculate_points(prediction, match)
+        # prediction.points = calculate_points(prediction, match)
+        prediction.points = 0  # Calcul des points désactivé temporairement
         prediction.save()
 
         messages.success(request, f"Prono enregistré pour {match}")
