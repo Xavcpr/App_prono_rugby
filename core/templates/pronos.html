@@ -3,109 +3,165 @@
 
 {% block content %}
 
-<h1>
-    Pronos de {{ request.user.player.name }}
-</h1>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Pronos de {{ request.user.player.name }}</h1>
+    <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm">Déconnexion</a>
+</div>
 
-<!-- ========================= -->
-<!-- FILTRES (GET, indépendants du POST) -->
-<!-- ========================= -->
-<form method="get" class="mb-4">
-    <label for="competition">Compétition :</label>
-    <select name="competition" id="competition" onchange="this.form.submit()">
-        <option value="">Toutes</option>
-        {% for comp in competitions %}
-            <option value="{{ comp.id }}"
-                {% if request.GET.competition|default:'' == comp.id|stringformat:"s" %}
-                    selected
-                {% endif %}
-            >
-                {{ comp.name }}
-            </option>
-        {% endfor %}
-    </select>
+<!-- FILTRES -->
+<form method="get" class="mb-4 d-flex flex-wrap gap-2 align-items-center">
+    <div>
+        <label for="competition" class="form-label">Compétition :</label>
+        <select name="competition" id="competition" class="form-select" onchange="this.form.submit()">
+            <option value="">Toutes</option>
+            {% for comp in competitions %}
+                <option value="{{ comp.id }}"
+                    {% if request.GET.competition|default:'' == comp.id|stringformat:"s" %}selected{% endif %}>
+                    {{ comp.name }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
 
-    <label for="round">Journée :</label>
-    <select name="round" id="round" onchange="this.form.submit()">
-        <option value="">Toutes</option>
-        {% for r in rounds %}
-            <option value="{{ r.id }}"
-                {% if request.GET.round|default:'' == r.id|stringformat:"s" %}
-                    selected
-                {% endif %}
-            >
-                {{ r }}
-            </option>
-        {% endfor %}
-    </select>
+    <div>
+        <label for="round" class="form-label">Journée :</label>
+        <select name="round" id="round" class="form-select" onchange="this.form.submit()">
+            <option value="">Toutes</option>
+            {% for r in rounds %}
+                <option value="{{ r.id }}"
+                    {% if request.GET.round|default:'' == r.id|stringformat:"s" %}selected{% endif %}>
+                    {{ r }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
 </form>
 
-<!-- ========================= -->
-<!-- FORMULAIRE UNIQUE (POST) -->
-<!-- ========================= -->
+<!-- FORMULAIRE UNIQUE -->
 <form method="post" action="{% url 'pronostics' %}">
     {% csrf_token %}
 
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Compétition</th>
-                <th>Journée</th>
-                <th>Date / Heure</th>
-                <th>Match</th>
-                <th>BO dom.</th>
-                <th>Score dom.</th>
-                <th>Score ext.</th>
-                <th>BO ext.</th>
-            </tr>
-        </thead>
+    <!-- Table pour grands écrans, cartes pour petits -->
+    <div class="d-none d-md-block table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Compétition</th>
+                    <th>Journée</th>
+                    <th>Date / Heure</th>
+                    <th>Match</th>
+                    <th>BO dom.</th>
+                    <th>Score dom.</th>
+                    <th>Score ext.</th>
+                    <th>BO ext.</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for match in matches %}
+                <tr>
+                    <td>{{ match.round.season.competition.name }}</td>
+                    <td>{{ match.round.number }}</td>
+                    <td>{{ match.kickoff_at|date:"d/m/Y H:i" }}</td>
+                    <td>{{ match.home_team }} vs {{ match.away_team }}</td>
 
-        <tbody>
-            {% for match in matches %}
-            <tr>
-                <td>{{ match.round.season.competition.name }}</td>
-                <td>{{ match.round.number }}</td>
-                <td>{{ match.kickoff_at|date:"d/m/Y H:i" }}</td>
-                <td>{{ match.home_team }} vs {{ match.away_team }}</td>
+                    <td>
+                        <input type="checkbox"
+                               name="bonus_home_{{ match.id }}"
+                               class="form-check-input"
+                               {% if match.user_prediction and match.user_prediction.bonus_home_pred %}checked{% endif %}>
+                    </td>
 
-                <td>
+                    <td>
+                        <input type="number"
+                               name="home_score_{{ match.id }}"
+                               value="{% if match.user_prediction %}{{ match.user_prediction.home_score_pred }}{% endif %}"
+                               class="form-control form-control-sm"
+                               style="max-width: 60px;">
+                    </td>
+
+                    <td>
+                        <input type="number"
+                               name="away_score_{{ match.id }}"
+                               value="{% if match.user_prediction %}{{ match.user_prediction.away_score_pred }}{% endif %}"
+                               class="form-control form-control-sm"
+                               style="max-width: 60px;">
+                    </td>
+
+                    <td>
+                        <input type="checkbox"
+                               name="bonus_away_{{ match.id }}"
+                               class="form-check-input"
+                               {% if match.user_prediction and match.user_prediction.bonus_away_pred %}checked{% endif %}>
+                    </td>
+
+                    <input type="hidden" name="match_ids" value="{{ match.id }}">
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8">Aucun match disponible.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Cartes pour petits écrans -->
+    <div class="d-md-none">
+        {% for match in matches %}
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">{{ match.home_team }} vs {{ match.away_team }}</h5>
+                <p class="card-text mb-1">
+                    <strong>Compétition:</strong> {{ match.round.season.competition.name }}
+                </p>
+                <p class="card-text mb-1">
+                    <strong>Journée:</strong> {{ match.round.number }}
+                </p>
+                <p class="card-text mb-1">
+                    <strong>Date / Heure:</strong> {{ match.kickoff_at|date:"d/m/Y H:i" }}
+                </p>
+
+                <div class="mb-2 form-check">
                     <input type="checkbox"
                            name="bonus_home_{{ match.id }}"
+                           class="form-check-input"
                            {% if match.user_prediction and match.user_prediction.bonus_home_pred %}checked{% endif %}>
-                </td>
+                    <label class="form-check-label">BO domicile</label>
+                </div>
 
-                <td>
+                <div class="mb-2">
+                    <label>Score domicile:</label>
                     <input type="number"
                            name="home_score_{{ match.id }}"
                            value="{% if match.user_prediction %}{{ match.user_prediction.home_score_pred }}{% endif %}"
-                           style="width: 60px;">
-                </td>
+                           class="form-control form-control-sm">
+                </div>
 
-                <td>
+                <div class="mb-2">
+                    <label>Score extérieur:</label>
                     <input type="number"
                            name="away_score_{{ match.id }}"
                            value="{% if match.user_prediction %}{{ match.user_prediction.away_score_pred }}{% endif %}"
-                           style="width: 60px;">
-                </td>
+                           class="form-control form-control-sm">
+                </div>
 
-                <td>
+                <div class="mb-2 form-check">
                     <input type="checkbox"
                            name="bonus_away_{{ match.id }}"
+                           class="form-check-input"
                            {% if match.user_prediction and match.user_prediction.bonus_away_pred %}checked{% endif %}>
-                </td>
+                    <label class="form-check-label">BO extérieur</label>
+                </div>
 
-                <!-- IMPORTANT : permet de savoir quels matchs traiter -->
                 <input type="hidden" name="match_ids" value="{{ match.id }}">
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="8">Aucun match disponible.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+            </div>
+        </div>
+        {% empty %}
+        <p>Aucun match disponible.</p>
+        {% endfor %}
+    </div>
 
-    <button type="submit" class="btn btn-success">
+    <button type="submit" class="btn btn-success mt-2 w-100">
         💾 Enregistrer mes pronostics
     </button>
 </form>
