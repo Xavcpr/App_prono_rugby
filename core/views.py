@@ -13,6 +13,7 @@ from .models import (
 
 from .services.scoring import calculate_points
 
+
 @login_required
 def pronos_view(request):
     """
@@ -127,3 +128,10 @@ def pronos_view(request):
             "rounds": rounds,
         }
     )
+
+
+
+@login_required
+def logout_view(request):
+    auth_logout(request)
+    return redirect("login")
