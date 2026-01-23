@@ -43,7 +43,7 @@
 <!-- ========================= -->
 <!-- FORMULAIRE UNIQUE (POST) -->
 <!-- ========================= -->
-<form method="post">
+<form method="post" action="{% url 'pronostics' %}">
     {% csrf_token %}
 
     <table class="table table-striped">
