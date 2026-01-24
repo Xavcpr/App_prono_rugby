@@ -1,9 +1,8 @@
 Ce qu’il me reste à faire
 -	
 - Onglet pronos/user
-    - où va le prono
-
-sur la page prono, mettre un seul bouton enregistrer global, plutôt que 1 bouton par prono ?
+    - check où va le prono
+- bouton logout
 
 - Responsive mobile
 - Appliquer le scoring
