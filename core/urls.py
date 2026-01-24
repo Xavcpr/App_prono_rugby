@@ -1,9 +1,10 @@
 from django.urls import path
-from .views import pronos_view, logout_view
+from .views import pronos_view, logout_view, settings_view
 
 urlpatterns = [
     path("pronos/", pronos_view, name="pronostics"),
     path("logout/", logout_view, name="logout"),
+    path('settings/', settings_view, name='settings'),
 ]
 
 # from django.http import HttpResponse
