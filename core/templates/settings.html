@@ -1,0 +1,14 @@
+{% extends "base.html" %} {% block content %}
+<h2>Réglages du compte</h2>
+
+<form method="post" class="mt-3">
+  {% csrf_token %} {{ form.as_p }}
+  <button type="submit" class="btn btn-primary">
+    Modifier le mot de passe
+  </button>
+</form>
+
+<a href="{% url 'pronostics' %}" class="btn btn-link mt-3"
+  >← Retour aux pronostics</a
+>
+{% endblock %}

@@ -3,6 +3,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout as auth_logout
 from django.contrib import messages
 from django.utils import timezone
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth import update_session_auth_hash
 
 from .models import Match, Prediction, Competition, Round, Player
 from .services.scoring import calculate_points
@@ -12,9 +14,7 @@ from .services.scoring import calculate_points
 def pronos_view(request):
     user = request.user
 
-    # ------------------
     # Vérification Player
-    # ------------------
     try:
         player = user.player
     except Player.DoesNotExist:
@@ -24,9 +24,7 @@ def pronos_view(request):
         )
         return redirect("logout")
 
-    # ------------------
     # Filtres GET
-    # ------------------
     competition_id = request.GET.get("competition")
     round_id = request.GET.get("round")
 
@@ -50,9 +48,7 @@ def pronos_view(request):
 
     now = timezone.now()
 
-    # ------------------
     # Sauvegarde des pronostics
-    # ------------------
     if request.method == "POST":
         match_ids = request.POST.getlist("match_ids")
 
@@ -90,7 +86,6 @@ def pronos_view(request):
                 prediction.bonus_home_pred = bonus_home
                 prediction.bonus_away_pred = bonus_away
 
-            # Calcul sécurisé des points
             try:
                 prediction.points = calculate_points(prediction, match)
             except Exception as e:
@@ -105,22 +100,17 @@ def pronos_view(request):
         )
         return redirect("pronostics")
 
-    # ------------------
     # Pronostics existants
-    # ------------------
     predictions = Prediction.objects.filter(player=player)
     predictions_by_match = {p.match_id: p for p in predictions}
 
-    submit_disabled = True  # par défaut
+    submit_disabled = True
     for match in matches:
         match.user_prediction = predictions_by_match.get(match.id)
         match.is_locked = match.kickoff_at <= now
         if not match.is_locked:
-            submit_disabled = False  # au moins un match n’est pas encore verrouillé
+            submit_disabled = False
 
-    # ------------------
-    # Données pour filtres
-    # ------------------
     competitions = Competition.objects.all()
     rounds = Round.objects.all()
 
@@ -132,7 +122,7 @@ def pronos_view(request):
             "matches": matches,
             "competitions": competitions,
             "rounds": rounds,
-            "submit_disabled": submit_disabled,  # pour désactiver le bouton
+            "submit_disabled": submit_disabled,
         }
     )
 
@@ -141,3 +131,21 @@ def pronos_view(request):
 def logout_view(request):
     auth_logout(request)
     return redirect("login")
+
+
+@login_required
+def settings_view(request):
+    user = request.user
+    if request.method == 'POST':
+        form = PasswordChangeForm(user, request.POST)
+        if form.is_valid():
+            user = form.save()
+            update_session_auth_hash(request, user)  # garder la session ouverte
+            messages.success(request, 'Mot de passe mis à jour !')
+            return redirect('settings')
+        else:
+            messages.error(request, 'Corrigez les erreurs ci-dessous.')
+    else:
+        form = PasswordChangeForm(user)
+
+    return render(request, 'settings.html', {'form': form})
