@@ -122,9 +122,9 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-ALLOWED_HOSTS = ['xavFabiani.pythonanywhere.com']
+ALLOWED_HOSTS = ['xavFabiani.pythonanywhere.com', "127.0.0.1", "localhost"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
-DEBUG = False  # pour la prod
+DEBUG = True  # pour la prod
 
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = "/pronos/"
