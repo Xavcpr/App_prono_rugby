@@ -126,6 +126,9 @@ ALLOWED_HOSTS = ['xavFabiani.pythonanywhere.com']
 STATIC_ROOT = BASE_DIR / "staticfiles"
 DEBUG = False  # pour la prod
 
-LOGIN_URL = '/accounts/login/'
-LOGIN_REDIRECT_URL = "/pronos/"
-LOGOUT_REDIRECT_URL = "/accounts/login/"
+# LOGIN_URL = '/accounts/login/'
+# LOGIN_REDIRECT_URL = "/pronos/"
+# LOGOUT_REDIRECT_URL = "/accounts/login/"
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "pronostics"
+LOGOUT_REDIRECT_URL = "login"

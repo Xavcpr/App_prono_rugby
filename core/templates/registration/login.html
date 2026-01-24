@@ -1,4 +1,4 @@
-<!doctype html>
+{% comment %} <!doctype html>
 <html>
   <head>
     <title>Connexion</title>
@@ -12,3 +12,32 @@
     </form>
   </body>
 </html>
+{% endcomment %} {% extends "base.html" %} {% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-sm-8 col-md-5 col-lg-4">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h2 class="h4 text-center mb-3">Connexion</h2>
+
+        <form method="post">
+          {% csrf_token %}
+
+          <div class="mb-3">
+            <label class="form-label">Nom d’utilisateur</label>
+            <input type="text" name="username" class="form-control" />
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Mot de passe</label>
+            <input type="password" name="password" class="form-control" />
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100">
+            Se connecter
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
