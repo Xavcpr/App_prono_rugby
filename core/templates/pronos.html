@@ -1,11 +1,10 @@
 {% extends "base.html" %}
-
 {% block content %}
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="h4 mb-0">Pronos de {{ request.user.player.name }}</h1>
 
-    <!-- Déconnexion POST sécurisé -->
+    <!-- Bouton déconnexion POST -->
     <form method="post" action="{% url 'logout' %}">
         {% csrf_token %}
         <button type="submit" class="btn btn-outline-danger btn-sm">
@@ -43,11 +42,10 @@
     </div>
 </form>
 
-<!-- FORMULAIRE DES PRONOS -->
 <form method="post">
     {% csrf_token %}
 
-    <!-- TABLEAU DESKTOP -->
+    <!-- DESKTOP -->
     <div class="d-none d-md-block table-responsive">
         <table class="table table-striped align-middle">
             <thead>
@@ -66,10 +64,13 @@
                     <td>{{ match.kickoff_at|date:"d/m/Y H:i" }}</td>
 
                     {% if match.is_locked %}
-                        <td colspan="3" class="text-center text-danger fw-bold">Match commencé</td>
+                        <td class="text-center">🔒</td>
+                        <td class="text-center">Match commencé</td>
+                        <td class="text-center">🔒</td>
                     {% else %}
                         <td>
-                            <input type="checkbox" name="bonus_home_{{ match.id }}"
+                            <input type="checkbox"
+                                   name="bonus_home_{{ match.id }}"
                                    class="form-check-input"
                                    {% if match.user_prediction and match.user_prediction.bonus_home_pred %}checked{% endif %}>
                         </td>
@@ -84,7 +85,8 @@
                         </td>
 
                         <td>
-                            <input type="checkbox" name="bonus_away_{{ match.id }}"
+                            <input type="checkbox"
+                                   name="bonus_away_{{ match.id }}"
                                    class="form-check-input"
                                    {% if match.user_prediction and match.user_prediction.bonus_away_pred %}checked{% endif %}>
                         </td>
@@ -97,7 +99,7 @@
         </table>
     </div>
 
-    <!-- CARTES MOBILE -->
+    <!-- MOBILE -->
     <div class="d-md-none">
         {% for match in matches %}
         <div class="card mb-3">
@@ -106,7 +108,7 @@
                 <p class="small text-muted">{{ match.kickoff_at|date:"d/m/Y H:i" }}</p>
 
                 {% if match.is_locked %}
-                    <p class="text-danger fw-bold text-center mb-0">Match commencé</p>
+                    <p class="text-center text-danger mb-2">Match commencé 🔒</p>
                 {% else %}
                     <div class="row g-2">
                         <div class="col-6">
@@ -142,7 +144,9 @@
         {% endfor %}
     </div>
 
-    <button class="btn btn-success w-100 mt-3" {% if matches|dictsort:"is_locked"|last.is_locked %}disabled{% endif %}>
+    <!-- BOUTON ENREGISTRER -->
+    <button class="btn btn-success w-100 mt-3"
+            {% if submit_disabled %}disabled{% endif %}>
         💾 Enregistrer mes pronostics
     </button>
 </form>
