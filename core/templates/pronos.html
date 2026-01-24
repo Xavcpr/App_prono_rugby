@@ -4,9 +4,16 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="h4 mb-0">Pronos de {{ request.user.player.name }}</h1>
-    <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm">
+    {% comment %} <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm">
         Déconnexion
-    </a>
+    </a> {% endcomment %}
+    <form method="post" action="{% url 'logout' %}">
+  {% csrf_token %}
+  <button type="submit" class="btn btn-outline-danger btn-sm">
+    Déconnexion
+  </button>
+</form>
+
 </div>
 
 <!-- FILTRES -->
