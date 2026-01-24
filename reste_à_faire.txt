@@ -2,10 +2,8 @@ Ce qu’il me reste à faire
 -	
 - Onglet pronos/user
     - check où va le prono
-- bouton logout
 
 - Responsive mobile
-- Appliquer le scoring
 -	
 -	Bonus journée
 -	Vue commune
