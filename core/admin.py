@@ -43,6 +43,33 @@ recalc_scores.short_description = "Recalculer tous les points de la compétition
 # ---------------------
 # Round Form
 # ---------------------
+# class RoundForm(forms.ModelForm):
+#     competition = forms.ModelChoiceField(
+#         queryset=Competition.objects.all(),
+#         required=True,
+#         label="Compétition"
+#     )
+
+#     class Meta:
+#         model = Round
+#         fields = ("competition", "number", "date")
+
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         if self.instance.pk:
+#             self.fields["competition"].initial = self.instance.season.competition
+
+#     def save(self, commit=True):
+#         round_obj = super().save(commit=False)
+#         competition = self.cleaned_data["competition"]
+#         season, _ = Season.objects.get_or_create(
+#             competition=competition,
+#             year=competition.season
+#         )
+#         round_obj.season = season
+#         if commit:
+#             round_obj.save()
+#         return round_obj
 class RoundForm(forms.ModelForm):
     competition = forms.ModelChoiceField(
         queryset=Competition.objects.all(),
@@ -50,26 +77,30 @@ class RoundForm(forms.ModelForm):
         label="Compétition"
     )
 
+    season = forms.ModelChoiceField(
+        queryset=Season.objects.all(),
+        required=True,
+        label="Saison"
+    )
+
     class Meta:
         model = Round
-        fields = ("competition", "number", "date")
+        fields = ("competition", "season", "number", "date")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         if self.instance.pk:
             self.fields["competition"].initial = self.instance.season.competition
+            self.fields["season"].initial = self.instance.season
 
     def save(self, commit=True):
         round_obj = super().save(commit=False)
-        competition = self.cleaned_data["competition"]
-        season, _ = Season.objects.get_or_create(
-            competition=competition,
-            year=competition.season
-        )
-        round_obj.season = season
+        round_obj.season = self.cleaned_data["season"]
         if commit:
             round_obj.save()
         return round_obj
+
 
 # ---------------------
 # Round Admin
@@ -79,7 +110,7 @@ class RoundAdmin(admin.ModelAdmin):
     form = RoundForm
     list_display = ("__str__", "number", "date", "competition")
     list_filter = ("season__competition",)
-    fields = ("competition", "number", "date")
+    fields = ("competition", "season", "number", "date")
     actions = ["generate_matches"]
 
     def save_model(self, request, obj, form, change):
