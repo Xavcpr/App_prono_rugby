@@ -2,8 +2,7 @@ Ce qu’il me reste à faire
 -	
 - Onglet pronos/user
     - check où va le prono
-
-- Responsive mobile
+    - ajout onglet classement par compétition
 -	
 -	Bonus journée
 -	Vue commune
@@ -17,4 +16,4 @@ Ce qu’il me reste à faire
 -	Classements par compétition
 - dans la vue pronos :
     - accès aux Classements qu’il avait prédits en début de saison
-- système d'alerte
+- système d'alerte_mail
