@@ -1,18 +1,53 @@
 Ce qu’il me reste à faire
 - Onglet pronos/user
-    - check où va le prono
     - ajout onglet classement par compétition
--	
--	Bonus journée
--	Vue commune
-        Affichage par journée, filtre par match
-        Classement par journée
-        Classement total + filtres compétitions
-        Affichage du barème
--	Chopes
--	Stats par joueur
--	Stats par compétition
--	Classements par compétition
-- dans la vue pronos :
-    - accès aux Classements qu’il avait prédits en début de saison
-- système d'alerte_mail
+
+*Scoring
+- * match
+    - Vérifier que le scoring 'match' fonctionne. attention à la nouvelle règle pour le BD
+    - attention particulière au poids match divisé (et au #DIV/O)
+    
+- * journée 
+    - ajout du bonus journée
+    - ajout des chopes 
+
+- * compétition
+    - bonus classement
+    - bonus vainqueur de la compétition
+
+- * système d'alerte_mail
+    - créer adresse mail pour alerte
+    - créer alerte mail vers users à H-6h puis H-1h + copie admin
+    - rédiger texte
+
+- * vue commune
+    - en haut : filtre compétition + journée
+    - puis classement avec rang / joueur / nombre de points
+    - si top 14 : classement chope
+    - filtre match + joueur
+    - liste des matches avec d'abord le vrai puis liste des matches pronostiqués classés par nombre de points marqués
+    - v2 : mettre en couleur si le bon 1/V/2 + si bon score
+    - question : comment faire afficher le détail des points (BO/BD/BJ...) ? 
+
+-* vue total : filtre toutes compétitions + filtre par compétition
+    - faire apparatire : la variation par rapport à la dernière journée ?
+
+- * vue joueur
+    - "tu es au total Xe"
+    - détail par compétition
+    - détail par compétition du nombre de TP/DTP... + un classement
+
+- * vue classement all_time
+    - à réfléchir
+    - reprise de données
+
+- * vue statistiques
+    - filtre par compétition
+    - filtre par statistique TP/DTP...
+
+- * vue score 
+    - filtre : all/time, par saison
+    - stats : le plus Dom / ext / au total, graphique
+    - reprise de données
+
+- * charte

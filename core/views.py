@@ -177,32 +177,49 @@ def settings_view(request):
 
 @login_required
 def competition_ranking_view(request):
-    user = request.user
-    player = get_object_or_404(Player, user=user)
-
-    # Filtre sur compétition
-    competition_id = request.GET.get("competition")
-    competition = Competition.objects.filter(id=competition_id).first() if competition_id else None
     competitions = Competition.objects.all()
+    selected_competition_id = request.GET.get("competition")
+    selected_competition = None
+    rankings = []
 
-    if not competition:
-        return render(request, "classement_par_competition.html", {
-            "competitions": competitions,
-            "player": player,
-        })
+    if selected_competition_id:
+        selected_competition = get_object_or_404(Competition, id=selected_competition_id)
+        # Récupère tous les classements de cette compétition
+        rankings = TeamRankingPrediction.objects.filter(ranking__competition=selected_competition)\
+                                                .order_by("position")
 
-    # Saison actuelle (on prend la dernière saison créée pour la compétition)
-    season = competition.seasons.order_by("-year").first()
-    if not season:
-        messages.error(request, "Aucune saison définie pour cette compétition.")
-        return redirect("pronostics")
+    return render(request, "pronos/classement.html", {
+        "competitions": competitions,
+        "selected_competition": selected_competition,
+        "rankings": rankings,
+    })
+# def competition_ranking_view(request):
+#     user = request.user
+#     player = get_object_or_404(Player, user=user)
 
-    # Récupération ou création du classement du joueur pour cette compétition
-    ranking, _ = CompetitionRankingPrediction.objects.get_or_create(
-        player=player,
-        competition=competition,
-        season=season
-    )
+#     # Filtre sur compétition
+#     competition_id = request.GET.get("competition")
+#     competition = Competition.objects.filter(id=competition_id).first() if competition_id else None
+#     competitions = Competition.objects.all()
+
+#     if not competition:
+#         return render(request, "classement_par_competition.html", {
+#             "competitions": competitions,
+#             "player": player,
+#         })
+
+#     # Saison actuelle (on prend la dernière saison créée pour la compétition)
+#     season = competition.seasons.order_by("-year").first()
+#     if not season:
+#         messages.error(request, "Aucune saison définie pour cette compétition.")
+#         return redirect("pronostics")
+
+#     # Récupération ou création du classement du joueur pour cette compétition
+#     ranking, _ = CompetitionRankingPrediction.objects.get_or_create(
+#         player=player,
+#         competition=competition,
+#         season=season
+#     )
 
     # Form pour les champs libres (vainqueur, meilleurs marqueurs)
     CompetitionRankingForm = modelform_factory(

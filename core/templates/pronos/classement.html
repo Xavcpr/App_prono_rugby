@@ -1,5 +1,7 @@
+{% extends "base.html" %} {% block content %}
 <h1>Classement par compétition</h1>
 
+<!-- Sélecteur de compétition -->
 <form method="get" class="mb-3">
   <select name="competition" class="form-select" onchange="this.form.submit()">
     <option value="">-- Choisir une compétition --</option>
@@ -28,7 +30,75 @@
 <h2>{{ selected_competition.name }}</h2>
 
 {% if rankings %}
-<!-- affichage du classement -->
+<form method="post">
+  {% csrf_token %}
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>Équipe</th>
+        <th>Position</th>
+        <th>Poule (si applicable)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rankings %}
+      <tr>
+        <td>{{ r.team.name }}</td>
+        <td>
+          <input
+            type="number"
+            name="position_{{ r.id }}"
+            value="{{ r.position }}"
+            class="form-control"
+            min="1"
+          />
+        </td>
+        <td>
+          <input
+            type="text"
+            name="pool_{{ r.id }}"
+            value="{{ r.pool }}"
+            class="form-control"
+          />
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Champs supplémentaires (vainqueur / best scorer / kicker) -->
+  <div class="mb-3">
+    <label>Vainqueur :</label>
+    <input
+      type="text"
+      name="winner_team"
+      value="{{ rankings.0.ranking.winner_team }}"
+      class="form-control"
+    />
+  </div>
+  <div class="mb-3">
+    <label>Meilleur marqueur d'essais :</label>
+    <input
+      type="text"
+      name="best_try_scorer"
+      value="{{ rankings.0.ranking.best_try_scorer }}"
+      class="form-control"
+    />
+  </div>
+  <div class="mb-3">
+    <label>Meilleur botteur :</label>
+    <input
+      type="text"
+      name="best_kicker"
+      value="{{ rankings.0.ranking.best_kicker }}"
+      class="form-control"
+    />
+  </div>
+
+  <button type="submit" class="btn btn-primary">
+    Enregistrer le classement
+  </button>
+</form>
 {% else %}
 <p>Aucun classement enregistré.</p>
 {% endif %} {% endif %}
@@ -36,3 +106,4 @@
 <a href="{% url 'pronos' %}" class="btn btn-secondary mt-3">
   ← Retour aux pronos
 </a>
+{% endblock %}
