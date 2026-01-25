@@ -149,7 +149,9 @@ class PlayerAdmin(admin.ModelAdmin):
 
 @admin.register(Competition)
 class CompetitionAdmin(admin.ModelAdmin):
-    list_display = ('name', 'season', 'bonus_defense_threshold', 'match_weight')
+    list_display = ('name', 
+                    # 'season', 
+                    'bonus_defense_threshold', 'match_weight')
     actions = [recalc_scores]
 
 @admin.register(Match)
