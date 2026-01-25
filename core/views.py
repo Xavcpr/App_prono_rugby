@@ -193,33 +193,7 @@ def competition_ranking_view(request):
         "selected_competition": selected_competition,
         "rankings": rankings,
     })
-# def competition_ranking_view(request):
-#     user = request.user
-#     player = get_object_or_404(Player, user=user)
 
-#     # Filtre sur compétition
-#     competition_id = request.GET.get("competition")
-#     competition = Competition.objects.filter(id=competition_id).first() if competition_id else None
-#     competitions = Competition.objects.all()
-
-#     if not competition:
-#         return render(request, "classement_par_competition.html", {
-#             "competitions": competitions,
-#             "player": player,
-#         })
-
-#     # Saison actuelle (on prend la dernière saison créée pour la compétition)
-#     season = competition.seasons.order_by("-year").first()
-#     if not season:
-#         messages.error(request, "Aucune saison définie pour cette compétition.")
-#         return redirect("pronostics")
-
-#     # Récupération ou création du classement du joueur pour cette compétition
-#     ranking, _ = CompetitionRankingPrediction.objects.get_or_create(
-#         player=player,
-#         competition=competition,
-#         season=season
-#     )
 
     # Form pour les champs libres (vainqueur, meilleurs marqueurs)
     CompetitionRankingForm = modelform_factory(
@@ -275,8 +249,11 @@ def _ensure_lines(qs, count, ranking, pool=None):
             for i in range(existing, count)
         ])
 
+
 @login_required
 def classement_prediction(request):
+    user = request.user
+    player = user.player
     competitions = Competition.objects.all()
 
     competition_id = request.GET.get("competition")
@@ -285,85 +262,47 @@ def classement_prediction(request):
 
     if competition_id:
         selected_competition = get_object_or_404(Competition, id=competition_id)
-        rankings = CompetitionRankingPrediction.objects.filter(
-            competition=selected_competition,
-            player=request.user.player
-        ).select_related("competition")
+        
+        # Récupère ou crée le classement du joueur pour cette compétition
+        ranking, _ = CompetitionRankingPrediction.objects.get_or_create(
+            player=player,
+            competition=selected_competition
+        )
 
-    return render(
-        request,
-        "pronos/classement.html",
-        {
-            "competitions": competitions,
-            "selected_competition": selected_competition,
-            "rankings": rankings,
-        }
-    )
+        # Initialisation des TeamRankingPrediction
+        team_rankings = TeamRankingPrediction.objects.filter(ranking=ranking)
 
+        # Si aucun TeamRankingPrediction existant, on les crée pour toutes les équipes
+        if not team_rankings.exists():
+            if selected_competition.name in ["Top 14", "6 Nations"]:
+                teams = list(selected_competition.teams.all())
+                for idx, team in enumerate(teams, start=1):
+                    TeamRankingPrediction.objects.create(ranking=ranking, team=team, position=idx)
+            elif selected_competition.name == "Champions Cup":
+                for pool in ["A", "B", "C", "D"]:
+                    teams = list(selected_competition.teams.filter(pool=pool))
+                    for idx, team in enumerate(teams, start=1):
+                        TeamRankingPrediction.objects.create(ranking=ranking, team=team, position=idx, pool=pool)
+            team_rankings = TeamRankingPrediction.objects.filter(ranking=ranking)
 
-# def competition_ranking_view(request):
-#     user = request.user
-#     player = user.player
+        rankings = team_rankings.order_by("pool", "position")
 
-#     competition_id = request.GET.get("competition")
-#     competitions = Competition.objects.all()
-#     ranking_instance = None
-#     team_formset = None
-#     ranking_form = None
+        # Traitement POST pour sauvegarder les sélections
+        if request.method == "POST":
+            for tr in team_rankings:
+                if selected_competition.name in ["Top 14", "6 Nations"]:
+                    team_id = request.POST.get(f"team_{tr.position}")
+                elif selected_competition.name == "Champions Cup":
+                    team_id = request.POST.get(f"team_{tr.pool}_{tr.position}")
+                if team_id:
+                    tr.team_id = int(team_id)
+                    tr.save()
+            messages.success(request, "Classement enregistré !")
+            return redirect(f"{request.path}?competition={competition_id}")
 
-#     if competition_id:
-#         competition = get_object_or_404(Competition, id=competition_id)
-#         season, _ = Season.objects.get_or_create(
-#             competition=competition,
-#             year=competition.season
-#         )
-#         ranking_instance, _ = CompetitionRankingPrediction.objects.get_or_create(
-#             player=player,
-#             competition=competition,
-#             season=season
-#         )
+    return render(request, "pronos/classement.html", {
+        "competitions": competitions,
+        "selected_competition": selected_competition,
+        "rankings": rankings,
+    })
 
-#         # Check verrouillage
-#         first_match = competition.seasons.first().rounds.order_by("date").first()
-#         if first_match and first_match.date:
-#             if timezone.now().date() >= first_match.date:
-#                 ranking_instance.locked_at = timezone.now()
-#                 ranking_instance.save()
-
-#         # Formulaire global
-#         ranking_form = CompetitionRankingPredictionForm(
-#             request.POST or None,
-#             instance=ranking_instance,
-#             competition=competition
-#         )
-
-#         # Formset des équipes
-#         qs = TeamRankingPrediction.objects.filter(ranking=ranking_instance)
-#         # Si pas d'existant, créer les TeamRankingPrediction pour toutes les équipes
-#         if not qs.exists():
-#             for idx, team in enumerate(competition.teams.all(), start=1):
-#                 TeamRankingPrediction.objects.create(
-#                     ranking=ranking_instance,
-#                     team=team,
-#                     position=idx
-#                 )
-#             qs = TeamRankingPrediction.objects.filter(ranking=ranking_instance)
-
-#         team_formset = TeamRankingPredictionFormSet(
-#             request.POST or None,
-#             queryset=qs,
-#             form_kwargs={"competition": competition}
-#         )
-
-#         # Sauvegarde POST
-#         if request.method == "POST" and ranking_form.is_valid() and team_formset.is_valid():
-#             ranking_form.save()
-#             team_formset.save()
-#             return redirect(f"{request.path}?competition={competition_id}")
-
-#     return render(request, "classement_par_competition.html", {
-#         "competitions": competitions,
-#         "selected_competition_id": int(competition_id) if competition_id else None,
-#         "ranking_form": ranking_form,
-#         "team_formset": team_formset,
-#     })
