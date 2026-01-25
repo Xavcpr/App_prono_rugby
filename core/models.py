@@ -27,7 +27,8 @@ class Competition(models.Model):
     match_weight = models.IntegerField(default=680)
 
     def __str__(self):
-        return f"{self.name} {self.season}"
+        # return f"{self.name} {self.season}"
+        return self.name
 
 # ----- Équipes -----
 class Team(models.Model):
