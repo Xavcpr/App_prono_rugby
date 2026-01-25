@@ -139,7 +139,7 @@ def pronos_view(request):
 
     return render(
         request,
-        "pronos.html",
+        "pronos/pronos.html",
         {
             "player": player,
             "matches": matches,
