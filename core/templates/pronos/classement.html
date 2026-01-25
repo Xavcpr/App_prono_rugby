@@ -2,16 +2,41 @@
 
 <h1>Classement par compétition</h1>
 
-{% if selected_competition %}
+<form method="get" class="mb-4">
+  <select name="competition" class="form-select" onchange="this.form.submit()">
+    <option value="">-- Choisir une compétition --</option>
+    {% for competition in competitions %}
+    <option
+      value="{{ competition.id }}"
+      {%
+      if
+      selected_competition
+      and
+      competition.id=""
+      ="selected_competition.id"
+      %}
+      selected
+      {%
+      endif
+      %}
+    >
+      {{ competition.name }}
+    </option>
+    {% endfor %}
+  </select>
+</form>
+
+{% if not selected_competition %}
+<p class="text-muted">Veuillez choisir une compétition.</p>
+{% else %}
 
 <form method="post">
   {% csrf_token %}
 
   <h2 class="mb-3">{{ selected_competition.name }}</h2>
 
-  <hr class="my-4" />
-  <h4>Bonus</h4>
-
+  <!-- ================= BONUS ================= -->
+  <h4 class="mt-4">Bonus</h4>
   <div class="row mb-4">
     <div class="col-md-6">
       <label class="form-label">Meilleur marqueur d’essais</label>
@@ -68,8 +93,10 @@
     </div>
   </div>
 
-  {% for pool_data in pools_data %} {% if pool_data.pool %}
-  <h4 class="mt-4">Poule {{ pool_data.pool }}</h4>
+  <!-- ================= CLASSEMENT ================= -->
+
+  {% for block in blocks %} {% if block.pool %}
+  <h4 class="mt-4">Poule {{ block.pool }}</h4>
   {% endif %}
 
   <table class="table table-bordered mb-4">
@@ -80,17 +107,29 @@
       </tr>
     </thead>
     <tbody>
-      {% for pos in pool_data.positions %}
+      {% for pos in block.positions %}
       <tr>
         <td><strong>{{ pos }}</strong></td>
         <td>
-          <select
-            name="team_{{ pool_data.pool|default:'all' }}_{{ pos }}"
-            class="form-select"
-          >
+          <select name="team_{{ block.key }}_{{ pos }}" class="form-select">
             <option value="">-- Choisir une équipe --</option>
-            {% for team in pool_data.teams %}
-            <option value="{{ team.id }}">{{ team.name }}</option>
+            {% for team in block.teams %}
+            <option
+              value="{{ team.id }}"
+              {%
+              if
+              block.saved
+              and
+              block.saved|get_item:pos=""
+              ="team.id"
+              %}
+              selected
+              {%
+              endif
+              %}
+            >
+              {{ team.name }}
+            </option>
             {% endfor %}
           </select>
         </td>
@@ -98,10 +137,9 @@
       {% endfor %}
     </tbody>
   </table>
-
   {% endfor %}
 
-  <button type="submit" class="btn btn-primary mt-3">
+  <button type="submit" class="btn btn-primary">
     Enregistrer le classement
   </button>
 </form>
