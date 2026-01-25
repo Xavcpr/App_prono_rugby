@@ -29,37 +29,74 @@
 {% if selected_competition %}
 
 <form method="post">
-  {% csrf_token %} {# ===== TOP 14 / 6 NATIONS ===== #} {% if not pools %}
-  <h2>{{ selected_competition.name }}</h2>
+  {% csrf_token %}
 
-  <table class="table table-bordered">
-    <thead>
-      <tr>
-        <th style="width: 120px">Position</th>
-        <th>Équipe</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for i in positions %}
-      <tr>
-        <td><strong>{{ i }}</strong></td>
-        <td>
-          <select name="team_{{ i }}" class="form-select">
-            <option value="">-- Choisir une équipe --</option>
-            {% for team in selected_competition.teams.all %}
-            <option value="{{ team.id }}">{{ team.name }}</option>
-            {% endfor %}
-          </select>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% endif %} {# ===== CHAMPIONS CUP ===== #} {% if pools %}
-  <h2>{{ selected_competition.name }}</h2>
+  <h2 class="mb-3">{{ selected_competition.name }}</h2>
 
-  {% for pool in pools %}
-  <h4 class="mt-4">Poule {{ pool }}</h4>
+  {# ================= BONUS ================= #}
+  <hr class="my-4" />
+  <h4>Bonus</h4>
+
+  <div class="row mb-4">
+    <div class="col-md-6">
+      <label class="form-label">Meilleur marqueur d’essais</label>
+      <select name="best_try_scorer" class="form-select">
+        <option value="">-- Choisir --</option>
+        {% for p in players %}
+        <option
+          value="{{ p.id }}"
+          {%
+          if
+          bonus
+          and
+          bonus.best_try_scorer
+          and
+          bonus.best_try_scorer.id=""
+          ="p.id"
+          %}
+          selected
+          {%
+          endif
+          %}
+        >
+          {{ p }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label">Meilleur scoreur</label>
+      <select name="best_point_scorer" class="form-select">
+        <option value="">-- Choisir --</option>
+        {% for p in players %}
+        <option
+          value="{{ p.id }}"
+          {%
+          if
+          bonus
+          and
+          bonus.best_point_scorer
+          and
+          bonus.best_point_scorer.id=""
+          ="p.id"
+          %}
+          selected
+          {%
+          endif
+          %}
+        >
+          {{ p }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  {# ============== CLASSEMENTS ============== #} {% for pool_data in pools_data
+  %} {% if pool_data.pool %}
+  <h4 class="mt-4">Poule {{ pool_data.pool }}</h4>
+  {% endif %}
 
   <table class="table table-bordered mb-4">
     <thead>
@@ -69,13 +106,16 @@
       </tr>
     </thead>
     <tbody>
-      {% for i in positions %}
+      {% for pos in pool_data.positions %}
       <tr>
-        <td><strong>{{ i }}</strong></td>
+        <td><strong>{{ pos }}</strong></td>
         <td>
-          <select name="team_{{ pool }}_{{ i }}" class="form-select">
+          <select
+            name="team_{{ pool_data.pool|default:'all' }}_{{ pos }}"
+            class="form-select"
+          >
             <option value="">-- Choisir une équipe --</option>
-            {% for team in teams_by_pool.pool %}
+            {% for team in pool_data.teams %}
             <option value="{{ team.id }}">{{ team.name }}</option>
             {% endfor %}
           </select>
@@ -84,9 +124,12 @@
       {% endfor %}
     </tbody>
   </table>
-  {% endfor %} {% endif %}
 
-  <button type="submit" class="btn btn-primary mt-3">Enregistrer</button>
+  {% endfor %}
+
+  <button type="submit" class="btn btn-primary mt-3">
+    Enregistrer le classement
+  </button>
 </form>
 
 {% endif %}

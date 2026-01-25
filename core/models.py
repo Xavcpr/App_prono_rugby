@@ -233,3 +233,34 @@ class TeamRankingPrediction(models.Model):
         unique_together = ("ranking", "team")
         ordering = ["pool", "position"]
 
+# ----- Pronostics de bonus compétition (marqueur)-----
+class CompetitionBonusPrediction(models.Model):
+    player = models.ForeignKey(
+        Player,
+        on_delete=models.CASCADE
+    )
+    competition = models.ForeignKey(
+        Competition,
+        on_delete=models.CASCADE
+    )
+
+    best_try_scorer = models.ForeignKey(
+        Player,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+"
+    )
+    best_point_scorer = models.ForeignKey(
+        Player,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+"
+    )
+
+    class Meta:
+        unique_together = ("player", "competition")
+
+    def __str__(self):
+        return f"{self.player} – {self.competition}"

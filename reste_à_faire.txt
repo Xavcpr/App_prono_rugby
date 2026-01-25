@@ -1,6 +1,8 @@
-Ce qu’il me reste à faire
-- Onglet pronos/user
-    - ajout onglet classement par compétition
+To do list :
+- En cours Xavier : Onglet pronos/classement
+    - top scorer/kicker
+    - tableaux vierges selon la compétition
+    - pas de doublon possible
 
 *Scoring
 - * match
