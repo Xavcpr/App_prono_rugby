@@ -252,73 +252,110 @@ def _ensure_lines(qs, count, ranking, pool=None):
 
 @login_required
 def classement_prediction(request):
-    user = request.user
-    player = user.player
     competitions = Competition.objects.all()
 
     competition_id = request.GET.get("competition")
     selected_competition = None
-    rankings = None
-
-    if competition_id:
-        selected_competition = get_object_or_404(Competition, id=competition_id)
-        
-        # Récupère ou crée le classement du joueur pour cette compétition
-        ranking, _ = CompetitionRankingPrediction.objects.get_or_create(
-            player=player,
-            competition=selected_competition
-        )
-
-        # Initialisation des TeamRankingPrediction
-        team_rankings = TeamRankingPrediction.objects.filter(ranking=ranking)
-
-        # Si aucun TeamRankingPrediction existant, on les crée pour toutes les équipes
-        if not team_rankings.exists():
-            if selected_competition.name in ["Top 14", "6 Nations"]:
-                teams = list(selected_competition.teams.all())
-                for idx, team in enumerate(teams, start=1):
-                    TeamRankingPrediction.objects.create(ranking=ranking, team=team, position=idx)
-            elif selected_competition.name == "Champions Cup":
-                for pool in ["A", "B", "C", "D"]:
-                    teams = list(selected_competition.teams.filter(pool=pool))
-                    for idx, team in enumerate(teams, start=1):
-                        TeamRankingPrediction.objects.create(ranking=ranking, team=team, position=idx, pool=pool)
-            team_rankings = TeamRankingPrediction.objects.filter(ranking=ranking)
-
-        rankings = team_rankings.order_by("pool", "position")
-
-        # Traitement POST pour sauvegarder les sélections
-        if request.method == "POST":
-            for tr in team_rankings:
-                if selected_competition.name in ["Top 14", "6 Nations"]:
-                    team_id = request.POST.get(f"team_{tr.position}")
-                elif selected_competition.name == "Champions Cup":
-                    team_id = request.POST.get(f"team_{tr.pool}_{tr.position}")
-                if team_id:
-                    tr.team_id = int(team_id)
-                    tr.save()
-            messages.success(request, "Classement enregistré !")
-            return redirect(f"{request.path}?competition={competition_id}")
 
     positions = []
     pools = []
+    teams_by_pool = {}
 
-    if selected_competition:
-        if selected_competition.name == "Top 14":
-            positions = range(1, 15)
-        elif selected_competition.name == "6 Nations":
-            positions = range(1, 7)
-        elif selected_competition.name == "Champions Cup":
-            positions = range(1, 7)
+    if competition_id:
+        selected_competition = get_object_or_404(Competition, id=competition_id)
+
+        # Cas Champions Cup → poules
+        if selected_competition.name.lower() == "champions cup":
             pools = ["A", "B", "C", "D"]
+            positions = range(1, 7)
+
+            for pool in pools:
+                teams_by_pool[pool] = selected_competition.teams.filter(pool=pool)
+
+        # Cas Top14 / 6 Nations
+        else:
+            positions = range(1, selected_competition.teams.count() + 1)
+
+    return render(
+        request,
+        "pronos/classement.html",
+        {
+            "competitions": competitions,
+            "selected_competition": selected_competition,
+            "positions": positions,
+            "pools": pools,
+            "teams_by_pool": teams_by_pool,
+        }
+    )
+
+# def classement_prediction(request):
+#     user = request.user
+#     player = user.player
+#     competitions = Competition.objects.all()
+
+#     competition_id = request.GET.get("competition")
+#     selected_competition = None
+#     rankings = None
+
+#     if competition_id:
+#         selected_competition = get_object_or_404(Competition, id=competition_id)
+        
+#         # Récupère ou crée le classement du joueur pour cette compétition
+#         ranking, _ = CompetitionRankingPrediction.objects.get_or_create(
+#             player=player,
+#             competition=selected_competition
+#         )
+
+#         # Initialisation des TeamRankingPrediction
+#         team_rankings = TeamRankingPrediction.objects.filter(ranking=ranking)
+
+#         # Si aucun TeamRankingPrediction existant, on les crée pour toutes les équipes
+#         if not team_rankings.exists():
+#             if selected_competition.name in ["Top 14", "6 Nations"]:
+#                 teams = list(selected_competition.teams.all())
+#                 for idx, team in enumerate(teams, start=1):
+#                     TeamRankingPrediction.objects.create(ranking=ranking, team=team, position=idx)
+#             elif selected_competition.name == "Champions Cup":
+#                 for pool in ["A", "B", "C", "D"]:
+#                     teams = list(selected_competition.teams.filter(pool=pool))
+#                     for idx, team in enumerate(teams, start=1):
+#                         TeamRankingPrediction.objects.create(ranking=ranking, team=team, position=idx, pool=pool)
+#             team_rankings = TeamRankingPrediction.objects.filter(ranking=ranking)
+
+#         rankings = team_rankings.order_by("pool", "position")
+
+#         # Traitement POST pour sauvegarder les sélections
+#         if request.method == "POST":
+#             for tr in team_rankings:
+#                 if selected_competition.name in ["Top 14", "6 Nations"]:
+#                     team_id = request.POST.get(f"team_{tr.position}")
+#                 elif selected_competition.name == "Champions Cup":
+#                     team_id = request.POST.get(f"team_{tr.pool}_{tr.position}")
+#                 if team_id:
+#                     tr.team_id = int(team_id)
+#                     tr.save()
+#             messages.success(request, "Classement enregistré !")
+#             return redirect(f"{request.path}?competition={competition_id}")
+
+#     positions = []
+#     pools = []
+
+#     if selected_competition:
+#         if selected_competition.name == "Top 14":
+#             positions = range(1, 15)
+#         elif selected_competition.name == "6 Nations":
+#             positions = range(1, 7)
+#         elif selected_competition.name == "Champions Cup":
+#             positions = range(1, 7)
+#             pools = ["A", "B", "C", "D"]
 
     
-    return render(request,"pronos/classement.html",
-                  {"competitions": competitions,
-                   "selected_competition": selected_competition,
-                   "rankings": rankings,
-                   "positions": positions,
-                   "pools": pools,
-                   }
-                  )
+#     return render(request,"pronos/classement.html",
+#                   {"competitions": competitions,
+#                    "selected_competition": selected_competition,
+#                    "rankings": rankings,
+#                    "positions": positions,
+#                    "pools": pools,
+#                    }
+#                   )
 
