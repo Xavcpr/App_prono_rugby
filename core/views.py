@@ -256,21 +256,21 @@ def classement_prediction(request):
     competition_id = request.GET.get("competition")
 
     selected_competition = None
-    pools_data = []
-    positions = list(range(1, 7))  # 1 → 6
-
+    blocks = []
     bonus = None
 
     if competition_id:
         selected_competition = get_object_or_404(Competition, id=competition_id)
 
-        # Bonus (scoreur / essais)
+        # BONUS
         bonus, _ = CompetitionBonusPrediction.objects.get_or_create(
             player=request.user.player,
             competition=selected_competition
         )
 
-        # CAS CHAMPIONS CUP
+        # ===============================
+        # CHAMPIONS CUP → 4 poules de 6
+        # ===============================
         if selected_competition.slug == "champions-cup":
             for pool in ["A", "B", "C", "D"]:
                 teams = Team.objects.filter(
@@ -278,27 +278,34 @@ def classement_prediction(request):
                     pool=pool
                 ).order_by("name")
 
-                pools_data.append({
+                blocks.append({
+                    "key": pool,
                     "pool": pool,
                     "teams": teams,
-                    "positions": positions,
+                    "positions": range(1, 7),
+                    "saved": {},  # prêt pour plus tard
                 })
 
-        # CAS TOP14 / 6 NATIONS
+        # ===============================
+        # AUTRES COMPÉTITIONS (Top14, 6 Nations…)
+        # ===============================
         else:
             teams = Team.objects.filter(
                 competition=selected_competition
             ).order_by("name")
 
-            pools_data.append({
+            blocks.append({
+                "key": "all",
                 "pool": None,
                 "teams": teams,
-                "positions": list(range(1, teams.count() + 1)),
+                "positions": range(1, teams.count() + 1),
+                "saved": {},
             })
 
-    # POST = sauvegarde
+    # ===============================
+    # SAUVEGARDE POST
+    # ===============================
     if request.method == "POST" and selected_competition:
-        # BONUS
         bonus.best_try_scorer_id = request.POST.get("best_try_scorer") or None
         bonus.best_point_scorer_id = request.POST.get("best_point_scorer") or None
         bonus.save()
@@ -315,7 +322,7 @@ def classement_prediction(request):
         {
             "competitions": competitions,
             "selected_competition": selected_competition,
-            "pools_data": pools_data,
+            "blocks": blocks,
             "bonus": bonus,
             "players": Player.objects.all(),
         }
