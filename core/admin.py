@@ -159,8 +159,6 @@ class SeasonAdmin(admin.ModelAdmin):
     list_display = ("competition", "year")
     list_filter = ("competition",)
 
-
-
 @admin.register(Match)
 class MatchAdmin(admin.ModelAdmin):
     list_display = ("round", "home_team", "away_team", "home_score", "away_score", "kickoff_at", "phase")
