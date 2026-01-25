@@ -137,6 +137,9 @@ def pronos_view(request):
 
     competitions = Competition.objects.all()
     rounds = Round.objects.all()
+    
+    if competition_id:
+        rounds = rounds.filter(season__competition_id=competition_id)
 
     return render(
         request,
