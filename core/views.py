@@ -35,7 +35,7 @@ def pronos_view(request):
     now = timezone.now().date()
 
     # 🎯 Journée par défaut = prochaine journée à venir
-    if not round_id:
+    if round_id is None:
         next_round = (
             Round.objects
             .filter(date__gte=now)
@@ -44,13 +44,6 @@ def pronos_view(request):
         )
         if next_round:
             round_id = str(next_round.id)
-
-
-    # if not round_id:
-    #     now = timezone.now().date()  # juste la date
-    #     next_round = Round.objects.filter(date__gte=now).order_by("date").first()
-    #     if next_round:
-    #         round_id = str(next_round.id)
 
     matches = Match.objects.select_related(
         "round__season__competition",
@@ -150,6 +143,7 @@ def pronos_view(request):
             "competitions": competitions,
             "rounds": rounds,
             "submit_disabled": submit_disabled,
+            "selected_round": round_id,  
         }
     )
 
