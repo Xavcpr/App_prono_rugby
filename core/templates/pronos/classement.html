@@ -2,30 +2,6 @@
 
 <h1>Classement par compétition</h1>
 
-<form method="get" class="mb-4">
-  <select name="competition" class="form-select" onchange="this.form.submit()">
-    <option value="">-- Choisir une compétition --</option>
-    {% for competition in competitions %}
-    <option
-      value="{{ competition.id }}"
-      {%
-      if
-      selected_competition
-      and
-      competition.id=""
-      ="selected_competition.id"
-      %}
-      selected
-      {%
-      endif
-      %}
-    >
-      {{ competition.name }}
-    </option>
-    {% endfor %}
-  </select>
-</form>
-
 {% if selected_competition %}
 
 <form method="post">
@@ -33,7 +9,6 @@
 
   <h2 class="mb-3">{{ selected_competition.name }}</h2>
 
-  {# ================= BONUS ================= #}
   <hr class="my-4" />
   <h4>Bonus</h4>
 
@@ -93,8 +68,7 @@
     </div>
   </div>
 
-  {# ============== CLASSEMENTS ============== #} {% for pool_data in pools_data
-  %} {% if pool_data.pool %}
+  {% for pool_data in pools_data %} {% if pool_data.pool %}
   <h4 class="mt-4">Poule {{ pool_data.pool }}</h4>
   {% endif %}
 
