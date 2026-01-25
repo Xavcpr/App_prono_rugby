@@ -259,78 +259,46 @@ def _ensure_lines(qs, count, ranking, pool=None):
         ])
 
 @login_required
-def classement_prediction(request):
-    competition_id = request.GET.get("competition")
+def classement_prediction(request, competition_id):
     competition = get_object_or_404(Competition, id=competition_id)
+    season = Season.objects.filter(competition=competition).order_by("-year").first()
 
-    rules = COMPETITION_RULES[competition.code]
-
-    ranking, _ = CompetitionRankingPrediction.objects.get_or_create(
+    ranking, created = CompetitionRankingPrediction.objects.get_or_create(
         player=request.user,
         competition=competition,
-        season=competition.current_season,
+        season=season,
     )
 
-    formsets = {}
-
-    if rules["type"] == "league":
-        qs = TeamRankingPrediction.objects.filter(ranking=ranking)
-        _ensure_lines(qs, rules["positions"], ranking)
-
-        formsets["ALL"] = TeamRankingFormSet(
-            queryset=qs,
-            form_kwargs={"competition": competition}
-        )
-
-    else:  # GROUPS
-        for pool in rules["pools"]:
-            qs = TeamRankingPrediction.objects.filter(
-                ranking=ranking, pool=pool
-            )
-            _ensure_lines(qs, rules["positions"], ranking, pool)
-
-            formsets[pool] = TeamRankingFormSet(
-                queryset=qs,
-                form_kwargs={"competition": competition}
-            )
-
-    ranking_form = CompetitionRankingPredictionForm(
-        instance=ranking,
-        competition=competition
-    )
+    team_rankings = ranking.teamrankings.select_related("team").order_by("position")
 
     if request.method == "POST":
-        valid = ranking_form.is_valid()
-        for fs in formsets.values():
-            valid &= fs.is_valid()
-
-        if valid:
-            ranking_form.save()
-
-            for pool, fs in formsets.items():
-                instances = fs.save(commit=False)
-                for idx, obj in enumerate(instances, start=1):
-                    obj.position = idx
-                    obj.pool = None if pool == "ALL" else pool
-                    obj.ranking = ranking
-                    obj.save()
-
-            if rules["winner_is_first"]:
-                ranking.winner_team = TeamRankingPrediction.objects.filter(
-                    ranking=ranking, position=1
-                ).first().team
-                ranking.save()
-
+        form = CompetitionRankingPredictionForm(
+            request.POST,
+            instance=ranking,
+            competition=competition,
+        )
+        if form.is_valid():
+            form.save()
             return redirect(
-                f"{request.path}?competition={competition.id}"
+                "classement_prediction",
+                competition_id=competition.id,
             )
+    else:
+        form = CompetitionRankingPredictionForm(
+            instance=ranking,
+            competition=competition,
+        )
 
-    return render(request, "pronos/classement.html", {
-        "competition": competition,
-        "rules": rules,
-        "formsets": formsets,
-        "ranking_form": ranking_form,
-    })
+    return render(
+        request,
+        "pronos/classement.html",
+        {
+            "competition": competition,
+            "ranking": ranking,
+            "team_rankings": team_rankings,
+            "form": form,
+        },
+    )
 
 
 # def competition_ranking_view(request):

@@ -9,8 +9,7 @@
         <a href="{% url 'settings' %}" class="btn btn-outline-secondary btn-sm">
             ⚙ Réglages
         </a>
-        <a href="{% url 'classement_prediction' %}?competition={{ competition.id }}" class="btn btn-primary">
-            Classement</a>
+        <a href="{% url 'classement_prediction' competition.id %}">Classement de la compétition</a>
 
         <!-- Bouton déconnexion POST -->
         <form method="post" action="{% url 'logout' %}">
