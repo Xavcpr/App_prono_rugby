@@ -173,10 +173,12 @@ class RoundAdmin(admin.ModelAdmin):
 @admin.register(Team)
 class TeamAdmin(admin.ModelAdmin):
     list_display = ("name",)
+    search_fields = ("name",)
 
 @admin.register(Player)
 class PlayerAdmin(admin.ModelAdmin):
     list_display = ("name",)
+    search_fields = ("name",)
 
 @admin.register(Competition)
 class CompetitionAdmin(admin.ModelAdmin):
