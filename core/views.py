@@ -5,9 +5,10 @@ from django.contrib import messages
 from django.utils import timezone
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth import update_session_auth_hash
+from django.forms import modelform_factory, modelformset_factory
 from .forms import CompetitionRankingPredictionForm, TeamRankingPredictionFormSet
 
-from .models import Match, Prediction, Competition, Round, Player, CompetitionRankingPrediction, TeamRankingPrediction
+from .models import Match, Prediction, Competition, Round, Player, Team, CompetitionRankingPrediction, TeamRankingPrediction
 from .services.scoring import calculate_points
 
 
@@ -176,67 +177,137 @@ def settings_view(request):
 @login_required
 def competition_ranking_view(request):
     user = request.user
-    player = user.player
+    player = get_object_or_404(Player, user=user)
 
+    # Filtre sur compétition
     competition_id = request.GET.get("competition")
+    competition = Competition.objects.filter(id=competition_id).first() if competition_id else None
     competitions = Competition.objects.all()
-    ranking_instance = None
-    team_formset = None
-    ranking_form = None
 
-    if competition_id:
-        competition = get_object_or_404(Competition, id=competition_id)
-        season, _ = Season.objects.get_or_create(
-            competition=competition,
-            year=competition.season
-        )
-        ranking_instance, _ = CompetitionRankingPrediction.objects.get_or_create(
-            player=player,
-            competition=competition,
-            season=season
-        )
+    if not competition:
+        return render(request, "classement_par_competition.html", {
+            "competitions": competitions,
+            "player": player,
+        })
 
-        # Check verrouillage
-        first_match = competition.seasons.first().rounds.order_by("date").first()
-        if first_match and first_match.date:
-            if timezone.now().date() >= first_match.date:
-                ranking_instance.locked_at = timezone.now()
-                ranking_instance.save()
+    # Saison actuelle (on prend la dernière saison créée pour la compétition)
+    season = competition.seasons.order_by("-year").first()
+    if not season:
+        messages.error(request, "Aucune saison définie pour cette compétition.")
+        return redirect("pronostics")
 
-        # Formulaire global
-        ranking_form = CompetitionRankingPredictionForm(
-            request.POST or None,
-            instance=ranking_instance,
-            competition=competition
-        )
+    # Récupération ou création du classement du joueur pour cette compétition
+    ranking, _ = CompetitionRankingPrediction.objects.get_or_create(
+        player=player,
+        competition=competition,
+        season=season
+    )
 
-        # Formset des équipes
-        qs = TeamRankingPrediction.objects.filter(ranking=ranking_instance)
-        # Si pas d'existant, créer les TeamRankingPrediction pour toutes les équipes
-        if not qs.exists():
-            for idx, team in enumerate(competition.teams.all(), start=1):
-                TeamRankingPrediction.objects.create(
-                    ranking=ranking_instance,
-                    team=team,
-                    position=idx
-                )
-            qs = TeamRankingPrediction.objects.filter(ranking=ranking_instance)
+    # Form pour les champs libres (vainqueur, meilleurs marqueurs)
+    CompetitionRankingForm = modelform_factory(
+        CompetitionRankingPrediction,
+        fields=["winner_team", "best_try_scorer", "best_kicker"]
+    )
 
-        team_formset = TeamRankingPredictionFormSet(
-            request.POST or None,
-            queryset=qs,
-            form_kwargs={"competition": competition}
-        )
+    # Formset pour les équipes
+    TeamRankingFormSet = modelformset_factory(
+        TeamRankingPrediction,
+        fields=["team", "position", "pool"],
+        extra=0,
+        can_delete=False
+    )
 
-        # Sauvegarde POST
-        if request.method == "POST" and ranking_form.is_valid() and team_formset.is_valid():
-            ranking_form.save()
-            team_formset.save()
-            return redirect(f"{request.path}?competition={competition_id}")
+    # Initialisation du formset avec les équipes de cette compétition
+    team_rankings = TeamRankingPrediction.objects.filter(ranking=ranking)
+    if not team_rankings.exists():
+        # Génère les objets TeamRankingPrediction vierges pour chaque équipe
+        teams = list(competition.teams.all())
+        for idx, team in enumerate(teams):
+            TeamRankingPrediction.objects.create(ranking=ranking, team=team, position=idx+1)
+        team_rankings = TeamRankingPrediction.objects.filter(ranking=ranking)
+
+    form = CompetitionRankingForm(request.POST or None, instance=ranking)
+    formset = TeamRankingFormSet(request.POST or None, queryset=team_rankings)
+
+    if request.method == "POST":
+        if form.is_valid() and formset.is_valid():
+            form.save()
+            formset.save()
+            messages.success(request, "Classement enregistré !")
+            return redirect("pronostics")
 
     return render(request, "classement_par_competition.html", {
         "competitions": competitions,
-        "selected_competition_id": int(competition_id) if competition_id else None,
-        "ranking_form": ranking_form,
-        "team_formset": team_formset,
+        "competition": competition,
+        "season": season,
+        "form": form,
+        "formset": formset,
+        "player": player
     })
+
+# def competition_ranking_view(request):
+#     user = request.user
+#     player = user.player
+
+#     competition_id = request.GET.get("competition")
+#     competitions = Competition.objects.all()
+#     ranking_instance = None
+#     team_formset = None
+#     ranking_form = None
+
+#     if competition_id:
+#         competition = get_object_or_404(Competition, id=competition_id)
+#         season, _ = Season.objects.get_or_create(
+#             competition=competition,
+#             year=competition.season
+#         )
+#         ranking_instance, _ = CompetitionRankingPrediction.objects.get_or_create(
+#             player=player,
+#             competition=competition,
+#             season=season
+#         )
+
+#         # Check verrouillage
+#         first_match = competition.seasons.first().rounds.order_by("date").first()
+#         if first_match and first_match.date:
+#             if timezone.now().date() >= first_match.date:
+#                 ranking_instance.locked_at = timezone.now()
+#                 ranking_instance.save()
+
+#         # Formulaire global
+#         ranking_form = CompetitionRankingPredictionForm(
+#             request.POST or None,
+#             instance=ranking_instance,
+#             competition=competition
+#         )
+
+#         # Formset des équipes
+#         qs = TeamRankingPrediction.objects.filter(ranking=ranking_instance)
+#         # Si pas d'existant, créer les TeamRankingPrediction pour toutes les équipes
+#         if not qs.exists():
+#             for idx, team in enumerate(competition.teams.all(), start=1):
+#                 TeamRankingPrediction.objects.create(
+#                     ranking=ranking_instance,
+#                     team=team,
+#                     position=idx
+#                 )
+#             qs = TeamRankingPrediction.objects.filter(ranking=ranking_instance)
+
+#         team_formset = TeamRankingPredictionFormSet(
+#             request.POST or None,
+#             queryset=qs,
+#             form_kwargs={"competition": competition}
+#         )
+
+#         # Sauvegarde POST
+#         if request.method == "POST" and ranking_form.is_valid() and team_formset.is_valid():
+#             ranking_form.save()
+#             team_formset.save()
+#             return redirect(f"{request.path}?competition={competition_id}")
+
+#     return render(request, "classement_par_competition.html", {
+#         "competitions": competitions,
+#         "selected_competition_id": int(competition_id) if competition_id else None,
+#         "ranking_form": ranking_form,
+#         "team_formset": team_formset,
+#     })

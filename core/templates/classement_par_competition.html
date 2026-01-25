@@ -1,63 +1,67 @@
-<!-- templates/classement_par_competition.html -->
 {% extends "base.html" %} {% block content %}
+<h2>Classement par compétition</h2>
 
-<h1>Classement par compétition</h1>
+<!-- Lien retour -->
+<a href="{% url 'pronostics' %}" class="btn btn-secondary btn-sm mb-3"
+  >← Retour aux pronostics</a
+>
 
-<form method="get">
-  <label for="competition">Choisir compétition :</label>
-  <select name="competition" id="competition" onchange="this.form.submit()">
-    <option value="">-- Sélectionner --</option>
+<!-- Choix de compétition -->
+<form method="get" class="mb-3">
+  <select name="competition" onchange="this.form.submit()">
+    <option value="">-- Choisissez une compétition --</option>
     {% for comp in competitions %}
     <option
       value="{{ comp.id }}"
       {%
       if
+      competition
+      and
       comp.id=""
-      ="selected_competition_id"
+      ="competition.id"
       %}selected{%
       endif
       %}
     >
-      {{ comp.name }} {{ comp.season }}
+      {{ comp.name }}
     </option>
     {% endfor %}
   </select>
 </form>
 
-{% if ranking_form and team_formset %}
+{% if competition %}
+<h3>{{ competition.name }} - Saison {{ season.year }}</h3>
+
 <form method="post">
   {% csrf_token %}
-  <h2>Classement global</h2>
-  {{ ranking_form.as_p }}
 
-  <h2>Classement des équipes</h2>
-  <table class="table">
+  <!-- Champs libres : vainqueur, meilleurs marqueurs -->
+  <div class="mb-3">{{ form.as_p }}</div>
+
+  <!-- Classement équipes -->
+  <table class="table table-bordered">
     <thead>
       <tr>
         <th>Position</th>
         <th>Équipe</th>
-        {% if selected_competition_id|yesno:"Champions Cup," %}
+        {% if competition.name == "Champions Cup" %}
         <th>Poule</th>
         {% endif %}
       </tr>
     </thead>
     <tbody>
-      {% for form in team_formset.forms %}
+      {% for f in formset %}
       <tr>
-        <td>{{ form.position }}</td>
-        <td>{{ form.team }}</td>
-        {% if form.pool %}
-        <td>{{ form.pool }}</td>
+        <td>{{ f.position }}</td>
+        <td>{{ f.team }}</td>
+        {% if competition.name == "Champions Cup" %}
+        <td>{{ f.pool }}</td>
         {% endif %}
       </tr>
       {% endfor %}
     </tbody>
   </table>
 
-  {% if not ranking_form.instance.locked_at %}
   <button type="submit" class="btn btn-primary">Enregistrer</button>
-  {% else %}
-  <p>Classement verrouillé car la compétition a commencé.</p>
-  {% endif %}
 </form>
 {% endif %} {% endblock %}
