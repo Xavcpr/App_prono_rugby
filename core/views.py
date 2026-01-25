@@ -259,45 +259,28 @@ def _ensure_lines(qs, count, ranking, pool=None):
         ])
 
 @login_required
-def classement_prediction(request, competition_id):
-    competition = get_object_or_404(Competition, id=competition_id)
-    season = Season.objects.filter(competition=competition).order_by("-year").first()
+def classement_prediction(request):
+    competitions = Competition.objects.all()
 
-    ranking, created = CompetitionRankingPrediction.objects.get_or_create(
-        player=request.user,
-        competition=competition,
-        season=season,
-    )
+    competition_id = request.GET.get("competition")
+    selected_competition = None
+    rankings = None
 
-    team_rankings = ranking.teamrankings.select_related("team").order_by("position")
-
-    if request.method == "POST":
-        form = CompetitionRankingPredictionForm(
-            request.POST,
-            instance=ranking,
-            competition=competition,
-        )
-        if form.is_valid():
-            form.save()
-            return redirect(
-                "classement_prediction",
-                competition_id=competition.id,
-            )
-    else:
-        form = CompetitionRankingPredictionForm(
-            instance=ranking,
-            competition=competition,
-        )
+    if competition_id:
+        selected_competition = get_object_or_404(Competition, id=competition_id)
+        rankings = CompetitionRankingPrediction.objects.filter(
+            competition=selected_competition,
+            player=request.user.player
+        ).select_related("competition")
 
     return render(
         request,
         "pronos/classement.html",
         {
-            "competition": competition,
-            "ranking": ranking,
-            "team_rankings": team_rankings,
-            "form": form,
-        },
+            "competitions": competitions,
+            "selected_competition": selected_competition,
+            "rankings": rankings,
+        }
     )
 
 

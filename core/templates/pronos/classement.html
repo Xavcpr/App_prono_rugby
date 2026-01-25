@@ -1,28 +1,38 @@
-<h2>{{ competition.name }}</h2>
+<h1>Classement par compétition</h1>
 
-<form method="post">
-  {% csrf_token %} {% for pool, formset in formsets.items %} {% if pool != "ALL"
-  %}
-  <h3>Poule {{ pool }}</h3>
-  {% endif %}
-
-  <table>
-    {% for form in formset %}
-    <tr>
-      <td>{{ forloop.counter }}</td>
-      <td>{{ form.team }}</td>
-    </tr>
+<form method="get" class="mb-3">
+  <select name="competition" class="form-select" onchange="this.form.submit()">
+    <option value="">-- Choisir une compétition --</option>
+    {% for competition in competitions %}
+    <option
+      value="{{ competition.id }}"
+      {%
+      if
+      selected_competition
+      and
+      competition.id=""
+      ="selected_competition.id"
+      %}
+      selected
+      {%
+      endif
+      %}
+    >
+      {{ competition.name }}
+    </option>
     {% endfor %}
-  </table>
-  {% endfor %}
-
-  <hr />
-
-  {% if rules.has_best_scorer %} {{ ranking_form.best_try_scorer }} {% endif %}
-  {% if rules.has_best_kicker %} {{ ranking_form.best_kicker }} {% endif %} {%
-  if not rules.winner_is_first %} {{ ranking_form.winner_team }} {% endif %}
-
-  <button type="submit">Enregistrer</button>
+  </select>
 </form>
 
-<a href="{% url 'pronos' %}">← Retour aux pronos</a>
+{% if selected_competition %}
+<h2>{{ selected_competition.name }}</h2>
+
+{% if rankings %}
+<!-- affichage du classement -->
+{% else %}
+<p>Aucun classement enregistré.</p>
+{% endif %} {% endif %}
+
+<a href="{% url 'pronos' %}" class="btn btn-secondary mt-3">
+  ← Retour aux pronos
+</a>
