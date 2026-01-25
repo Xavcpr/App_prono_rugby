@@ -300,9 +300,25 @@ def classement_prediction(request):
             messages.success(request, "Classement enregistré !")
             return redirect(f"{request.path}?competition={competition_id}")
 
-    return render(request, "pronos/classement.html", {
-        "competitions": competitions,
-        "selected_competition": selected_competition,
-        "rankings": rankings,
-    })
+    positions = []
+    pools = []
+
+    if selected_competition:
+        if selected_competition.name == "Top 14":
+            positions = range(1, 15)
+        elif selected_competition.name == "6 Nations":
+            positions = range(1, 7)
+        elif selected_competition.name == "Champions Cup":
+            positions = range(1, 7)
+            pools = ["A", "B", "C", "D"]
+
+    
+    return render(request,"pronos/classement.html",
+                  {"competitions": competitions,
+                   "selected_competition": selected_competition,
+                   "rankings": rankings,
+                   "positions": positions,
+                   "pools": pools,
+                   }
+                  )
 

@@ -1,7 +1,8 @@
 {% extends "base.html" %} {% block content %}
+
 <h1>Classement par compétition</h1>
 
-<form method="get" class="mb-3">
+<form method="get" class="mb-4">
   <select name="competition" class="form-select" onchange="this.form.submit()">
     <option value="">-- Choisir une compétition --</option>
     {% for competition in competitions %}
@@ -13,7 +14,9 @@
       and
       competition.id=""
       ="selected_competition.id"
-      %}selected{%
+      %}
+      selected
+      {%
       endif
       %}
     >
@@ -24,41 +27,28 @@
 </form>
 
 {% if selected_competition %}
-<h2>{{ selected_competition.name }}</h2>
 
 <form method="post">
-  {% csrf_token %} {% if selected_competition.name in "Top 14,6 Nations" %}
-  <table class="table table-bordered mb-3">
+  {% csrf_token %} {# =============================== #} {# CAS 1 : TOP 14 / 6
+  NATIONS #} {# =============================== #} {% if not pools %}
+  <h2>{{ selected_competition.name }}</h2>
+
+  <table class="table table-bordered">
     <thead>
       <tr>
-        <th>Position</th>
+        <th style="width: 120px">Position</th>
         <th>Équipe</th>
       </tr>
     </thead>
     <tbody>
-      {% for i in rankings|length|default:selected_competition.teams.count %}
+      {% for i in positions %}
       <tr>
-        <td>{{ forloop.counter }}</td>
+        <td><strong>{{ i }}</strong></td>
         <td>
-          <select name="team_{{ forloop.counter }}" class="form-select">
+          <select name="team_{{ i }}" class="form-select">
             <option value="">-- Choisir une équipe --</option>
             {% for team in selected_competition.teams.all %}
-            <option
-              value="{{ team.id }}"
-              {%
-              if
-              rankings
-              and
-              rankings|get_item:forloop.counter0
-              and
-              rankings|get_item:forloop.counter0.team.id=""
-              ="team.id"
-              %}selected{%
-              endif
-              %}
-            >
-              {{ team.name }}
-            </option>
+            <option value="{{ team.id }}">{{ team.name }}</option>
             {% endfor %}
           </select>
         </td>
@@ -66,40 +56,29 @@
       {% endfor %}
     </tbody>
   </table>
-  {% endif %} {% if selected_competition.name == "Champions Cup" %} {% for pool
-  in "A,B,C,D"|split:"," %}
-  <h4>Poule {{ pool }}</h4>
-  <table class="table table-bordered mb-3">
+  {% endif %} {# =============================== #} {# CAS 2 : CHAMPIONS CUP
+  (POULES) #} {# =============================== #} {% if pools %}
+  <h2>{{ selected_competition.name }}</h2>
+
+  {% for pool in pools %}
+  <h4 class="mt-4">Poule {{ pool }}</h4>
+
+  <table class="table table-bordered mb-4">
     <thead>
       <tr>
-        <th>Position</th>
+        <th style="width: 120px">Position</th>
         <th>Équipe</th>
       </tr>
     </thead>
     <tbody>
-      {% for i in 1|to:6 %}
+      {% for i in positions %}
       <tr>
-        <td>{{ i }}</td>
+        <td><strong>{{ i }}</strong></td>
         <td>
           <select name="team_{{ pool }}_{{ i }}" class="form-select">
             <option value="">-- Choisir une équipe --</option>
             {% for team in selected_competition.teams.filter(pool=pool) %}
-            <option
-              value="{{ team.id }}"
-              {%
-              if
-              rankings
-              and
-              rankings|get_pool_team:pool|get_item:i0
-              and
-              rankings|get_pool_team:pool|get_item:i0.team.id=""
-              ="team.id"
-              %}selected{%
-              endif
-              %}
-            >
-              {{ team.name }}
-            </option>
+            <option value="{{ team.id }}">{{ team.name }}</option>
             {% endfor %}
           </select>
         </td>
@@ -109,13 +88,15 @@
   </table>
   {% endfor %} {% endif %}
 
-  <button type="submit" class="btn btn-primary">
+  <button type="submit" class="btn btn-primary mt-3">
     Enregistrer le classement
   </button>
 </form>
+
 {% endif %}
 
-<a href="{% url 'pronos' %}" class="btn btn-secondary mt-3"
-  >← Retour aux pronos</a
->
+<a href="{% url 'pronos' %}" class="btn btn-secondary mt-4">
+  ← Retour aux pronos
+</a>
+
 {% endblock %}
