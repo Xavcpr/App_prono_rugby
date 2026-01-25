@@ -22,7 +22,7 @@ class Player(models.Model):
 class Competition(models.Model):
     name = models.CharField(max_length=100)
     matches_per_round = models.PositiveIntegerField(default=0)
-    season = models.CharField(max_length=20)  # ex: "2025/2026"
+    # season = models.CharField(max_length=20)  # ex: "2025/2026"
     bonus_defense_threshold = models.IntegerField(default=7)
     match_weight = models.IntegerField(default=680)
 
@@ -188,3 +188,47 @@ class SeasonScore(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.competition} : {self.points} pts"
+    
+    
+# ----- Classement par compétition -----
+class CompetitionRankingPrediction(models.Model):
+    player = models.ForeignKey(Player, on_delete=models.CASCADE)
+    season = models.ForeignKey(Season, on_delete=models.CASCADE)
+    competition = models.ForeignKey(Competition, on_delete=models.CASCADE)
+
+    winner_team = models.ForeignKey(
+        Team,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="winner_predictions"
+    )
+
+    best_try_scorer = models.CharField(max_length=100, blank=True)
+    best_kicker = models.CharField(max_length=100, blank=True)
+
+    locked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ("player", "season", "competition")
+
+# ----- Classement d'équipe -----
+class TeamRankingPrediction(models.Model):
+    ranking = models.ForeignKey(
+        CompetitionRankingPrediction,
+        related_name="team_rankings",
+        on_delete=models.CASCADE
+    )
+    team = models.ForeignKey(Team, on_delete=models.CASCADE)
+    position = models.PositiveIntegerField()
+
+    pool = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        help_text="Utilisé uniquement pour la Champions Cup"
+    )
+
+    class Meta:
+        unique_together = ("ranking", "team")
+        ordering = ["pool", "position"]
+
