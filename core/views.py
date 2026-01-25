@@ -6,7 +6,8 @@ from django.utils import timezone
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth import update_session_auth_hash
 from django.forms import modelform_factory, modelformset_factory
-from .forms import CompetitionRankingPredictionForm, TeamRankingPredictionFormSet
+from .forms import CompetitionRankingPredictionForm, TeamRankingPredictionFormSet, TeamRankingFormSet
+from .constants import COMPETITION_RULES
 
 from .models import Match, Prediction, Competition, Round, Player, Team, CompetitionRankingPrediction, TeamRankingPrediction
 from .services.scoring import calculate_points
@@ -244,6 +245,93 @@ def competition_ranking_view(request):
         "formset": formset,
         "player": player
     })
+
+def _ensure_lines(qs, count, ranking, pool=None):
+    existing = qs.count()
+    if existing < count:
+        TeamRankingPrediction.objects.bulk_create([
+            TeamRankingPrediction(
+                ranking=ranking,
+                position=i + 1,
+                pool=pool
+            )
+            for i in range(existing, count)
+        ])
+
+@login_required
+def classement_prediction(request):
+    competition_id = request.GET.get("competition")
+    competition = get_object_or_404(Competition, id=competition_id)
+
+    rules = COMPETITION_RULES[competition.code]
+
+    ranking, _ = CompetitionRankingPrediction.objects.get_or_create(
+        player=request.user,
+        competition=competition,
+        season=competition.current_season,
+    )
+
+    formsets = {}
+
+    if rules["type"] == "league":
+        qs = TeamRankingPrediction.objects.filter(ranking=ranking)
+        _ensure_lines(qs, rules["positions"], ranking)
+
+        formsets["ALL"] = TeamRankingFormSet(
+            queryset=qs,
+            form_kwargs={"competition": competition}
+        )
+
+    else:  # GROUPS
+        for pool in rules["pools"]:
+            qs = TeamRankingPrediction.objects.filter(
+                ranking=ranking, pool=pool
+            )
+            _ensure_lines(qs, rules["positions"], ranking, pool)
+
+            formsets[pool] = TeamRankingFormSet(
+                queryset=qs,
+                form_kwargs={"competition": competition}
+            )
+
+    ranking_form = CompetitionRankingPredictionForm(
+        instance=ranking,
+        competition=competition
+    )
+
+    if request.method == "POST":
+        valid = ranking_form.is_valid()
+        for fs in formsets.values():
+            valid &= fs.is_valid()
+
+        if valid:
+            ranking_form.save()
+
+            for pool, fs in formsets.items():
+                instances = fs.save(commit=False)
+                for idx, obj in enumerate(instances, start=1):
+                    obj.position = idx
+                    obj.pool = None if pool == "ALL" else pool
+                    obj.ranking = ranking
+                    obj.save()
+
+            if rules["winner_is_first"]:
+                ranking.winner_team = TeamRankingPrediction.objects.filter(
+                    ranking=ranking, position=1
+                ).first().team
+                ranking.save()
+
+            return redirect(
+                f"{request.path}?competition={competition.id}"
+            )
+
+    return render(request, "pronos/classement.html", {
+        "competition": competition,
+        "rules": rules,
+        "formsets": formsets,
+        "ranking_form": ranking_form,
+    })
+
 
 # def competition_ranking_view(request):
 #     user = request.user

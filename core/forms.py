@@ -32,16 +32,28 @@ class CompetitionRankingPredictionForm(forms.ModelForm):
 class TeamRankingPredictionForm(forms.ModelForm):
     class Meta:
         model = TeamRankingPrediction
-        fields = ['team', 'position', 'pool']
-    
+        fields = ("team",)
+
     def __init__(self, *args, **kwargs):
-        competition = kwargs.pop("competition", None)
+        competition = kwargs.pop("competition")
         super().__init__(*args, **kwargs)
-        if competition:
-            self.fields['team'].queryset = competition.teams.all()
-        if self.instance and self.instance.ranking.locked_at:
-            for f in self.fields.values():
-                f.disabled = True
+        self.fields["team"].queryset = Team.objects.filter(
+            competition=competition
+        )
+
+# class TeamRankingPredictionForm(forms.ModelForm):
+#     class Meta:
+#         model = TeamRankingPrediction
+#         fields = ['team', 'position', 'pool']
+    
+#     def __init__(self, *args, **kwargs):
+#         competition = kwargs.pop("competition", None)
+#         super().__init__(*args, **kwargs)
+#         if competition:
+#             self.fields['team'].queryset = competition.teams.all()
+#         if self.instance and self.instance.ranking.locked_at:
+#             for f in self.fields.values():
+#                 f.disabled = True
 
 # # Formset pour les équipes
 # TeamRankingPredictionFormSet = modelformset_factory(
@@ -69,4 +81,25 @@ TeamRankingPredictionFormSet = modelformset_factory(
     formset=BaseTeamRankingPredictionFormSet,
     extra=0,
     can_delete=False
+)
+
+class BaseTeamRankingFormSet(forms.BaseModelFormSet):
+    def clean(self):
+        super().clean()
+        teams = []
+        for form in self.forms:
+            team = form.cleaned_data.get("team")
+            if not team:
+                continue
+            if team in teams:
+                raise forms.ValidationError(
+                    "Une équipe ne peut apparaître qu’une seule fois."
+                )
+            teams.append(team)
+
+TeamRankingFormSet = modelformset_factory(
+    TeamRankingPrediction,
+    form=TeamRankingPredictionForm,
+    formset=BaseTeamRankingFormSet,
+    extra=0
 )

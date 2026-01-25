@@ -1,0 +1,28 @@
+<h2>{{ competition.name }}</h2>
+
+<form method="post">
+  {% csrf_token %} {% for pool, formset in formsets.items %} {% if pool != "ALL"
+  %}
+  <h3>Poule {{ pool }}</h3>
+  {% endif %}
+
+  <table>
+    {% for form in formset %}
+    <tr>
+      <td>{{ forloop.counter }}</td>
+      <td>{{ form.team }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endfor %}
+
+  <hr />
+
+  {% if rules.has_best_scorer %} {{ ranking_form.best_try_scorer }} {% endif %}
+  {% if rules.has_best_kicker %} {{ ranking_form.best_kicker }} {% endif %} {%
+  if not rules.winner_is_first %} {{ ranking_form.winner_team }} {% endif %}
+
+  <button type="submit">Enregistrer</button>
+</form>
+
+<a href="{% url 'pronos' %}">⬅ Retour aux pronos</a>
