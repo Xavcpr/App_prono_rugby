@@ -2,7 +2,6 @@
 
 <h1>Classement par compétition</h1>
 
-<!-- ================= CHOIX COMPÉTITION ================= -->
 <form method="get" class="mb-4">
   <select name="competition" class="form-select" onchange="this.form.submit()">
     <option value="">-- Choisir une compétition --</option>
@@ -27,9 +26,7 @@
   </select>
 </form>
 
-{% if not selected_competition %}
-<p class="text-muted">Veuillez choisir une compétition.</p>
-{% else %}
+{% if selected_competition %}
 
 <form method="post">
   {% csrf_token %}
@@ -37,60 +34,32 @@
   <h2 class="mb-3">{{ selected_competition.name }}</h2>
 
   <!-- ================= BONUS ================= -->
-  <h4 class="mt-4">Bonus</h4>
+  <h4>Bonus</h4>
   <div class="row mb-4">
     <div class="col-md-6">
       <label class="form-label">Meilleur marqueur d’essais</label>
-      <select name="best_try_scorer" class="form-select">
-        <option value="">---</option>
-        {% for p in players %}
-        <option
-          value="{{ p.id }}"
-          {%
-          if
-          bonus
-          and
-          bonus.best_try_scorer_id=""
-          ="p.id"
-          %}
-          selected
-          {%
-          endif
-          %}
-        >
-          {{ p }}
-        </option>
-        {% endfor %}
-      </select>
+      <input
+        type="text"
+        name="best_try_scorer"
+        class="form-control"
+        value="{{ bonus.best_try_scorer|default:'' }}"
+        placeholder="Nom du joueur"
+      />
     </div>
 
     <div class="col-md-6">
       <label class="form-label">Meilleur scoreur</label>
-      <select name="best_point_scorer" class="form-select">
-        <option value="">---</option>
-        {% for p in players %}
-        <option
-          value="{{ p.id }}"
-          {%
-          if
-          bonus
-          and
-          bonus.best_point_scorer_id=""
-          ="p.id"
-          %}
-          selected
-          {%
-          endif
-          %}
-        >
-          {{ p }}
-        </option>
-        {% endfor %}
-      </select>
+      <input
+        type="text"
+        name="best_point_scorer"
+        class="form-control"
+        value="{{ bonus.best_point_scorer|default:'' }}"
+        placeholder="Nom du joueur"
+      />
     </div>
   </div>
 
-  <!-- ================= CLASSEMENT ================= -->
+  <!-- ================= CLASSEMENTS ================= -->
   {% for pool in pools_data %} {% if pool.pool %}
   <h4 class="mt-4">Poule {{ pool.pool }}</h4>
   {% endif %}
@@ -121,7 +90,6 @@
       {% endfor %}
     </tbody>
   </table>
-
   {% endfor %}
 
   <button type="submit" class="btn btn-primary">
@@ -129,6 +97,8 @@
   </button>
 </form>
 
+{% else %}
+<p class="text-muted">Veuillez choisir une compétition.</p>
 {% endif %}
 
 <a href="{% url 'pronos' %}" class="btn btn-secondary mt-4">

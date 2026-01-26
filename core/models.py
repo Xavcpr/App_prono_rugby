@@ -243,20 +243,8 @@ class CompetitionBonusPrediction(models.Model):
         Competition,
         on_delete=models.CASCADE
     )
-
-    best_try_scorer = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True,
-        verbose_name="Meilleur marqueur d'essais"
-    )
-
-    best_point_scorer = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True,
-        verbose_name="Meilleur marqueur de points"
-    )
+    best_try_scorer = models.CharField(max_length=100, blank=True)
+    best_point_scorer = models.CharField(max_length=100, blank=True)
 
     class Meta:
         unique_together = ("player", "competition")
