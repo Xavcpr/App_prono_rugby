@@ -8,9 +8,7 @@
 <!-- ================= MENU DÉROULANT ================= -->
 <form method="get" class="mb-4">
   <select name="competition" class="form-select" onchange="this.form.submit()">
-    <option value="" {% if not selected_competition %}selected{% endif %}>
-      -- Choisir une compétition --
-    </option>
+    <option value="" {% if not selected_competition %}selected{% endif %}>-- Choisir une compétition --</option>
     {% for competition in competitions %}
       <option value="{{ competition.id }}"
         {% if selected_competition and competition.id == selected_competition.id %}selected{% endif %}>
@@ -67,7 +65,7 @@
                 {% for team in block.teams %}
                   {% with saved_id=block.saved|get_item:pos %}
                     <option value="{{ team.id }}"
-                      {% if saved_id and saved_id|stringformat:"s" == team.id|stringformat:"s" %}selected{% endif %}>
+                      {% if saved_id|stringformat:"s" == team.id|stringformat:"s" %}selected{% endif %}>
                       {{ team.name }}
                     </option>
                   {% endwith %}
