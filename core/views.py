@@ -9,7 +9,7 @@ from django.forms import modelform_factory, modelformset_factory
 from .forms import CompetitionRankingPredictionForm, TeamRankingPredictionFormSet, TeamRankingFormSet
 from .constants import COMPETITION_RULES
 
-from .models import Match, Prediction, Competition, Round, Player, Team, CompetitionTeamPrediction, CompetitionRankingPrediction, TeamRankingPrediction, CompetitionBonusPrediction
+from .models import CompetitionTeam, Match, Prediction, Competition, Round, Player, Season, Team, CompetitionTeamPrediction, CompetitionRankingPrediction, TeamRankingPrediction, CompetitionBonusPrediction
 from .services.scoring import calculate_points
 
 
@@ -274,21 +274,34 @@ def classement_prediction(request):
         # CHAMPIONS CUP → 4 poules de 6
         # ===============================
         if selected_competition.name.lower() == "champions cup":
-            teams = list(
-                Team.objects.filter(competitions=selected_competition).order_by("name")
-            )
-            n_poules = 4
-            n_par_poule = 6
-
-            for i in range(n_poules):
-                start = i * n_par_poule
-                end = start + n_par_poule
+            season = Season.objects.filter(competition=selected_competition).order_by("-year").first()
+            for pool in range(1, 5):
+                competition_teams = CompetitionTeam.objects.filter(
+                    competition=selected_competition,
+                    season=season,
+                    pool=pool
+                    ).select_related("team")
                 blocks.append({
-                    "key": f"pool{i+1}",
-                    "pool": i + 1,  # juste pour le titre
-                    "teams": teams[start:end],
-                    "positions": range(1, n_par_poule + 1),
-                })
+                    "key": f"pool{pool}",
+                    "pool": pool,
+                    "teams": [ct.team for ct in competition_teams],
+                    "positions": range(1, 7),
+                    })
+            # teams = list(
+            #     Team.objects.filter(competitions=selected_competition).order_by("name")
+            # )
+            # n_poules = 4
+            # n_par_poule = 6
+
+            # for i in range(n_poules):
+            #     start = i * n_par_poule
+            #     end = start + n_par_poule
+            #     blocks.append({
+            #         "key": f"pool{i+1}",
+            #         "pool": i + 1,  # juste pour le titre
+            #         "teams": teams[start:end],
+            #         "positions": range(1, n_par_poule + 1),
+            #     })
 
         # ===============================
         # AUTRES COMPÉTITIONS
