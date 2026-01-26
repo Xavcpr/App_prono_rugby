@@ -1,28 +1,16 @@
-{% extends "base.html" %} {% block content %}
+{% extends "base.html" %}
+{% block content %}
 
 <h1>Classement par compétition</h1>
 
 <!-- ================= MENU DÉROULANT ================= -->
 <form method="get" class="mb-4">
   <select name="competition" class="form-select" onchange="this.form.submit()">
-    <option value="" {% if not selected_competition %}selected{% endif %}>
-      -- Choisir une compétition --
-    </option>
+    <option value="" {% if not selected_competition %}selected{% endif %}>-- Choisir une compétition --</option>
     {% for competition in competitions %}
-    <option
-      value="{{ competition.id }}"
-      {%
-      if
-      selected_competition
-      and
-      competition.id=""
-      ="selected_competition.id"
-      %}selected{%
-      endif
-      %}
-    >
-      {{ competition.name }}
-    </option>
+      <option value="{{ competition.id }}" {% if selected_competition and competition.id == selected_competition.id %}selected{% endif %}>
+        {{ competition.name }}
+      </option>
     {% endfor %}
   </select>
 </form>
@@ -61,36 +49,41 @@
   </div>
 
   <!-- ================= CLASSEMENTS ================= -->
-  {% for block in blocks %} {% if block.pool %}
-  <h4 class="mt-4">Poule {{ block.pool }}</h4>
-  {% endif %}
+  {% for block in blocks %}
+    {% if block.pool %}
+      <h4 class="mt-4">Poule {{ block.pool }}</h4>
+    {% endif %}
 
-  <table class="table table-bordered mb-4">
-    <thead>
-      <tr>
-        <th style="width: 120px">Position</th>
-        <th>Équipe</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for pos in block.positions %}
-      <tr>
-        <td><strong>{{ pos }}</strong></td>
-        <td>
-          <select name="team_{{ block.key }}_{{ pos }}" class="form-select">
-            <option value="">-- Choisir une équipe --</option>
-            {% for team in block.teams %} {% if block.saved and block.saved.pos
-            == team.id %}
-            <option value="{{ team.id }}" selected>{{ team.name }}</option>
-            {% else %}
-            <option value="{{ team.id }}">{{ team.name }}</option>
-            {% endif %} {% endfor %}
-          </select>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+    <table class="table table-bordered mb-4">
+      <thead>
+        <tr>
+          <th style="width: 120px">Position</th>
+          <th>Équipe</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pos in block.positions %}
+        <tr>
+          <td><strong>{{ pos }}</strong></td>
+          <td>
+            <select name="team_{{ block.key }}_{{ pos }}" class="form-select">
+              <option value="">-- Choisir une équipe --</option>
+              {% for team in block.teams %}
+                {% comment %}
+                  On vérifie si la team correspond à celle déjà sauvegardée pour cette position
+                {% endcomment %}
+                {% with saved_id=block.saved|get_item:pos %}
+                  <option value="{{ team.id }}" {% if saved_id and saved_id|stringformat:"s" == team.id|stringformat:"s" %}selected{% endif %}>
+                    {{ team.name }}
+                  </option>
+                {% endwith %}
+              {% endfor %}
+            </select>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   {% endfor %}
 
   <button type="submit" class="btn btn-primary">
