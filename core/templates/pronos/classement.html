@@ -50,9 +50,7 @@
           if
           bonus
           and
-          bonus.best_try_scorer
-          and
-          bonus.best_try_scorer.id=""
+          bonus.best_try_scorer_id=""
           ="p.id"
           %}
           selected
@@ -77,9 +75,7 @@
           if
           bonus
           and
-          bonus.best_point_scorer
-          and
-          bonus.best_point_scorer.id=""
+          bonus.best_point_scorer_id=""
           ="p.id"
           %}
           selected
@@ -95,8 +91,8 @@
   </div>
 
   <!-- ================= CLASSEMENT ================= -->
-  {% for block in blocks %} {% if block.pool %}
-  <h4 class="mt-4">Poule {{ block.pool }}</h4>
+  {% for pool in pools_data %} {% if pool.pool %}
+  <h4 class="mt-4">Poule {{ pool.pool }}</h4>
   {% endif %}
 
   <table class="table table-bordered mb-4">
@@ -107,29 +103,17 @@
       </tr>
     </thead>
     <tbody>
-      {% for pos in block.positions %}
+      {% for pos in pool.positions %}
       <tr>
         <td><strong>{{ pos }}</strong></td>
         <td>
-          <select name="team_{{ block.key }}_{{ pos }}" class="form-select">
+          <select
+            name="team_{{ pool.pool|default:'global' }}_{{ pos }}"
+            class="form-select"
+          >
             <option value="">---</option>
-            {% for team in block.teams %}
-            <option
-              value="{{ team.id }}"
-              {%
-              if
-              block.saved
-              and
-              block.saved|get_item:pos=""
-              ="team.id"
-              %}
-              selected
-              {%
-              endif
-              %}
-            >
-              {{ team.name }}
-            </option>
+            {% for team in pool.teams %}
+            <option value="{{ team.id }}">{{ team.name }}</option>
             {% endfor %}
           </select>
         </td>
