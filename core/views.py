@@ -251,146 +251,89 @@ def _ensure_lines(qs, count, ranking, pool=None):
 
 @login_required
 def classement_prediction(request):
+    user = request.user
+    player = get_object_or_404(Player, user=user)
+
     competitions = Competition.objects.all()
     competition_id = request.GET.get("competition")
-
     selected_competition = None
-    blocks = []
-    bonus = None
 
-    # -------------------------
-    # Si une compétition est sélectionnée
-    # -------------------------
     if competition_id:
-        selected_competition = get_object_or_404(Competition, id=competition_id)
+        selected_competition = get_object_or_404(Competition, pk=competition_id)
 
-        # Bonus pour le joueur courant
-        bonus, _ = CompetitionBonusPrediction.objects.get_or_create(
-            player=request.user.player,
+    bonus = {"best_try_scorer": "", "best_point_scorer": ""}
+    blocks = []
+
+    if selected_competition:
+        season = selected_competition.seasons.last()  # On prend la dernière saison pour l'exemple
+
+        # On récupère ou crée le ranking du joueur pour cette compétition
+        ranking, _ = CompetitionRankingPrediction.objects.get_or_create(
+            player=player,
+            season=season,
             competition=selected_competition
         )
 
-        # ===============================
-        # CHAMPIONS CUP → 4 poules de 6
-        # ===============================
-        if selected_competition.name.lower() == "champions cup":
-            season = Season.objects.filter(competition=selected_competition).order_by("-year").first()
-            for pool in range(1, 5):
-                competition_teams = CompetitionTeam.objects.filter(
-                    competition=selected_competition,
-                    season=season,
-                    pool=pool
-                    ).select_related("team")
-                blocks.append({
-                    "key": f"pool{pool}",
-                    "pool": pool,
-                    "teams": [ct.team for ct in competition_teams],
-                    "positions": range(1, 7),
-                    })
-            # teams = list(
-            #     Team.objects.filter(competitions=selected_competition).order_by("name")
-            # )
-            # n_poules = 4
-            # n_par_poule = 6
+        # POST : enregistrement des pronos
+        if request.method == "POST":
+            # ----- Bonus -----
+            best_try_scorer = request.POST.get("best_try_scorer", "").strip()
+            best_point_scorer = request.POST.get("best_point_scorer", "").strip()
+            ranking.best_try_scorer = best_try_scorer
+            ranking.best_kicker = best_point_scorer
+            ranking.save()
 
-            # for i in range(n_poules):
-            #     start = i * n_par_poule
-            #     end = start + n_par_poule
-            #     blocks.append({
-            #         "key": f"pool{i+1}",
-            #         "pool": i + 1,  # juste pour le titre
-            #         "teams": teams[start:end],
-            #         "positions": range(1, n_par_poule + 1),
-            #     })
+            # ----- Classement par équipes -----
+            # Récupération de toutes les équipes de la compétition
+            competition_teams = CompetitionTeam.objects.filter(
+                competition=selected_competition,
+                season=season
+            )
 
-        # ===============================
-        # AUTRES COMPÉTITIONS
-        # ===============================
-        else:
-            teams = Team.objects.filter(
-                competitions=selected_competition
-            ).order_by("name")
+            for block in blocks:
+                for pos in block["positions"]:
+                    field_name = f"team_{block['key']}_{pos}"
+                    team_id = request.POST.get(field_name)
+                    if team_id:
+                        team = get_object_or_404(CompetitionTeam, pk=team_id).team
+                        TeamRankingPrediction.objects.update_or_create(
+                            ranking=ranking,
+                            position=pos,
+                            defaults={"team": team, "pool": block.get("pool")}
+                        )
 
+            # Après POST, on redirige sur la même page pour éviter le double POST
+            return redirect(f"{request.path}?competition={selected_competition.id}")
+
+        # ----- Préparation des blocks pour l'affichage -----
+        competition_teams = CompetitionTeam.objects.filter(
+            competition=selected_competition,
+            season=season
+        ).order_by("pool", "team__name")
+
+        # On récupère les pronos déjà enregistrés
+        team_rankings = ranking.team_rankings.all()
+        saved = {tr.position: tr.team.id for tr in team_rankings}
+
+        # Pour les poules : on crée un block par pool
+        pools = sorted(set([ct.pool or 0 for ct in competition_teams]))
+        for pool_number in pools:
+            teams_in_pool = [ct.team for ct in competition_teams if (ct.pool or 0) == pool_number]
             blocks.append({
-                "key": "all",
-                "pool": None,
-                "teams": teams,
-                "positions": range(1, teams.count() + 1),
+                "key": f"pool_{pool_number}",
+                "pool": pool_number if pool_number != 0 else None,
+                "positions": range(1, len(teams_in_pool) + 1),
+                "teams": teams_in_pool,
+                "saved": saved,
             })
 
-    # -------------------------
-    # POST = ENREGISTREMENT
-    # -------------------------
-    if request.method == "POST":
-        # Bonus
-        if selected_competition:
-            bonus.best_try_scorer = request.POST.get("best_try_scorer", "").strip()
-            bonus.best_point_scorer = request.POST.get("best_point_scorer", "").strip()
-            bonus.save()
-
-        # Vérification doublons
-        selected_teams = set()
-        duplicate_found = False
-
-        for block in blocks:
-            for pos in block["positions"]:
-                key = f"team_{block['key']}_{pos}"
-                team_id = request.POST.get(key)
-                if team_id:
-                    if team_id in selected_teams:
-                        duplicate_found = True
-                        break
-                    selected_teams.add(team_id)
-            if duplicate_found:
-                break
-
-        if duplicate_found:
-            messages.error(
-                request,
-                "❌ Une même équipe ne peut pas être utilisée plusieurs fois dans le classement."
-            )
-            return render(
-                request,
-                "pronos/classement.html",
-                {
-                    "competitions": competitions,
-                    "selected_competition": selected_competition,
-                    "blocks": blocks,
-                    "bonus": bonus,
-                }
-            )
-
-        # ✅ Tout OK → message succès
-        messages.success(request, "Classement enregistré ✅")
-        # Redirect uniquement si une compétition est sélectionnée
-        if selected_competition:
-            return redirect(request.path + f"?competition={selected_competition.id}")
-        return redirect(request.path)
-
-    # -------------------------
-    # Préparer les équipes déjà sélectionnées pour que le select reste "selected"
-    # -------------------------
-    saved_teams = {}
-    for block in blocks:
-        block['saved'] = {}
-        for pos in block['positions']:
-            key = f"team_{block['key']}_{pos}"
-            # Si on est après un POST, on récupère l'id de l'équipe, sinon on laisse vide
-            team_id = request.POST.get(key) if request.method == "POST" else None
-            if team_id:
-                block['saved'][pos] = int(team_id)
-            else:
-                # Si on est en GET, on va chercher la sélection déjà enregistrée en base
-                saved_team = None
-                if selected_competition:
-                    saved_team = CompetitionTeamPrediction.objects.filter(
-                        competition=selected_competition,
-                        player=request.user.player,
-                        block_key=block['key'],
-                        position=pos
-                    ).first()
-                if saved_team:
-                    block['saved'][pos] = saved_team.team.id  # On récupère l'équipe enregistrée
+        # ----- Bonus existants -----
+        bonus_prediction, _ = CompetitionBonusPrediction.objects.get_or_create(
+            player=player,
+            competition=selected_competition
+        )
+        bonus["best_try_scorer"] = bonus_prediction.best_try_scorer
+        bonus["best_point_scorer"] = bonus_prediction.best_point_scorer
 
     return render(
         request,
