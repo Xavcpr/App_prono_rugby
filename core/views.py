@@ -258,14 +258,12 @@ def classement_prediction(request):
     competition_id = request.GET.get("competition")
     selected_competition = None
 
-    if competition_id:
-        selected_competition = get_object_or_404(Competition, pk=competition_id)
-
     bonus = {"best_try_scorer": "", "best_point_scorer": ""}
     blocks = []
 
-    if selected_competition:
-        season = selected_competition.seasons.last()  # On prend la dernière saison pour l'exemple
+    if competition_id:
+        selected_competition = get_object_or_404(Competition, pk=competition_id)
+        season = selected_competition.seasons.last()  # on prend la dernière saison
 
         # On récupère ou crée le ranking du joueur pour cette compétition
         ranking, _ = CompetitionRankingPrediction.objects.get_or_create(
@@ -274,38 +272,7 @@ def classement_prediction(request):
             competition=selected_competition
         )
 
-        # POST : enregistrement des pronos
-        if request.method == "POST":
-            # ----- Bonus -----
-            best_try_scorer = request.POST.get("best_try_scorer", "").strip()
-            best_point_scorer = request.POST.get("best_point_scorer", "").strip()
-            ranking.best_try_scorer = best_try_scorer
-            ranking.best_kicker = best_point_scorer
-            ranking.save()
-
-            # ----- Classement par équipes -----
-            # Récupération de toutes les équipes de la compétition
-            competition_teams = CompetitionTeam.objects.filter(
-                competition=selected_competition,
-                season=season
-            )
-
-            for block in blocks:
-                for pos in block["positions"]:
-                    field_name = f"team_{block['key']}_{pos}"
-                    team_id = request.POST.get(field_name)
-                    if team_id:
-                        team = get_object_or_404(CompetitionTeam, pk=team_id).team
-                        TeamRankingPrediction.objects.update_or_create(
-                            ranking=ranking,
-                            position=pos,
-                            defaults={"team": team, "pool": block.get("pool")}
-                        )
-
-            # Après POST, on redirige sur la même page pour éviter le double POST
-            return redirect(f"{request.path}?competition={selected_competition.id}")
-
-        # ----- Préparation des blocks pour l'affichage -----
+        # ----- Préparation des blocks pour l'affichage (toujours, GET ou POST) -----
         competition_teams = CompetitionTeam.objects.filter(
             competition=selected_competition,
             season=season
@@ -315,7 +282,7 @@ def classement_prediction(request):
         team_rankings = ranking.team_rankings.all()
         saved = {tr.position: tr.team.id for tr in team_rankings}
 
-        # Pour les poules : on crée un block par pool
+        # Création des blocks par pool
         pools = sorted(set([ct.pool or 0 for ct in competition_teams]))
         for pool_number in pools:
             teams_in_pool = [ct.team for ct in competition_teams if (ct.pool or 0) == pool_number]
@@ -334,6 +301,35 @@ def classement_prediction(request):
         )
         bonus["best_try_scorer"] = bonus_prediction.best_try_scorer
         bonus["best_point_scorer"] = bonus_prediction.best_point_scorer
+
+        # ----- POST : enregistrement -----
+        if request.method == "POST":
+            # ----- Bonus -----
+            best_try_scorer = request.POST.get("best_try_scorer", "").strip()
+            best_point_scorer = request.POST.get("best_point_scorer", "").strip()
+            ranking.best_try_scorer = best_try_scorer
+            ranking.best_kicker = best_point_scorer
+            ranking.save()
+
+            # ----- Classement par équipes -----
+            for block in blocks:
+                for pos in block["positions"]:
+                    field_name = f"team_{block['key']}_{pos}"
+                    team_id = request.POST.get(field_name)
+                    if team_id:
+                        team = get_object_or_404(CompetitionTeam, pk=team_id).team
+                        TeamRankingPrediction.objects.update_or_create(
+                            ranking=ranking,
+                            position=pos,
+                            defaults={"team": team, "pool": block.get("pool")}
+                        )
+
+            # Pas besoin de redirect ici, on peut rester sur la page pour voir les sélections
+            # Mais on reconstruit 'saved' pour refléter les changements
+            team_rankings = ranking.team_rankings.all()
+            saved = {tr.position: tr.team.id for tr in team_rankings}
+            for block in blocks:
+                block["saved"] = saved
 
     return render(
         request,
