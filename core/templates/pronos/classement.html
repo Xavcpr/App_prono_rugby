@@ -1,6 +1,7 @@
 {% extends "base.html" %} {% block content %}
 
 <h1>Classement par compétition</h1>
+{% comment %}
 <!-- ================= GESTION DE L'ALERTE DOUBLON ================= -->
 {% if messages %} {% for message in messages %}
 <div
@@ -9,7 +10,7 @@
 >
   {{ message }}
 </div>
-{% endfor %} {% endif %}
+{% endfor %} {% endif %} {% endcomment %}
 
 <!-- ================= MENU DÉROULANT ================= -->
 <form method="get" class="mb-4">
