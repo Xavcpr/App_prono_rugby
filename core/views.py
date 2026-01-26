@@ -283,22 +283,7 @@ def classement_prediction(request):
                     "positions": range(1, n_par_poule + 1),
                     "saved": {},
                 })
-                
-        # if selected_competition.name.lower() == "champions cup":
-        #     for pool in ["A", "B", "C", "D"]:
-        #         teams = Team.objects.filter(
-        #             competitions=selected_competition,
-        #             pool=pool
-        #         ).order_by("name")
-
-        #         blocks.append({
-        #             "key": pool,
-        #             "pool": pool,
-        #             "teams": teams,
-        #             "positions": range(1, 7),
-        #             "saved": {},
-        #         })
-
+        
         # ===============================
         # AUTRES COMPÉTITIONS
         # ===============================
