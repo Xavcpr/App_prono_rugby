@@ -65,7 +65,7 @@
               <select name="team_{{ block.key }}_{{ pos }}" class="form-select">
                 <option value="">-- Choisir une équipe --</option>
                 {% for team in block.teams %}
-                  {% with saved_id=block.saved.pos %}
+                  {% with saved_id=block.saved|get_item:pos %}
                     <option value="{{ team.id }}"
                       {% if saved_id and saved_id|stringformat:"s" == team.id|stringformat:"s" %}selected{% endif %}>
                       {{ team.name }}
