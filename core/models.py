@@ -257,6 +257,7 @@ class CompetitionTeamPrediction(models.Model):
     competition = models.ForeignKey(Competition, on_delete=models.CASCADE)
     team = models.ForeignKey(Team, on_delete=models.CASCADE)
     position = models.PositiveIntegerField()
+    block_key = models.CharField(max_length=50, blank=True, null=True)  # Champ ajouté
 
     class Meta:
         unique_together = ("player", "competition", "team")
