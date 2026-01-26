@@ -1,5 +1,7 @@
-{% extends "base.html" %} {% load dict_extras %} {% block content %} {{
-{}|get_item:1 }}
+{% extends "base.html" %}
+{% load dict_extras %}
+
+{% block content %}
 
 <h1>Classement par compétition</h1>
 
@@ -10,26 +12,16 @@
       -- Choisir une compétition --
     </option>
     {% for competition in competitions %}
-    <option
-      value="{{ competition.id }}"
-      {%
-      if
-      selected_competition
-      and
-      competition.id=""
-      ="selected_competition.id"
-      %}selected{%
-      endif
-      %}
-    >
-      {{ competition.name }}
-    </option>
+      <option value="{{ competition.id }}"
+        {% if selected_competition and competition.id == selected_competition.id %}selected{% endif %}>
+        {{ competition.name }}
+      </option>
     {% endfor %}
   </select>
 </form>
 
 {% if not selected_competition %}
-<p class="text-muted">Veuillez choisir une compétition.</p>
+  <p class="text-muted">Veuillez choisir une compétition.</p>
 {% else %}
 
 <form method="post">
@@ -42,195 +34,57 @@
   <div class="row mb-4">
     <div class="col-md-6">
       <label class="form-label">Meilleur marqueur d’essais</label>
-      <input
-        type="text"
-        name="best_try_scorer"
-        class="form-control"
-        value="{{ bonus.best_try_scorer|default:'' }}"
-      />
+      <input type="text" name="best_try_scorer" class="form-control"
+             value="{{ bonus.best_try_scorer|default:'' }}" />
     </div>
-
     <div class="col-md-6">
       <label class="form-label">Meilleur scoreur</label>
-      <input
-        type="text"
-        name="best_point_scorer"
-        class="form-control"
-        value="{{ bonus.best_point_scorer|default:'' }}"
-      />
+      <input type="text" name="best_point_scorer" class="form-control"
+             value="{{ bonus.best_point_scorer|default:'' }}" />
     </div>
   </div>
 
   <!-- ================= CLASSEMENTS ================= -->
-  {% for block in blocks %} {% if block.pool %}
-  <h4 class="mt-4">Poule {{ block.pool }}</h4>
-  {% endif %}
+  {% for block in blocks %}
+    {% if block.pool %}
+      <h4 class="mt-4">Poule {{ block.pool }}</h4>
+    {% endif %}
 
-  <table class="table table-bordered mb-4">
-    <thead>
-      <tr>
-        <th style="width: 120px">Position</th>
-        <th>Équipe</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for pos in block.positions %}
-      <tr>
-        <td><strong>{{ pos }}</strong></td>
-        <td>
-          <select name="team_{{ block.key }}_{{ pos }}" class="form-select">
-            <option value="">-- Choisir une équipe --</option>
-
-            {% for team in block.teams %} {% with
-            saved_id=block.saved|get_item:pos %}
-            <option
-              value="{{ team.id }}"
-              {%
-              if
-              saved_id=""
-              ="team.id"
-              %}selected{%
-              endif
-              %}
-            >
-              {{ team.name }}
-            </option>
-            {% endwith %} {% endfor %}
-          </select>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+    <table class="table table-bordered mb-4">
+      <thead>
+        <tr>
+          <th style="width: 120px">Position</th>
+          <th>Équipe</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pos in block.positions %}
+          <tr>
+            <td><strong>{{ pos }}</strong></td>
+            <td>
+              <select name="team_{{ block.key }}_{{ pos }}" class="form-select">
+                <option value="">-- Choisir une équipe --</option>
+                {% for team in block.teams %}
+                  {% with saved_id=block.saved|get_item:pos %}
+                    <option value="{{ team.id }}"
+                      {% if saved_id and saved_id|stringformat:"s" == team.id|stringformat:"s" %}selected{% endif %}>
+                      {{ team.name }}
+                    </option>
+                  {% endwith %}
+                {% endfor %}
+              </select>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   {% endfor %}
 
-  <button type="submit" class="btn btn-primary">
-    Enregistrer le classement
-  </button>
+  <button type="submit" class="btn btn-primary">Enregistrer le classement</button>
 </form>
 
 {% endif %}
 
-<a href="{% url 'pronos' %}" class="btn btn-secondary mt-4">
-  ← Retour aux pronos
-</a>
+<a href="{% url 'pronos' %}" class="btn btn-secondary mt-4">← Retour aux pronos</a>
 
-{% endblock %} {% comment %} {% extends "base.html" %} {% block content %} {%
-load dict_extras %}
-<h1>Classement par compétition</h1>
-
-<!-- ================= MENU DÉROULANT ================= -->
-<form method="get" class="mb-4">
-  <select name="competition" class="form-select" onchange="this.form.submit()">
-    <option value="" {% if not selected_competition %}selected{% endif %}>
-      -- Choisir une compétition --
-    </option>
-    {% for competition in competitions %}
-    <option
-      value="{{ competition.id }}"
-      {%
-      if
-      selected_competition
-      and
-      competition.id=""
-      ="selected_competition.id"
-      %}selected{%
-      endif
-      %}
-    >
-      {{ competition.name }}
-    </option>
-    {% endfor %}
-  </select>
-</form>
-
-{% if not selected_competition %}
-<p class="text-muted">Veuillez choisir une compétition.</p>
-{% else %}
-
-<form method="post">
-  {% csrf_token %}
-
-  <h2 class="mb-4">{{ selected_competition.name }}</h2>
-
-  <!-- ================= BONUS ================= -->
-  <h4>Bonus</h4>
-  <div class="row mb-4">
-    <div class="col-md-6">
-      <label class="form-label">Meilleur marqueur d’essais</label>
-      <input
-        type="text"
-        name="best_try_scorer"
-        class="form-control"
-        value="{{ bonus.best_try_scorer|default:'' }}"
-      />
-    </div>
-
-    <div class="col-md-6">
-      <label class="form-label">Meilleur scoreur</label>
-      <input
-        type="text"
-        name="best_point_scorer"
-        class="form-control"
-        value="{{ bonus.best_point_scorer|default:'' }}"
-      />
-    </div>
-  </div>
-
-  <!-- ================= CLASSEMENTS ================= -->
-  {% for block in blocks %} {% if block.pool %}
-  <h4 class="mt-4">Poule {{ block.pool }}</h4>
-  {% endif %}
-
-  <table class="table table-bordered mb-4">
-    <thead>
-      <tr>
-        <th style="width: 120px">Position</th>
-        <th>Équipe</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for pos in block.positions %}
-      <tr>
-        <td><strong>{{ pos }}</strong></td>
-        <td>
-          <select name="team_{{ block.key }}_{{ pos }}" class="form-select">
-            <option value="">-- Choisir une équipe --</option>
-            {% comment %} {% for team in block.teams %} {% endcomment %} {% with
-            saved_id=block.saved|get_item:pos %} {% with
-            saved_id=block.saved.pos %}
-            <option
-              value="{{ team.id }}"
-              {%
-              if
-              saved_id=""
-              ="team.id"
-              %}selected{%
-              endif
-              %}
-            >
-              {% comment %} {% if saved_id and saved_id|stringformat:"s" ==
-              team.id|stringformat:"s" %}selected{% endif %}> {% endcomment %}
-              {{ team.name }}
-            </option>
-            {% endwith %} {% endfor %}
-          </select>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% endfor %}
-
-  <button type="submit" class="btn btn-primary">
-    Enregistrer le classement
-  </button>
-</form>
-
-{% endif %}
-
-<a href="{% url 'pronos' %}" class="btn btn-secondary mt-4">
-  ← Retour aux pronos
-</a>
-
-{% endblock %} {% endcomment %}
+{% endblock %}
