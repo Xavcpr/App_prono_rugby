@@ -304,60 +304,57 @@ def classement_prediction(request):
     # ===============================
     # POST = ENREGISTREMENT
     # ===============================
-    if request.method == "POST":
-        if not selected_competition:
-            messages.error(request, "Veuillez choisir une compétition.")
-            return redirect(request.path)
+        if request.method == "POST":
+            if not selected_competition:
+                messages.error(request, "Veuillez choisir une compétition.")
+                return redirect(request.path)
 
-        bonus.best_try_scorer = request.POST.get("best_try_scorer", "").strip()
-        bonus.best_point_scorer = request.POST.get("best_point_scorer", "").strip()
-        bonus.save()
+            bonus.best_try_scorer = request.POST.get("best_try_scorer", "").strip()
+            bonus.best_point_scorer = request.POST.get("best_point_scorer", "").strip()
+            bonus.save()
 
-        # ===== Vérification des doublons =====
-        selected_teams = set()
-        duplicate_found = False
+            selected_teams = set()
+            duplicate_found = False
 
-        for block in blocks:
-            for pos in block["positions"]:
-                key = f"team_{block['key']}_{pos}"
-                team_id = request.POST.get(key)
-                if team_id:
-                    if team_id in selected_teams:
-                        duplicate_found = True
-                        break
-                    selected_teams.add(team_id)
+            for block in blocks:
+                for pos in block["positions"]:
+                    key = f"team_{block['key']}_{pos}"
+                    team_id = request.POST.get(key)
+                    if team_id:
+                        if team_id in selected_teams:
+                            duplicate_found = True
+                            break
+                        selected_teams.add(team_id)
+                if duplicate_found:
+                    break
+
             if duplicate_found:
-                break
+                messages.error(
+                    request,
+                    "❌ Une même équipe ne peut pas être utilisée plusieurs fois dans le classement."
+                )
+                return render(
+                    request,
+                    "pronos/classement.html",
+                    {
+                        "competitions": competitions,
+                        "selected_competition": selected_competition,
+                        "blocks": blocks,
+                        "bonus": bonus,
+                    }
+                )
 
-        if duplicate_found:
-            messages.error(
-                request,
-                "❌ Une même équipe ne peut pas être utilisée plusieurs fois dans le classement."
-            )
-            return render(
-                request,
-                "pronos/classement.html",
-                {
-                    "competitions": competitions,
-                    "selected_competition": selected_competition,
-                    "blocks": blocks,
-                    "bonus": bonus,
-                }
-            )
+            messages.success(request, "Classement enregistré ✅")
+            return redirect(request.path + f"?competition={selected_competition.id}")
 
-        messages.success(request, "Classement enregistré ✅")
-        return redirect(request.path + f"?competition={selected_competition.id}")
-
-    # ===============================
-    # GET NORMAL
-    # ===============================
-    return render(
-        request,
-        "pronos/classement.html",
-        {
-            "competitions": competitions,
-            "selected_competition": selected_competition,
-            "blocks": blocks,
-            "bonus": bonus,
-        }
-    )
+        # 🚨 GET UNIQUEMENT — AUCUN redirect ici
+        return render(
+            request,
+            "pronos/classement.html",
+            {
+                "competitions": competitions,
+                "selected_competition": selected_competition,
+                "blocks": blocks,
+                "bonus": bonus,
+            }
+        )
