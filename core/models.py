@@ -244,19 +244,18 @@ class CompetitionBonusPrediction(models.Model):
         on_delete=models.CASCADE
     )
 
-    best_try_scorer = models.ForeignKey(
-        Player,
-        on_delete=models.SET_NULL,
-        null=True,
+    best_try_scorer = models.CharField(
+        max_length=100,
         blank=True,
-        related_name="+"
+        null=True,
+        verbose_name="Meilleur marqueur d'essais"
     )
-    best_point_scorer = models.ForeignKey(
-        Player,
-        on_delete=models.SET_NULL,
-        null=True,
+
+    best_point_scorer = models.CharField(
+        max_length=100,
         blank=True,
-        related_name="+"
+        null=True,
+        verbose_name="Meilleur marqueur de points"
     )
 
     class Meta:
