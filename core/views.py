@@ -252,116 +252,102 @@ def _ensure_lines(qs, count, ranking, pool=None):
 
 @login_required
 def classement_prediction(request):
-    player = request.user.player
+    player = get_object_or_404(Player, user=request.user)
     competitions = Competition.objects.all().order_by("name")
+    
+    selected_competition_id = request.GET.get("competition")
     selected_competition = None
     season = None
+    ranking = None
     blocks = []
     bonus = {"best_try_scorer": "", "best_point_scorer": ""}
 
-    # ==================== Sélection compétition ====================
-    competition_id = request.GET.get("competition")
-    if competition_id:
-        try:
-            selected_competition = Competition.objects.get(id=competition_id)
-        except Competition.DoesNotExist:
-            selected_competition = None
+    if selected_competition_id:
+        selected_competition = get_object_or_404(Competition, id=selected_competition_id)
+        season = selected_competition.seasons.last()  # on prend la dernière saison disponible
 
-    if not selected_competition:
-        return render(request, "pronos/classement.html", {
-            "competitions": competitions,
-            "selected_competition": None
-        })
+        # Récupération du pronostic global du joueur pour cette compétition
+        ranking, _ = CompetitionRankingPrediction.objects.get_or_create(
+            player=player,
+            competition=selected_competition,
+            season=season
+        )
 
-    # On prend la dernière saison disponible pour cette compétition
-    season = selected_competition.seasons.order_by("-year").first()
+        # Récupération du pronostic des bonus
+        bonus_pred, _ = CompetitionBonusPrediction.objects.get_or_create(
+            player=player,
+            competition=selected_competition
+        )
+        bonus = {
+            "best_try_scorer": bonus_pred.best_try_scorer,
+            "best_point_scorer": bonus_pred.best_point_scorer
+        }
 
-    # ==================== Récupérer ou créer les pronos ====================
-    ranking, _ = CompetitionRankingPrediction.objects.get_or_create(
-        player=player,
-        season=season,
-        competition=selected_competition
-    )
+        # ================= Construction des blocks =================
+        # On récupère les équipes de la compétition
+        comp_teams_qs = CompetitionTeam.objects.filter(
+            competition=selected_competition,
+            season=season
+        ).select_related("team")
 
-    bonus_pred, _ = CompetitionBonusPrediction.objects.get_or_create(
-        player=player,
-        competition=selected_competition
-    )
-    bonus["best_try_scorer"] = bonus_pred.best_try_scorer
-    bonus["best_point_scorer"] = bonus_pred.best_point_scorer
+        if comp_teams_qs.filter(pool__isnull=False).exists():
+            # Champions Cup → on fait un block par poule
+            for pool_number in sorted(comp_teams_qs.values_list("pool", flat=True).distinct()):
+                teams_in_pool = comp_teams_qs.filter(pool=pool_number).order_by("team__name")
+                # Récupération des équipes déjà pronostiquées pour ce joueur
+                saved = {trp.position: trp.team.id for trp in ranking.team_rankings.filter(pool=pool_number)}
+                blocks.append({
+                    "key": f"pool_{pool_number}",
+                    "pool": pool_number,
+                    "positions": list(range(1, len(teams_in_pool)+1)),
+                    "teams": [t.team for t in teams_in_pool],
+                    "saved": saved
+                })
+        else:
+            # Autres compétitions → un seul block
+            teams_in_comp = comp_teams_qs.order_by("team__name")
+            saved = {trp.position: trp.team.id for trp in ranking.team_rankings.all()}
+            blocks.append({
+                "key": "all",
+                "pool": None,
+                "positions": list(range(1, len(teams_in_comp)+1)),
+                "teams": [t.team for t in teams_in_comp],
+                "saved": saved
+            })
 
-    # ==================== POST ====================
-    if request.method == "POST":
-        with transaction.atomic():
-            # ----- Bonus -----
+        # ================= POST =================
+        if request.method == "POST":
+            # Sauvegarde des bonus
             bonus_pred.best_try_scorer = request.POST.get("best_try_scorer", "")
             bonus_pred.best_point_scorer = request.POST.get("best_point_scorer", "")
             bonus_pred.save()
 
-            # ----- Classement équipes -----
-            # On parcourt les champs envoyés
-            for key, value in request.POST.items():
-                if key.startswith("team_") and value:
-                    _, block_key, pos = key.split("_")
-                    pos = int(pos)
-                    team_id = int(value)
-                    team_obj = None
-                    # Recherche team dans CompetitionTeam ou directement Team
-                    ct = CompetitionTeam.objects.filter(
-                        competition=selected_competition,
-                        season=season,
-                        team_id=team_id
-                    ).first()
-                    if ct:
-                        team_obj = ct.team
-                    else:
-                        from core.models import Team
-                        team_obj = Team.objects.get(id=team_id)
+            # Sauvegarde des positions
+            with transaction.atomic():
+                for block in blocks:
+                    pool = block.get("pool")
+                    for pos in block["positions"]:
+                        team_id = request.POST.get(f"team_{block['key']}_{pos}")
+                        if not team_id:
+                            continue
+                        team_obj = get_object_or_404(Team, id=team_id)
+                        # Update ou create
+                        TeamRankingPrediction.objects.update_or_create(
+                            ranking=ranking,
+                            team=team_obj,
+                            defaults={"position": pos, "pool": pool}
+                        )
 
-                    trp, _ = TeamRankingPrediction.objects.update_or_create(
-                        ranking=ranking,
-                        team=team_obj,
-                        defaults={"position": pos}
-                    )
+            messages.success(request, "Classement enregistré avec succès !")
+            # Redirige sur la même page pour afficher les valeurs enregistrées
+            return redirect(f"{request.path}?competition={selected_competition.id}")
 
-        return redirect(f"{request.path}?competition={selected_competition.id}")
-
-    # ==================== Construction des blocs ====================
-    comp_teams = CompetitionTeam.objects.filter(
-        competition=selected_competition,
-        season=season
-    ).order_by("pool", "team__name")
-
-    saved_rankings = TeamRankingPrediction.objects.filter(ranking=ranking)
-    saved_dict = {tr.position: tr.team.id for tr in saved_rankings}
-
-    if comp_teams.exists() and any(ct.pool is not None for ct in comp_teams):
-        # ----- Compétition avec poules -----
-        pools = comp_teams.values_list("pool", flat=True).distinct()
-        for pool in pools:
-            teams_in_pool = comp_teams.filter(pool=pool).order_by("team__name")
-            blocks.append({
-                "pool": pool,
-                "positions": range(1, teams_in_pool.count() + 1),
-                "teams": [ct.team for ct in teams_in_pool],
-                "key": f"pool_{pool}",
-                "saved": saved_dict
-            })
-    else:
-        # ----- Compétition sans poules -----
-        # On prend toutes les équipes de la compétition
-        teams_in_comp = selected_competition.teams.all().order_by("name")
-        blocks.append({
-            "pool": None,
-            "positions": range(1, teams_in_comp.count() + 1),
-            "teams": list(teams_in_comp),
-            "key": "general",
-            "saved": saved_dict
-        })
-
-    return render(request, "pronos/classement.html", {
+    context = {
         "competitions": competitions,
         "selected_competition": selected_competition,
+        "season": season,
+        "ranking": ranking,
         "blocks": blocks,
         "bonus": bonus
-    })
+    }
+    return render(request, "pronos/classement.html", context)
