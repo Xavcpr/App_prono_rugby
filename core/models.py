@@ -251,3 +251,13 @@ class CompetitionBonusPrediction(models.Model):
 
     def __str__(self):
         return f"{self.player} – {self.competition}"
+
+class CompetitionTeamPrediction(models.Model):
+    player = models.ForeignKey(Player, on_delete=models.CASCADE)
+    competition = models.ForeignKey(Competition, on_delete=models.CASCADE)
+    team = models.ForeignKey(Team, on_delete=models.CASCADE)
+    position = models.PositiveIntegerField()
+
+    class Meta:
+        unique_together = ("player", "competition", "team")
+        ordering = ["position"]

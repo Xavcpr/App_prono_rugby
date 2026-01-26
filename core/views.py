@@ -9,7 +9,7 @@ from django.forms import modelform_factory, modelformset_factory
 from .forms import CompetitionRankingPredictionForm, TeamRankingPredictionFormSet, TeamRankingFormSet
 from .constants import COMPETITION_RULES
 
-from .models import Match, Prediction, Competition, Round, Player, Team, CompetitionRankingPrediction, TeamRankingPrediction, CompetitionBonusPrediction
+from .models import Match, Prediction, Competition, Round, Player, Team, CompetitionTeamPrediction, CompetitionRankingPrediction, TeamRankingPrediction, CompetitionBonusPrediction
 from .services.scoring import calculate_points
 
 
