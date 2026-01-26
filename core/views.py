@@ -336,7 +336,6 @@ def classement_prediction(request):
                 request,
                 "❌ Une même équipe ne peut pas être utilisée plusieurs fois dans le classement."
             )
-            # On reste sur la page avec les choix actuels
             return render(
                 request,
                 "pronos/classement.html",
@@ -355,31 +354,30 @@ def classement_prediction(request):
             return redirect(request.path + f"?competition={selected_competition.id}")
         return redirect(request.path)
 
-
-
     # -------------------------
-
-    # Construire saved_teams pour pré-sélection dans les dropdowns
-    # saved_teams = {}
-    # for block in blocks:
-    #     for pos in block["positions"]:
-    #         key = f"team_{block['key']}_{pos}"
-    #         if request.method == "POST":
-    #             # Si on est juste après un POST (même doublon), garder les choix saisis
-    #             saved_teams[key] = request.POST.get(key, "")
-    #         else:
-    #             # TODO: remplacer par la valeur enregistrée en base si disponible
-    #             saved_teams[key] = ""  # par défaut vide
-# Préparer les équipes déjà sélectionnées pour que le select reste "selected"
+    # Préparer les équipes déjà sélectionnées pour que le select reste "selected"
+    # -------------------------
     saved_teams = {}
     for block in blocks:
         block['saved'] = {}
         for pos in block['positions']:
             key = f"team_{block['key']}_{pos}"
+            # Si on est après un POST, on récupère l'id de l'équipe, sinon on laisse vide
             team_id = request.POST.get(key) if request.method == "POST" else None
             if team_id:
                 block['saved'][pos] = int(team_id)
-
+            else:
+                # Si on est en GET, on va chercher la sélection déjà enregistrée en base
+                saved_team = None
+                if selected_competition:
+                    saved_team = CompetitionTeamPrediction.objects.filter(
+                        competition=selected_competition,
+                        player=request.user.player,
+                        block_key=block['key'],
+                        position=pos
+                    ).first()
+                if saved_team:
+                    block['saved'][pos] = saved_team.team.id  # On récupère l'équipe enregistrée
 
     return render(
         request,
@@ -389,6 +387,5 @@ def classement_prediction(request):
             "selected_competition": selected_competition,
             "blocks": blocks,
             "bonus": bonus,
-            # "saved_teams": saved_teams,  # <-- nouveau paramètre
         }
     )
