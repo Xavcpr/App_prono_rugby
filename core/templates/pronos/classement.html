@@ -69,11 +69,10 @@
             <select name="team_{{ block.key }}_{{ pos }}" class="form-select">
               <option value="">-- Choisir une équipe --</option>
               {% for team in block.teams %}
-                {% comment %}
-                  On vérifie si la team correspond à celle déjà sauvegardée pour cette position
-                {% endcomment %}
-                {% with saved_id=block.saved|get_item:pos %}
-                  <option value="{{ team.id }}" {% if saved_id and saved_id|stringformat:"s" == team.id|stringformat:"s" %}selected{% endif %}>
+                {% comment %} On vérifie si la team correspond à celle déjà sauvegardée pour cette position {% endcomment %}
+                {% with saved_id=block.saved.pos %}
+                  <option value="{{ team.id }}" 
+                    {% if saved_id and saved_id|stringformat:"s" == team.id|stringformat:"s" %}selected{% endif %}>
                     {{ team.name }}
                   </option>
                 {% endwith %}
@@ -81,7 +80,7 @@
             </select>
           </td>
         </tr>
-        {% endfor %}
+      {% endfor %}
       </tbody>
     </table>
   {% endfor %}
