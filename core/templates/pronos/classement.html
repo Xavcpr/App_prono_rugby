@@ -2,32 +2,13 @@
 
 <h1>Classement par compétition</h1>
 
+<!-- ================= MENU DÉROULANT ================= -->
 <form method="get" class="mb-4">
   <select name="competition" class="form-select" onchange="this.form.submit()">
+    <!-- Intitulé vierge par défaut, toujours sélectionné -->
     <option value="" selected>-- Choisir une compétition --</option>
     {% for competition in competitions %}
-    <option
-      value="{{ competition.id }}"
-      {%
-      comment
-      %}
-      {%
-      if
-      selected_competition
-      and
-      competition.id=""
-      ="selected_competition.id"
-      %}
-      selected
-      {%
-      endif
-      %}
-      {%
-      endcomment
-      %}
-    >
-      {{ competition.name }}
-    </option>
+    <option value="{{ competition.id }}">{{ competition.name }}</option>
     {% endfor %}
   </select>
 </form>
