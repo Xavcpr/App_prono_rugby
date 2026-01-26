@@ -1,6 +1,5 @@
 To do list :
 - En cours Xavier : Onglet pronos/classement
-    - toutes équipes dispo pour poule CC 
     - ça reste sur le classement enregistré (pas que les scoreurs)
 
 
