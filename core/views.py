@@ -301,8 +301,8 @@ def classement_prediction(request):
             })
 
     if request.method == "POST" and selected_competition:
-        bonus.best_try_scorer_id = request.POST.get("best_try_scorer") or None
-        bonus.best_point_scorer_id = request.POST.get("best_point_scorer") or None
+        bonus.best_try_scorer = request.POST.get("best_try_scorer", "").strip()
+        bonus.best_point_scorer = request.POST.get("best_point_scorer", "").strip()
         bonus.save()
 
         messages.success(request, "Classement enregistré ✅")

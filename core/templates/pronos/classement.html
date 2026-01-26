@@ -2,6 +2,7 @@
 
 <h1>Classement par compétition</h1>
 
+<!-- ================= CHOIX COMPÉTITION ================= -->
 <form method="get" class="mb-4">
   <select name="competition" class="form-select" onchange="this.form.submit()">
     <option value="">-- Choisir une compétition --</option>
@@ -41,7 +42,7 @@
     <div class="col-md-6">
       <label class="form-label">Meilleur marqueur d’essais</label>
       <select name="best_try_scorer" class="form-select">
-        <option value="">-- Choisir --</option>
+        <option value="">---</option>
         {% for p in players %}
         <option
           value="{{ p.id }}"
@@ -68,7 +69,7 @@
     <div class="col-md-6">
       <label class="form-label">Meilleur scoreur</label>
       <select name="best_point_scorer" class="form-select">
-        <option value="">-- Choisir --</option>
+        <option value="">---</option>
         {% for p in players %}
         <option
           value="{{ p.id }}"
@@ -94,7 +95,6 @@
   </div>
 
   <!-- ================= CLASSEMENT ================= -->
-
   {% for block in blocks %} {% if block.pool %}
   <h4 class="mt-4">Poule {{ block.pool }}</h4>
   {% endif %}
@@ -112,7 +112,7 @@
         <td><strong>{{ pos }}</strong></td>
         <td>
           <select name="team_{{ block.key }}_{{ pos }}" class="form-select">
-            <option value="">-- Choisir une équipe --</option>
+            <option value="">---</option>
             {% for team in block.teams %}
             <option
               value="{{ team.id }}"
@@ -137,6 +137,7 @@
       {% endfor %}
     </tbody>
   </table>
+
   {% endfor %}
 
   <button type="submit" class="btn btn-primary">
