@@ -1,6 +1,6 @@
 from django.contrib import admin, messages
 from .models import (
-    Season, Team, Player, Competition, Round, Match, ScoringConfig,
+    CompetitionTeam, Season, Team, Player, Competition, Round, Match, ScoringConfig,
     Prediction, DailyBonus, CompetitionBonus, DailyScore, SeasonScore, CompetitionRankingPrediction, TeamRankingPrediction
 )
 from core.services.scoring import calculate_points
@@ -43,33 +43,6 @@ recalc_scores.short_description = "Recalculer tous les points de la compétition
 # ---------------------
 # Round Form
 # ---------------------
-# class RoundForm(forms.ModelForm):
-#     competition = forms.ModelChoiceField(
-#         queryset=Competition.objects.all(),
-#         required=True,
-#         label="Compétition"
-#     )
-
-#     class Meta:
-#         model = Round
-#         fields = ("competition", "number", "date")
-
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-#         if self.instance.pk:
-#             self.fields["competition"].initial = self.instance.season.competition
-
-#     def save(self, commit=True):
-#         round_obj = super().save(commit=False)
-#         competition = self.cleaned_data["competition"]
-#         season, _ = Season.objects.get_or_create(
-#             competition=competition,
-#             year=competition.season
-#         )
-#         round_obj.season = season
-#         if commit:
-#             round_obj.save()
-#         return round_obj
 class RoundForm(forms.ModelForm):
     competition = forms.ModelChoiceField(
         queryset=Competition.objects.all(),
@@ -259,4 +232,10 @@ class TeamRankingPredictionAdmin(admin.ModelAdmin):
     list_display = ("ranking", "team", "position", "pool")
     list_filter = ("ranking__competition", "pool")
     autocomplete_fields = ("team",)
+    
+@admin.register(CompetitionTeam)
+class CompetitionTeamAdmin(admin.ModelAdmin):
+    list_display = ("competition", "season", "team", "pool")
+    list_filter = ("competition", "season", "pool")
+    ordering = ("competition", "season", "pool")
 
