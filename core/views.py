@@ -271,7 +271,8 @@ def classement_prediction(request):
         # ===============================
         # CHAMPIONS CUP → 4 poules de 6
         # ===============================
-        if selected_competition.slug == "champions-cup":
+        # if selected_competition.slug == "champions-cup":
+        if selected_competition.name.lower() == "champions cup":
             for pool in ["A", "B", "C", "D"]:
                 teams = Team.objects.filter(
                     competition=selected_competition,
