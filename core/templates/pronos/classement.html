@@ -1,4 +1,5 @@
-{% extends "base.html" %} {% block content %}
+{% extends "base.html" %} {% load custom_tags %}
+{% block content %}
 
 <h1>Classement par compétition</h1>
 {% comment %}
@@ -74,10 +75,21 @@
       <tr>
         <td><strong>{{ pos }}</strong></td>
         <td>
-          <select name="team_{{ block.key }}_{{ pos }}" class="form-select">
+          {% comment %} <select name="team_{{ block.key }}_{{ pos }}" class="form-select">
             <option value="">-- Choisir une équipe --</option>
             {% for team in block.teams %}
             <option value="{{ team.id }}">{{ team.name }}</option>
+            {% endfor %}
+          </select> {% endcomment %}
+          {% comment %} nouvelle partie {% endcomment %}
+          <select name="team_{{ block.key }}_{{ pos }}" class="form-select">
+            <option value="">-- Choisir une équipe --</option>
+            {% for team in block.teams %}
+            {% with key="team_"|add:block.key|add:"_"|add:pos|stringformat:"s" %}
+            <option value="{{ team.id }}" {% if saved_teams|get_item:key|stringformat:"s" == team.id|stringformat:"s" %}selected{% endif %}>
+              {{ team.name }}
+            </option>
+            {% endwith %}
             {% endfor %}
           </select>
         </td>

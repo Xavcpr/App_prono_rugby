@@ -17,6 +17,8 @@ Créer users ?
     - ajout des chopes 
 
 - * compétition
+    - filtre par joueur ou non
+    - afficher tous les pronos sous forme de tableau + surligner ceux qui sont bons
     - bonus classement
     - bonus vainqueur de la compétition
 

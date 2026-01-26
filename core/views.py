@@ -355,9 +355,37 @@ def classement_prediction(request):
             return redirect(request.path + f"?competition={selected_competition.id}")
         return redirect(request.path)
 
+
+
+    # # -------------------------
+    # # GET = affichage
+    # # -------------------------
+    # return render(
+    #     request,
+    #     "pronos/classement.html",
+    #     {
+    #         "competitions": competitions,
+    #         "selected_competition": selected_competition,
+    #         "blocks": blocks,
+    #         "bonus": bonus,
+    #     }
+    # )
     # -------------------------
-    # GET = affichage
+    # GET / POST = affichage
     # -------------------------
+
+    # Construire saved_teams pour pré-sélection dans les dropdowns
+    saved_teams = {}
+    for block in blocks:
+        for pos in block["positions"]:
+            key = f"team_{block['key']}_{pos}"
+            if request.method == "POST":
+                # Si on est juste après un POST (même doublon), garder les choix saisis
+                saved_teams[key] = request.POST.get(key, "")
+            else:
+                # TODO: remplacer par la valeur enregistrée en base si disponible
+                saved_teams[key] = ""  # par défaut vide
+
     return render(
         request,
         "pronos/classement.html",
@@ -366,5 +394,6 @@ def classement_prediction(request):
             "selected_competition": selected_competition,
             "blocks": blocks,
             "bonus": bonus,
+            "saved_teams": saved_teams,  # <-- nouveau paramètre
         }
     )
