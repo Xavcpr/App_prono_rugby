@@ -270,20 +270,22 @@ def classement_prediction(request):
         # CHAMPIONS CUP → 4 poules de 6
         # ===============================
         if selected_competition.name.lower() == "champions cup":
-            teams = list(Team.objects.filter(competitions=selected_competition).order_by("name"))
+            teams = list(
+                Team.objects.filter(competitions=selected_competition).order_by("name")
+            )
             n_poules = 4
             n_par_poule = 6
+
             for i in range(n_poules):
                 start = i * n_par_poule
                 end = start + n_par_poule
                 blocks.append({
                     "key": f"pool{i+1}",
-                    "pool": i + 1,  # juste pour le titre
+                    "pool": i + 1,
                     "teams": teams[start:end],
                     "positions": range(1, n_par_poule + 1),
-                    "saved": {},
                 })
-        
+
         # ===============================
         # AUTRES COMPÉTITIONS
         # ===============================
@@ -297,16 +299,22 @@ def classement_prediction(request):
                 "pool": None,
                 "teams": teams,
                 "positions": range(1, teams.count() + 1),
-                "saved": {},
             })
 
-    if request.method == "POST" and selected_competition:
+    # ===============================
+    # POST = ENREGISTREMENT
+    # ===============================
+    if request.method == "POST":
+        if not selected_competition:
+            messages.error(request, "Veuillez choisir une compétition.")
+            return redirect(request.path)
+
         bonus.best_try_scorer = request.POST.get("best_try_scorer", "").strip()
         bonus.best_point_scorer = request.POST.get("best_point_scorer", "").strip()
         bonus.save()
 
-        # ================= VERIF DOUBLONS =================
-        selected_teams = []
+        # ===== Vérification des doublons =====
+        selected_teams = set()
         duplicate_found = False
 
         for block in blocks:
@@ -317,55 +325,39 @@ def classement_prediction(request):
                     if team_id in selected_teams:
                         duplicate_found = True
                         break
-                    selected_teams.append(team_id)
+                    selected_teams.add(team_id)
             if duplicate_found:
                 break
-        
+
         if duplicate_found:
             messages.error(
-            request,
-            "❌ Une même équipe ne peut pas être utilisée plusieurs fois dans le classement."
-        )
-        # ⛔ PAS de redirect
-        return render(
-            request,
-            "pronos/classement.html",
-            {
-                "competitions": competitions,
-                "selected_competition": selected_competition,
-                "blocks": blocks,
-                "bonus": bonus,
-            }
-        )
+                request,
+                "❌ Une même équipe ne peut pas être utilisée plusieurs fois dans le classement."
+            )
+            return render(
+                request,
+                "pronos/classement.html",
+                {
+                    "competitions": competitions,
+                    "selected_competition": selected_competition,
+                    "blocks": blocks,
+                    "bonus": bonus,
+                }
+            )
 
-    # ✅ Succès → redirect OK
-    messages.success(request, "Classement enregistré ✅")
-    if selected_competition:
+        messages.success(request, "Classement enregistré ✅")
         return redirect(request.path + f"?competition={selected_competition.id}")
-    return redirect(request.path)
-        
-         
-        # if duplicate_found:
-    #         messages.error(request, "Erreur : une équipe est sélectionnée plusieurs fois !")
-    #     else:
-    #         # Ici tu peux enregistrer normalement les équipes
-    #         for block in blocks:
-    #             for pos in block["positions"]:
-    #                 key = f"team_{block['key']}_{pos}"
-    #                 team_id = request.POST.get(key)
-    #                 # TODO: sauvegarde dans TeamRankingPrediction ou ce que tu veux
-    #         messages.success(request, "Classement enregistré ✅")
 
-    #     return redirect(request.path + f"?competition={selected_competition.id}")
-        
-    # return render(
-    #     request,
-    #     "pronos/classement.html",
-    #     {
-    #         "competitions": competitions,
-    #         "selected_competition": selected_competition,
-    #         "blocks": blocks,
-    #         "bonus": bonus,
-    #     }
-    # )
-
+    # ===============================
+    # GET NORMAL
+    # ===============================
+    return render(
+        request,
+        "pronos/classement.html",
+        {
+            "competitions": competitions,
+            "selected_competition": selected_competition,
+            "blocks": blocks,
+            "bonus": bonus,
+        }
+    )
