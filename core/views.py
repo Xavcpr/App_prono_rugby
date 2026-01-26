@@ -357,34 +357,29 @@ def classement_prediction(request):
 
 
 
-    # # -------------------------
-    # # GET = affichage
-    # # -------------------------
-    # return render(
-    #     request,
-    #     "pronos/classement.html",
-    #     {
-    #         "competitions": competitions,
-    #         "selected_competition": selected_competition,
-    #         "blocks": blocks,
-    #         "bonus": bonus,
-    #     }
-    # )
-    # -------------------------
-    # GET / POST = affichage
     # -------------------------
 
     # Construire saved_teams pour pré-sélection dans les dropdowns
+    # saved_teams = {}
+    # for block in blocks:
+    #     for pos in block["positions"]:
+    #         key = f"team_{block['key']}_{pos}"
+    #         if request.method == "POST":
+    #             # Si on est juste après un POST (même doublon), garder les choix saisis
+    #             saved_teams[key] = request.POST.get(key, "")
+    #         else:
+    #             # TODO: remplacer par la valeur enregistrée en base si disponible
+    #             saved_teams[key] = ""  # par défaut vide
+# Préparer les équipes déjà sélectionnées pour que le select reste "selected"
     saved_teams = {}
     for block in blocks:
-        for pos in block["positions"]:
+        block['saved'] = {}
+        for pos in block['positions']:
             key = f"team_{block['key']}_{pos}"
-            if request.method == "POST":
-                # Si on est juste après un POST (même doublon), garder les choix saisis
-                saved_teams[key] = request.POST.get(key, "")
-            else:
-                # TODO: remplacer par la valeur enregistrée en base si disponible
-                saved_teams[key] = ""  # par défaut vide
+            team_id = request.POST.get(key) if request.method == "POST" else None
+            if team_id:
+                block['saved'][pos] = int(team_id)
+
 
     return render(
         request,
@@ -394,6 +389,6 @@ def classement_prediction(request):
             "selected_competition": selected_competition,
             "blocks": blocks,
             "bonus": bonus,
-            "saved_teams": saved_teams,  # <-- nouveau paramètre
+            # "saved_teams": saved_teams,  # <-- nouveau paramètre
         }
     )
