@@ -340,7 +340,9 @@ def classement_prediction(request):
 
     # ✅ Succès → redirect OK
     messages.success(request, "Classement enregistré ✅")
-    return redirect(request.path + f"?competition={selected_competition.id}")
+    if selected_competition:
+        return redirect(request.path + f"?competition={selected_competition.id}")
+    return redirect(request.path)
         
          
         # if duplicate_found:
