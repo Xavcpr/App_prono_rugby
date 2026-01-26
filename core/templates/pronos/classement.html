@@ -26,12 +26,14 @@
   </select>
 </form>
 
-{% if selected_competition %}
+{% if not selected_competition %}
+<p class="text-muted">Veuillez choisir une compétition.</p>
+{% else %}
 
 <form method="post">
   {% csrf_token %}
 
-  <h2 class="mb-3">{{ selected_competition.name }}</h2>
+  <h2 class="mb-4">{{ selected_competition.name }}</h2>
 
   <!-- ================= BONUS ================= -->
   <h4>Bonus</h4>
@@ -43,7 +45,6 @@
         name="best_try_scorer"
         class="form-control"
         value="{{ bonus.best_try_scorer|default:'' }}"
-        placeholder="Nom du joueur"
       />
     </div>
 
@@ -54,14 +55,14 @@
         name="best_point_scorer"
         class="form-control"
         value="{{ bonus.best_point_scorer|default:'' }}"
-        placeholder="Nom du joueur"
       />
     </div>
   </div>
 
   <!-- ================= CLASSEMENTS ================= -->
-  {% for pool in pools_data %} {% if pool.pool %}
-  <h4 class="mt-4">Poule {{ pool.pool }}</h4>
+
+  {% for block in blocks %} {% if block.pool %}
+  <h4 class="mt-4">Poule {{ block.pool }}</h4>
   {% endif %}
 
   <table class="table table-bordered mb-4">
@@ -72,16 +73,13 @@
       </tr>
     </thead>
     <tbody>
-      {% for pos in pool.positions %}
+      {% for pos in block.positions %}
       <tr>
         <td><strong>{{ pos }}</strong></td>
         <td>
-          <select
-            name="team_{{ pool.pool|default:'global' }}_{{ pos }}"
-            class="form-select"
-          >
-            <option value="">---</option>
-            {% for team in pool.teams %}
+          <select name="team_{{ block.key }}_{{ pos }}" class="form-select">
+            <option value="">-- Choisir une équipe --</option>
+            {% for team in block.teams %}
             <option value="{{ team.id }}">{{ team.name }}</option>
             {% endfor %}
           </select>
@@ -97,8 +95,6 @@
   </button>
 </form>
 
-{% else %}
-<p class="text-muted">Veuillez choisir une compétition.</p>
 {% endif %}
 
 <a href="{% url 'pronos' %}" class="btn btn-secondary mt-4">
