@@ -264,16 +264,15 @@ def classement_prediction(request):
 
     if selected_competition_id:
         selected_competition = get_object_or_404(Competition, id=selected_competition_id)
-        season = selected_competition.seasons.last()  # on prend la dernière saison disponible
+        season = selected_competition.seasons.last()
 
-        # Récupération du pronostic global du joueur pour cette compétition
         ranking, _ = CompetitionRankingPrediction.objects.get_or_create(
             player=player,
             competition=selected_competition,
             season=season
         )
 
-        # Récupération du pronostic des bonus
+        # Bonus
         bonus_pred, _ = CompetitionBonusPrediction.objects.get_or_create(
             player=player,
             competition=selected_competition
@@ -283,63 +282,43 @@ def classement_prediction(request):
             "best_point_scorer": bonus_pred.best_point_scorer
         }
 
-        # ================= Construction des blocks =================
-        # On récupère les équipes de la compétition
+        # Récupération des équipes de la compétition
         comp_teams_qs = CompetitionTeam.objects.filter(
             competition=selected_competition,
             season=season
-        ).select_related("team")
+        ).select_related("team").order_by("team__name")
 
-        if comp_teams_qs.filter(pool__isnull=False).exists():
-            # Champions Cup → on fait un block par poule
-            for pool_number in sorted(comp_teams_qs.values_list("pool", flat=True).distinct()):
-                teams_in_pool = comp_teams_qs.filter(pool=pool_number).order_by("team__name")
-                # Récupération des équipes déjà pronostiquées pour ce joueur
-                saved = {trp.position: trp.team.id for trp in ranking.team_rankings.filter(pool=pool_number)}
-                blocks.append({
-                    "key": f"pool_{pool_number}",
-                    "pool": pool_number,
-                    "positions": list(range(1, len(teams_in_pool)+1)),
-                    "teams": [t.team for t in teams_in_pool],
-                    "saved": saved
-                })
-        else:
-            # Autres compétitions → un seul block
-            teams_in_comp = comp_teams_qs.order_by("team__name")
-            saved = {trp.position: trp.team.id for trp in ranking.team_rankings.all()}
-            blocks.append({
-                "key": "all",
-                "pool": None,
-                "positions": list(range(1, len(teams_in_comp)+1)),
-                "teams": [t.team for t in teams_in_comp],
-                "saved": saved
-            })
+        # Block unique pour toutes les compétitions
+        saved = {trp.position: trp.team.id for trp in ranking.team_rankings.all()}
+        blocks.append({
+            "key": "all",
+            "pool": None,
+            "positions": list(range(1, comp_teams_qs.count()+1)),
+            "teams": [t.team for t in comp_teams_qs],
+            "saved": saved
+        })
 
-        # ================= POST =================
+        # POST → sauvegarde
         if request.method == "POST":
-            # Sauvegarde des bonus
             bonus_pred.best_try_scorer = request.POST.get("best_try_scorer", "")
             bonus_pred.best_point_scorer = request.POST.get("best_point_scorer", "")
             bonus_pred.save()
 
-            # Sauvegarde des positions
             with transaction.atomic():
                 for block in blocks:
-                    pool = block.get("pool")
                     for pos in block["positions"]:
                         team_id = request.POST.get(f"team_{block['key']}_{pos}")
                         if not team_id:
                             continue
                         team_obj = get_object_or_404(Team, id=team_id)
-                        # Update ou create
                         TeamRankingPrediction.objects.update_or_create(
                             ranking=ranking,
                             team=team_obj,
-                            defaults={"position": pos, "pool": pool}
+                            defaults={"position": pos, "pool": None}
                         )
 
-            messages.success(request, "Classement enregistré avec succès !")
-            # Redirige sur la même page pour afficher les valeurs enregistrées
+            messages.success(request, "Classement enregistré !")
+            # Redirige vers la même page pour garder les sélections
             return redirect(f"{request.path}?competition={selected_competition.id}")
 
     context = {
