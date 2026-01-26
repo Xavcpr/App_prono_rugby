@@ -262,3 +262,33 @@ class CompetitionTeamPrediction(models.Model):
     class Meta:
         unique_together = ("player", "competition", "team")
         ordering = ["position"]
+        
+class CompetitionTeam(models.Model):
+    competition = models.ForeignKey(
+        Competition,
+        on_delete=models.CASCADE,
+        related_name="competition_teams"
+    )
+    season = models.ForeignKey(
+        Season,
+        on_delete=models.CASCADE,
+        related_name="competition_teams"
+    )
+    team = models.ForeignKey(
+        Team,
+        on_delete=models.CASCADE
+    )
+
+    pool = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        help_text="Poule (Champions Cup)"
+    )
+
+    class Meta:
+        unique_together = ("competition", "season", "team")
+        ordering = ["pool", "team__name"]
+
+    def __str__(self):
+        return f"{self.team} – {self.competition} ({self.season}) poule {self.pool}"
+
