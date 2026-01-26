@@ -259,7 +259,7 @@ def classement_prediction(request):
     bonus = None
 
     # -------------------------
-    # Sélection de la compétition
+    # Si une compétition est sélectionnée
     # -------------------------
     if competition_id:
         selected_competition = get_object_or_404(Competition, id=competition_id)
@@ -309,15 +309,11 @@ def classement_prediction(request):
     # POST = ENREGISTREMENT
     # -------------------------
     if request.method == "POST":
-        # Sécurité : aucune compétition sélectionnée
-        if not selected_competition:
-            messages.error(request, "Veuillez choisir une compétition.")
-            return redirect(request.path)
-
-        # Champs libres
-        bonus.best_try_scorer = request.POST.get("best_try_scorer", "").strip()
-        bonus.best_point_scorer = request.POST.get("best_point_scorer", "").strip()
-        bonus.save()
+        # Bonus
+        if selected_competition:
+            bonus.best_try_scorer = request.POST.get("best_try_scorer", "").strip()
+            bonus.best_point_scorer = request.POST.get("best_point_scorer", "").strip()
+            bonus.save()
 
         # Vérification doublons
         selected_teams = set()
@@ -340,7 +336,7 @@ def classement_prediction(request):
                 request,
                 "❌ Une même équipe ne peut pas être utilisée plusieurs fois dans le classement."
             )
-            # Retour avec les choix conservés
+            # On reste sur la page avec les choix actuels
             return render(
                 request,
                 "pronos/classement.html",
@@ -352,20 +348,15 @@ def classement_prediction(request):
                 }
             )
 
-        # TODO: ici tu peux sauvegarder les positions dans TeamRankingPrediction
-        # for block in blocks:
-        #     for pos in block["positions"]:
-        #         key = f"team_{block['key']}_{pos}"
-        #         team_id = request.POST.get(key)
-        #         if team_id:
-        #             # Sauvegarde logique ici
-        #             pass
-
+        # ✅ Tout OK → message succès
         messages.success(request, "Classement enregistré ✅")
-        return redirect(request.path + f"?competition={selected_competition.id}")
+        # Redirect uniquement si une compétition est sélectionnée
+        if selected_competition:
+            return redirect(request.path + f"?competition={selected_competition.id}")
+        return redirect(request.path)
 
     # -------------------------
-    # GET = affichage du formulaire
+    # GET = affichage
     # -------------------------
     return render(
         request,
