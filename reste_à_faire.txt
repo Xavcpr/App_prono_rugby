@@ -1,8 +1,12 @@
 To do list :
 - En cours Xavier : Onglet pronos/classement
-    - top scorer/kicker
-    - tableaux vierges selon la compétition
+    - tableaux vierges x4 pour CC + titre intermédiaire poule A, poue B...
+    - ça reste sur le classement enregistré (pas que les scoreurs)
     - pas de doublon possible
+    - filtre en haut doit rester
+
+Pandas ?
+Créer users ?
 
 *Scoring
 - * match
@@ -53,3 +57,7 @@ To do list :
     - reprise de données
 
 - * charte
+
+- * guide admin
+
+- * affecter les équipes de CC à des poules et non à la CC en elle-même
