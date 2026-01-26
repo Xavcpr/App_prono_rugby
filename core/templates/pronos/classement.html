@@ -1,25 +1,28 @@
-{% extends "base.html" %} {% load custom_tags %}
-{% block content %}
+{% extends "base.html" %} {% block content %}
 
 <h1>Classement par compétition</h1>
-{% comment %}
-<!-- ================= GESTION DE L'ALERTE DOUBLON ================= -->
-{% if messages %} {% for message in messages %}
-<div
-  class="alert {% if message.tags == 'error' %}alert-danger fw-bold{% endif %} {% if message.tags == 'success' %}alert-success{% endif %} mb-4"
-  role="alert"
->
-  {{ message }}
-</div>
-{% endfor %} {% endif %} {% endcomment %}
 
 <!-- ================= MENU DÉROULANT ================= -->
 <form method="get" class="mb-4">
   <select name="competition" class="form-select" onchange="this.form.submit()">
-    <!-- Intitulé vierge par défaut, toujours sélectionné -->
-    <option value="" selected>-- Choisir une compétition --</option>
+    <option value="" {% if not selected_competition %}selected{% endif %}>
+      -- Choisir une compétition --
+    </option>
     {% for competition in competitions %}
-    <option value="{{ competition.id }}">{{ competition.name }}</option>
+    <option
+      value="{{ competition.id }}"
+      {%
+      if
+      selected_competition
+      and
+      competition.id=""
+      ="selected_competition.id"
+      %}selected{%
+      endif
+      %}
+    >
+      {{ competition.name }}
+    </option>
     {% endfor %}
   </select>
 </form>
@@ -58,7 +61,6 @@
   </div>
 
   <!-- ================= CLASSEMENTS ================= -->
-
   {% for block in blocks %} {% if block.pool %}
   <h4 class="mt-4">Poule {{ block.pool }}</h4>
   {% endif %}
@@ -75,22 +77,14 @@
       <tr>
         <td><strong>{{ pos }}</strong></td>
         <td>
-          {% comment %} <select name="team_{{ block.key }}_{{ pos }}" class="form-select">
-            <option value="">-- Choisir une équipe --</option>
-            {% for team in block.teams %}
-            <option value="{{ team.id }}">{{ team.name }}</option>
-            {% endfor %}
-          </select> {% endcomment %}
-          {% comment %} nouvelle partie {% endcomment %}
           <select name="team_{{ block.key }}_{{ pos }}" class="form-select">
             <option value="">-- Choisir une équipe --</option>
-            {% for team in block.teams %}
-            {% with key="team_"|add:block.key|add:"_"|add:pos|stringformat:"s" %}
-            <option value="{{ team.id }}" {% if saved_teams|get_item:key|stringformat:"s" == team.id|stringformat:"s" %}selected{% endif %}>
-              {{ team.name }}
-            </option>
-            {% endwith %}
-            {% endfor %}
+            {% for team in block.teams %} {% if block.saved and block.saved.pos
+            == team.id %}
+            <option value="{{ team.id }}" selected>{{ team.name }}</option>
+            {% else %}
+            <option value="{{ team.id }}">{{ team.name }}</option>
+            {% endif %} {% endfor %}
           </select>
         </td>
       </tr>
