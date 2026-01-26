@@ -305,9 +305,38 @@ def classement_prediction(request):
         bonus.best_point_scorer = request.POST.get("best_point_scorer", "").strip()
         bonus.save()
 
-        messages.success(request, "Classement enregistré ✅")
-        return redirect(request.path + f"?competition={selected_competition.id}")
+        # messages.success(request, "Classement enregistré ✅")
+        # return redirect(request.path + f"?competition={selected_competition.id}")
 
+        # ================= VERIF DOUBLONS =================
+        selected_teams = []
+        duplicate_found = False
+
+        for block in blocks:
+            for pos in block["positions"]:
+                key = f"team_{block['key']}_{pos}"
+                team_id = request.POST.get(key)
+                if team_id:
+                    if team_id in selected_teams:
+                        duplicate_found = True
+                        break
+                    selected_teams.append(team_id)
+            if duplicate_found:
+                break
+
+        if duplicate_found:
+            messages.error(request, "Erreur : une équipe est sélectionnée plusieurs fois !")
+        else:
+            # Ici tu peux enregistrer normalement les équipes
+            for block in blocks:
+                for pos in block["positions"]:
+                    key = f"team_{block['key']}_{pos}"
+                    team_id = request.POST.get(key)
+                    # TODO: sauvegarde dans TeamRankingPrediction ou ce que tu veux
+            messages.success(request, "Classement enregistré ✅")
+
+        return redirect(request.path + f"?competition={selected_competition.id}")
+        
     return render(
         request,
         "pronos/classement.html",

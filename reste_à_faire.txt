@@ -1,9 +1,9 @@
 To do list :
 - En cours Xavier : Onglet pronos/classement
-    - tableaux vierges x4 pour CC + titre intermédiaire poule A, poue B...
+    - toutes équipes dispo pour poule CC 
     - ça reste sur le classement enregistré (pas que les scoreurs)
     - pas de doublon possible
-    - filtre en haut doit rester
+
 
 Pandas ?
 Créer users ?
@@ -21,11 +21,6 @@ Créer users ?
     - bonus classement
     - bonus vainqueur de la compétition
 
-- * système d'alerte_mail
-    - créer adresse mail pour alerte
-    - créer alerte mail vers users à H-6h puis H-1h + copie admin
-    - rédiger texte
-
 - * vue commune
     - en haut : filtre compétition + journée
     - puis classement avec rang / joueur / nombre de points
@@ -37,6 +32,12 @@ Créer users ?
 
 -* vue total : filtre toutes compétitions + filtre par compétition
     - faire apparatire : la variation par rapport à la dernière journée ?
+
+---- FIN DE LA V1 ----
+- * système d'alerte_mail
+    - créer adresse mail pour alerte
+    - créer alerte mail vers users à H-6h puis H-1h + copie admin
+    - rédiger texte
 
 - * vue joueur
     - "tu es au total Xe"
@@ -51,12 +52,14 @@ Créer users ?
     - filtre par compétition
     - filtre par statistique TP/DTP...
 
-- * vue score 
+- * vue score top14
     - filtre : all/time, par saison
     - stats : le plus Dom / ext / au total, graphique
     - reprise de données
 
 - * charte
+
+- * règlement
 
 - * guide admin
 
