@@ -6,12 +6,9 @@
 <!-- ================= MENU DÉROULANT ================= -->
 <form method="get" class="mb-4">
   <select name="competition" class="form-select" onchange="this.form.submit()">
-    <option value="" {% if not selected_competition %}selected{% endif %}>
-      -- Choisir une compétition --
-    </option>
+    <option value="" {% if not selected_competition %}selected{% endif %}>-- Choisir une compétition --</option>
     {% for competition in competitions %}
-      <option value="{{ competition.id }}"
-        {% if selected_competition and competition.id == selected_competition.id %}selected{% endif %}>
+      <option value="{{ competition.id }}" {% if selected_competition and competition.id == selected_competition.id %}selected{% endif %}>
         {{ competition.name }}
       </option>
     {% endfor %}
@@ -19,7 +16,7 @@
 </form>
 
 {% if not selected_competition %}
-  <p class="text-muted">Veuillez choisir une compétition.</p>
+<p class="text-muted">Veuillez choisir une compétition.</p>
 {% else %}
 
 <form method="post">
@@ -32,18 +29,31 @@
   <div class="row mb-4">
     <div class="col-md-6">
       <label class="form-label">Meilleur marqueur d’essais</label>
-      <input type="text" name="best_try_scorer" class="form-control"
-             value="{{ bonus.best_try_scorer|default:'' }}" />
+      <input
+        type="text"
+        name="best_try_scorer"
+        class="form-control"
+        value="{{ bonus.best_try_scorer|default:'' }}"
+      />
     </div>
+
     <div class="col-md-6">
       <label class="form-label">Meilleur scoreur</label>
-      <input type="text" name="best_point_scorer" class="form-control"
-             value="{{ bonus.best_point_scorer|default:'' }}" />
+      <input
+        type="text"
+        name="best_point_scorer"
+        class="form-control"
+        value="{{ bonus.best_point_scorer|default:'' }}"
+      />
     </div>
   </div>
 
   <!-- ================= CLASSEMENTS ================= -->
   {% for block in blocks %}
+    {% if block.pool %}
+      <h4 class="mt-4">Poule {{ block.pool }}</h4>
+    {% endif %}
+
     <table class="table table-bordered mb-4">
       <thead>
         <tr>
@@ -53,33 +63,37 @@
       </thead>
       <tbody>
         {% for pos in block.positions %}
-          <tr>
-            <td><strong>{{ pos }}</strong></td>
-            <td>
-              <select name="team_{{ block.key }}_{{ pos }}" class="form-select">
-                <option value="">-- Choisir une équipe --</option>
-                {% for team in block.teams %}
-                  <option value="{{ team.id }}"
-                    {% if block.saved.pos and block.saved.pos|stringformat:"s" == team.id|stringformat:"s" %}
-                      selected
-                    {% endif %}
-                  >
+        <tr>
+          <td><strong>{{ pos }}</strong></td>
+          <td>
+            <select name="team_{{ block.key }}_{{ pos }}" class="form-select">
+              <option value="">-- Choisir une équipe --</option>
+              {% for team in block.teams %}
+                {% comment %} On vérifie si la team correspond à celle déjà sauvegardée pour cette position {% endcomment %}
+                {% with saved_id=block.saved.pos %}
+                  <option value="{{ team.id }}" 
+                    {% if saved_id and saved_id|stringformat:"s" == team.id|stringformat:"s" %}selected{% endif %}>
                     {{ team.name }}
                   </option>
-                {% endfor %}
-              </select>
-            </td>
-          </tr>
-        {% endfor %}
+                {% endwith %}
+              {% endfor %}
+            </select>
+          </td>
+        </tr>
+      {% endfor %}
       </tbody>
     </table>
   {% endfor %}
 
-  <button type="submit" class="btn btn-primary">Enregistrer le classement</button>
+  <button type="submit" class="btn btn-primary">
+    Enregistrer le classement
+  </button>
 </form>
 
 {% endif %}
 
-<a href="{% url 'pronos' %}" class="btn btn-secondary mt-4">← Retour aux pronos</a>
+<a href="{% url 'pronos' %}" class="btn btn-secondary mt-4">
+  ← Retour aux pronos
+</a>
 
 {% endblock %}
