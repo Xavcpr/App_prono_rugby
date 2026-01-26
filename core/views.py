@@ -249,7 +249,6 @@ def _ensure_lines(qs, count, ranking, pool=None):
             for i in range(existing, count)
         ])
 
-
 @login_required
 def classement_prediction(request):
     competitions = Competition.objects.all()
@@ -262,7 +261,6 @@ def classement_prediction(request):
     if competition_id:
         selected_competition = get_object_or_404(Competition, id=competition_id)
 
-        # BONUS
         bonus, _ = CompetitionBonusPrediction.objects.get_or_create(
             player=request.user.player,
             competition=selected_competition
@@ -271,11 +269,10 @@ def classement_prediction(request):
         # ===============================
         # CHAMPIONS CUP → 4 poules de 6
         # ===============================
-        # if selected_competition.slug == "champions-cup":
         if selected_competition.name.lower() == "champions cup":
             for pool in ["A", "B", "C", "D"]:
                 teams = Team.objects.filter(
-                    competition=selected_competition,
+                    competitions=selected_competition,
                     pool=pool
                 ).order_by("name")
 
@@ -284,15 +281,15 @@ def classement_prediction(request):
                     "pool": pool,
                     "teams": teams,
                     "positions": range(1, 7),
-                    "saved": {},  # prêt pour plus tard
+                    "saved": {},
                 })
 
         # ===============================
-        # AUTRES COMPÉTITIONS (Top14, 6 Nations…)
+        # AUTRES COMPÉTITIONS
         # ===============================
         else:
             teams = Team.objects.filter(
-                competition=selected_competition
+                competitions=selected_competition
             ).order_by("name")
 
             blocks.append({
@@ -303,19 +300,13 @@ def classement_prediction(request):
                 "saved": {},
             })
 
-    # ===============================
-    # SAUVEGARDE POST
-    # ===============================
     if request.method == "POST" and selected_competition:
         bonus.best_try_scorer_id = request.POST.get("best_try_scorer") or None
         bonus.best_point_scorer_id = request.POST.get("best_point_scorer") or None
         bonus.save()
 
         messages.success(request, "Classement enregistré ✅")
-
-        return redirect(
-            request.path + f"?competition={selected_competition.id}"
-        )
+        return redirect(request.path + f"?competition={selected_competition.id}")
 
     return render(
         request,
@@ -328,3 +319,84 @@ def classement_prediction(request):
             "players": Player.objects.all(),
         }
     )
+
+
+
+# @login_required
+# def classement_prediction(request):
+#     competitions = Competition.objects.all()
+#     competition_id = request.GET.get("competition")
+
+#     selected_competition = None
+#     blocks = []
+#     bonus = None
+
+#     if competition_id:
+#         selected_competition = get_object_or_404(Competition, id=competition_id)
+
+#         # BONUS
+#         bonus, _ = CompetitionBonusPrediction.objects.get_or_create(
+#             player=request.user.player,
+#             competition=selected_competition
+#         )
+
+#         # ===============================
+#         # CHAMPIONS CUP → 4 poules de 6
+#         # ===============================
+#         # if selected_competition.slug == "champions-cup":
+#         if selected_competition.name.lower() == "champions cup":
+#             for pool in ["A", "B", "C", "D"]:
+#                 teams = Team.objects.filter(
+#                     competition=selected_competition,
+#                     pool=pool
+#                 ).order_by("name")
+
+#                 blocks.append({
+#                     "key": pool,
+#                     "pool": pool,
+#                     "teams": teams,
+#                     "positions": range(1, 7),
+#                     "saved": {},  # prêt pour plus tard
+#                 })
+
+#         # ===============================
+#         # AUTRES COMPÉTITIONS (Top14, 6 Nations…)
+#         # ===============================
+#         else:
+#             teams = Team.objects.filter(
+#                 competition=selected_competition
+#             ).order_by("name")
+
+#             blocks.append({
+#                 "key": "all",
+#                 "pool": None,
+#                 "teams": teams,
+#                 "positions": range(1, teams.count() + 1),
+#                 "saved": {},
+#             })
+
+#     # ===============================
+#     # SAUVEGARDE POST
+#     # ===============================
+#     if request.method == "POST" and selected_competition:
+#         bonus.best_try_scorer_id = request.POST.get("best_try_scorer") or None
+#         bonus.best_point_scorer_id = request.POST.get("best_point_scorer") or None
+#         bonus.save()
+
+#         messages.success(request, "Classement enregistré ✅")
+
+#         return redirect(
+#             request.path + f"?competition={selected_competition.id}"
+#         )
+
+#     return render(
+#         request,
+#         "pronos/classement.html",
+#         {
+#             "competitions": competitions,
+#             "selected_competition": selected_competition,
+#             "blocks": blocks,
+#             "bonus": bonus,
+#             "players": Player.objects.all(),
+#         }
+#     )
