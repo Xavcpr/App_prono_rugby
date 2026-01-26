@@ -316,7 +316,7 @@ def classement_prediction(request):
             "selected_competition": selected_competition,
             "blocks": blocks,
             "bonus": bonus,
-            "players": Player.objects.all(),
+            # "players": Player.objects.all(),
         }
     )
 
