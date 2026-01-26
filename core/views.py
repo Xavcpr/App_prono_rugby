@@ -258,6 +258,29 @@ def classement_prediction(request):
     blocks = []
     bonus = None
 
+    # ===============================
+    # POST — ENREGISTREMENT
+    # ===============================
+    if request.method == "POST":
+        if not competition_id:
+            messages.error(request, "Veuillez choisir une compétition.")
+            return redirect(request.path)
+
+        selected_competition = get_object_or_404(Competition, id=competition_id)
+
+        bonus, _ = CompetitionBonusPrediction.objects.get_or_create(
+            player=request.user.player,
+            competition=selected_competition
+        )
+
+        # -------- Bonus --------
+        bonus.best_try_scorer = request.POST.get("best_try_scorer", "").strip()
+        bonus.best_point_scorer = request.POST.get("best_point_scorer", "").strip()
+        bonus.save()
+
+    # ===============================
+    # GET (ou POST après erreur)
+    # ===============================
     if competition_id:
         selected_competition = get_object_or_404(Competition, id=competition_id)
 
@@ -273,6 +296,7 @@ def classement_prediction(request):
             teams = list(
                 Team.objects.filter(competitions=selected_competition).order_by("name")
             )
+
             n_poules = 4
             n_par_poule = 6
 
@@ -302,59 +326,47 @@ def classement_prediction(request):
             })
 
     # ===============================
-    # POST = ENREGISTREMENT
+    # VALIDATION DES DOUBLONS (POST)
     # ===============================
-        if request.method == "POST":
-            if not selected_competition:
-                messages.error(request, "Veuillez choisir une compétition.")
-                return redirect(request.path)
+    if request.method == "POST":
+        selected_teams = set()
 
-            bonus.best_try_scorer = request.POST.get("best_try_scorer", "").strip()
-            bonus.best_point_scorer = request.POST.get("best_point_scorer", "").strip()
-            bonus.save()
+        for block in blocks:
+            for pos in block["positions"]:
+                key = f"team_{block['key']}_{pos}"
+                team_id = request.POST.get(key)
 
-            selected_teams = set()
-            duplicate_found = False
+                if team_id:
+                    if team_id in selected_teams:
+                        messages.error(
+                            request,
+                            "❌ Une même équipe ne peut pas être utilisée plusieurs fois dans le classement."
+                        )
+                        return render(
+                            request,
+                            "pronos/classement.html",
+                            {
+                                "competitions": competitions,
+                                "selected_competition": selected_competition,
+                                "blocks": blocks,
+                                "bonus": bonus,
+                            }
+                        )
+                    selected_teams.add(team_id)
 
-            for block in blocks:
-                for pos in block["positions"]:
-                    key = f"team_{block['key']}_{pos}"
-                    team_id = request.POST.get(key)
-                    if team_id:
-                        if team_id in selected_teams:
-                            duplicate_found = True
-                            break
-                        selected_teams.add(team_id)
-                if duplicate_found:
-                    break
+        messages.success(request, "Classement enregistré ✅")
+        return redirect(request.path + f"?competition={selected_competition.id}")
 
-            if duplicate_found:
-                messages.error(
-                    request,
-                    "❌ Une même équipe ne peut pas être utilisée plusieurs fois dans le classement."
-                )
-                return render(
-                    request,
-                    "pronos/classement.html",
-                    {
-                        "competitions": competitions,
-                        "selected_competition": selected_competition,
-                        "blocks": blocks,
-                        "bonus": bonus,
-                    }
-                )
-
-            messages.success(request, "Classement enregistré ✅")
-            return redirect(request.path + f"?competition={selected_competition.id}")
-
-        # 🚨 GET UNIQUEMENT — AUCUN redirect ici
-        return render(
-            request,
-            "pronos/classement.html",
-            {
-                "competitions": competitions,
-                "selected_competition": selected_competition,
-                "blocks": blocks,
-                "bonus": bonus,
-            }
-        )
+    # ===============================
+    # RENDER FINAL
+    # ===============================
+    return render(
+        request,
+        "pronos/classement.html",
+        {
+            "competitions": competitions,
+            "selected_competition": selected_competition,
+            "blocks": blocks,
+            "bonus": bonus,
+        }
+    )
