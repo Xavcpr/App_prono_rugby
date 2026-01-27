@@ -404,21 +404,6 @@ def classement_prediction(request):
                     "teams": [ct.team for ct in competition_teams],
                     "positions": range(1, 7),
                     })
-            # teams = list(
-            #     Team.objects.filter(competitions=selected_competition).order_by("name")
-            # )
-            # n_poules = 4
-            # n_par_poule = 6
-
-            # for i in range(n_poules):
-            #     start = i * n_par_poule
-            #     end = start + n_par_poule
-            #     blocks.append({
-            #         "key": f"pool{i+1}",
-            #         "pool": i + 1,  # juste pour le titre
-            #         "teams": teams[start:end],
-            #         "positions": range(1, n_par_poule + 1),
-            #     })
 
         # ===============================
         # AUTRES COMPÉTITIONS
@@ -443,6 +428,7 @@ def classement_prediction(request):
         if selected_competition:
             bonus.best_try_scorer = request.POST.get("best_try_scorer", "").strip()
             bonus.best_point_scorer = request.POST.get("best_point_scorer", "").strip()
+            bonus.winner = request.POST.get("winner", "").strip()
             bonus.save()
 
         # Vérification doublons
