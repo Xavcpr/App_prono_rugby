@@ -70,11 +70,12 @@
       </select>
     </div>
 
+    {% with first_block=blocks.0 %}
     <div class="col-md-6">
       <label class="form-label">Vainqueur compétition</label>
       <select name="winner" class="form-select">
         <option value="">-- Choisir une équipe --</option>
-        {% for team in teams %}
+        {% for team in first_block.teams %}
           <option value="{{ team.id }}"
             {% if bonus.winner and bonus.winner.id == team.id %}selected{% endif %}>
             {{ team.name }}
@@ -82,6 +83,8 @@
         {% endfor %}
       </select>
     </div>
+    {% endwith %}
+
 
 
   </div>
