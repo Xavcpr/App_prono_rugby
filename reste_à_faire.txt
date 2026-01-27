@@ -2,8 +2,7 @@ To do list :
 - En cours Xavier : Onglet pronos/classement
     - enregistrement des pronos à partir ordi
     - enregistrement des BO à partir ordi ET tel 
-    - menu déroulant winner
-
+    - winners CC qui ne marche pas 
 
 Créer users ?
 
@@ -17,10 +16,10 @@ Créer users ?
     - ajout des chopes 
 
 - * compétition
-    - filtre par joueur ou non
-    - afficher tous les pronos sous forme de tableau + surligner ceux qui sont bons
+       - filtre par joueur ou non
+        - afficher tous les pronos sous forme de tableau + surligner ceux qui sont bons
     - bonus classement
-    - bonus vainqueur de la compétition
+    - bonus vainqueur de la compétition + meilleur marqueur / kicker
 
 - * vue commune
     - en haut : filtre compétition + journée
@@ -53,7 +52,7 @@ Créer users ?
     - filtre par compétition
     - filtre par statistique TP/DTP...
 
-- * vue score top14
+- * vue historique score top14
     - filtre : all/time, par saison
     - stats : le plus Dom / ext / au total, graphique
     - reprise de données
@@ -63,5 +62,3 @@ Créer users ?
 - * règlement
 
 - * guide admin
-
-- * affecter les équipes de CC à des poules et non à la CC en elle-même
