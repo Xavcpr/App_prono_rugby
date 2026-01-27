@@ -20,9 +20,7 @@
     <select name="competition" class="form-select" onchange="this.form.submit()">
       <option value="">Toutes</option>
       {% for comp in competitions %}
-        <option value="{{ comp.id }}" {% if selected_competition == comp.id|stringformat:"s" %}selected{% endif %}>
-          {{ comp.name }}
-        </option>
+        <option value="{{ comp.id }}" {% if selected_competition == comp.id|stringformat:"s" %}selected{% endif %}>{{ comp.name }}</option>
       {% endfor %}
     </select>
   </div>
@@ -32,9 +30,7 @@
     <select name="round" class="form-select" onchange="this.form.submit()">
       <option value="">Toutes</option>
       {% for r in rounds %}
-        <option value="{{ r.id }}" {% if selected_round == r.id|stringformat:"s" %}selected{% endif %}>
-          {{ r }}
-        </option>
+        <option value="{{ r.id }}" {% if selected_round == r.id|stringformat:"s" %}selected{% endif %}>{{ r }}</option>
       {% endfor %}
     </select>
   </div>
@@ -67,23 +63,21 @@
         {% else %}
           <td class="text-center">
             <input type="checkbox" name="bonus_home_{{ match.id }}"
-                   {% if match.user_prediction and match.user_prediction.bonus_home_pred %}checked{% endif %}
-                   class="desktop-input">
+                   {% if match.user_prediction and match.user_prediction.bonus_home_pred %}checked{% endif %}>
           </td>
 
           <td class="d-flex gap-1">
             <input type="number" name="home_score_{{ match.id }}"
                    value="{{ match.user_prediction.home_score_pred|default:'' }}"
-                   class="form-control form-control-sm desktop-input" style="width:60px">
+                   class="form-control form-control-sm" style="width:60px">
             <input type="number" name="away_score_{{ match.id }}"
                    value="{{ match.user_prediction.away_score_pred|default:'' }}"
-                   class="form-control form-control-sm desktop-input" style="width:60px">
+                   class="form-control form-control-sm" style="width:60px">
           </td>
 
           <td class="text-center">
             <input type="checkbox" name="bonus_away_{{ match.id }}"
-                   {% if match.user_prediction and match.user_prediction.bonus_away_pred %}checked{% endif %}
-                   class="desktop-input">
+                   {% if match.user_prediction and match.user_prediction.bonus_away_pred %}checked{% endif %}>
           </td>
         {% endif %}
 
@@ -109,27 +103,27 @@
           <div class="col-6">
             <input type="number" name="home_score_{{ match.id }}"
                    value="{{ match.user_prediction.home_score_pred|default:'' }}"
-                   class="form-control form-control-sm mobile-input"
+                   class="form-control form-control-sm"
                    placeholder="Dom">
           </div>
           <div class="col-6">
             <input type="number" name="away_score_{{ match.id }}"
                    value="{{ match.user_prediction.away_score_pred|default:'' }}"
-                   class="form-control form-control-sm mobile-input"
+                   class="form-control form-control-sm"
                    placeholder="Ext">
           </div>
         </div>
 
         <div class="form-check mt-2">
           <input type="checkbox" name="bonus_home_{{ match.id }}"
-                 class="form-check-input mobile-input"
+                 class="form-check-input"
                  {% if match.user_prediction and match.user_prediction.bonus_home_pred %}checked{% endif %}>
           <label class="form-check-label">BO domicile</label>
         </div>
 
         <div class="form-check">
           <input type="checkbox" name="bonus_away_{{ match.id }}"
-                 class="form-check-input mobile-input"
+                 class="form-check-input"
                  {% if match.user_prediction and match.user_prediction.bonus_away_pred %}checked{% endif %}>
           <label class="form-check-label">BO extérieur</label>
         </div>
