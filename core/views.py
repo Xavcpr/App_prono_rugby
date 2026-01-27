@@ -1,3 +1,4 @@
+from urllib import request
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout as auth_logout
@@ -72,8 +73,10 @@ def pronos_view(request):
                 home_score = 0
                 away_score = 0
 
-            bonus_home = request.POST.get(f"bonus_home_{mid}") == "on"
-            bonus_away = request.POST.get(f"bonus_away_{mid}") == "on"
+            # bonus_home = request.POST.get(f"bonus_home_{mid}") == "on"
+            # bonus_away = request.POST.get(f"bonus_away_{mid}") == "on"
+            bonus_home = f"bonus_home_{mid}" in request.POST
+            bonus_away = f"bonus_away_{mid}" in request.POST
 
             prediction, created = Prediction.objects.get_or_create(
                 match=match,
