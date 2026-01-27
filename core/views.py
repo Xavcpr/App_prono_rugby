@@ -44,10 +44,12 @@ def pronos_view(request):
         "home_team",
         "away_team",
     )
+
     if competition_id:
         matches = matches.filter(round__season__competition_id=competition_id)
     if round_id:
         matches = matches.filter(round_id=round_id)
+
     matches = matches.order_by(
         "round__season__competition__name",
         "round__number",
@@ -55,17 +57,19 @@ def pronos_view(request):
     )
 
     # ------------------
-    # POST = sauvegarde
+    # POST = SAUVEGARDE
     # ------------------
     if request.method == "POST":
         print("POST DATA =", dict(request.POST))
-        # match_ids = request.POST.getlist("match_ids")
-        match_ids = set(request.POST.getlist("match_ids"))
-        for mid in match_ids:
-            match = get_object_or_404(Match, id=mid)
+
+        for match in matches:
+            mid = match.id
+
+            # Match verrouillé → on ignore
             if match.kickoff_at <= now:
                 continue
 
+            # Scores
             try:
                 home_score = int(request.POST.get(f"home_score_{mid}", 0))
                 away_score = int(request.POST.get(f"away_score_{mid}", 0))
@@ -73,27 +77,19 @@ def pronos_view(request):
                 home_score = 0
                 away_score = 0
 
-            # bonus_home = request.POST.get(f"bonus_home_{mid}") == "on"
-            # bonus_away = request.POST.get(f"bonus_away_{mid}") == "on"
+            # ✅ CHECKBOX : clé présente = True / absente = False
             bonus_home = f"bonus_home_{mid}" in request.POST
             bonus_away = f"bonus_away_{mid}" in request.POST
 
             prediction, created = Prediction.objects.get_or_create(
                 match=match,
                 player=player,
-                defaults={
-                    "home_score_pred": home_score,
-                    "away_score_pred": away_score,
-                    "bonus_home_pred": bonus_home,
-                    "bonus_away_pred": bonus_away,
-                },
             )
 
-            if not created:
-                prediction.home_score_pred = home_score
-                prediction.away_score_pred = away_score
-                prediction.bonus_home_pred = bonus_home
-                prediction.bonus_away_pred = bonus_away
+            prediction.home_score_pred = home_score
+            prediction.away_score_pred = away_score
+            prediction.bonus_home_pred = bonus_home
+            prediction.bonus_away_pred = bonus_away
 
             try:
                 prediction.points = calculate_points(prediction, match)
@@ -109,7 +105,7 @@ def pronos_view(request):
         )
 
     # ------------------
-    # Toujours recharger toutes les prédictions après le POST
+    # RECHARGEMENT DES PRONOS
     # ------------------
     predictions = Prediction.objects.filter(player=player)
     predictions_by_match = {p.match_id: p for p in predictions}
@@ -135,6 +131,7 @@ def pronos_view(request):
         "selected_round": round_id,
         "selected_competition": competition_id,
     })
+
 
 # ------------------
 # LOGOUT VIEW
