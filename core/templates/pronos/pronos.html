@@ -5,18 +5,12 @@
     <h1 class="h4 mb-0">Pronos de {{ request.user.player.name }}</h1>
 
     <div class="d-flex gap-2">
-        <!-- Lien Réglages -->
-        <a href="{% url 'settings' %}" class="btn btn-outline-secondary btn-sm">
-            ⚙ Réglages
-        </a>
+        <a href="{% url 'settings' %}" class="btn btn-outline-secondary btn-sm">⚙ Réglages</a>
         <a href="{% url 'classement_prediction' %}" class="btn btn-outline-primary btn-sm">📊 Classements</a>
 
-        <!-- Bouton déconnexion POST -->
         <form method="post" action="{% url 'logout' %}">
             {% csrf_token %}
-            <button type="submit" class="btn btn-outline-danger btn-sm">
-                Déconnexion
-            </button>
+            <button type="submit" class="btn btn-outline-danger btn-sm">Déconnexion</button>
         </form>
     </div>
 </div>
@@ -159,18 +153,13 @@
     </button>
 </form>
 
-<!-- 🔧 SCRIPT POUR FORCER LES BONUS -->
 <script>
 document.getElementById('pronosForm').addEventListener('submit', function(e) {
-    // Pour chaque checkbox de bonus, si décochée on met "off" pour que Django reçoive toujours la donnée
-    const checkboxes = this.querySelectorAll('input[type="checkbox"]');
-    checkboxes.forEach(function(box) {
-        if (!box.checked) {
-            let hidden = document.createElement('input');
-            hidden.type = 'hidden';
-            hidden.name = box.name;
-            hidden.value = 'off';
-            box.parentNode.appendChild(hidden);
+    // Pour chaque input number (home_score / away_score), si vide on met 0
+    const inputs = this.querySelectorAll('input[type="number"]');
+    inputs.forEach(function(input) {
+        if (input.value.trim() === '') {
+            input.value = '0';
         }
     });
 });
