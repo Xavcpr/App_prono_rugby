@@ -58,7 +58,8 @@ def pronos_view(request):
     # ------------------
     if request.method == "POST":
         print("POST DATA =", dict(request.POST))
-        match_ids = request.POST.getlist("match_ids")
+        # match_ids = request.POST.getlist("match_ids")
+        match_ids = set(request.POST.getlist("match_ids"))
         for mid in match_ids:
             match = get_object_or_404(Match, id=mid)
             if match.kickoff_at <= now:
