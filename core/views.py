@@ -25,11 +25,13 @@ def pronos_view(request):
         )
         return redirect("logout")
 
+    # Récupération filtres GET
     competition_id = request.GET.get("competition")
     round_id = request.GET.get("round")
     now = timezone.now()
     today = now.date()
 
+    # Journée par défaut = prochaine journée à venir
     if round_id is None:
         next_round = Round.objects.filter(date__gte=today).order_by("date").first()
         if next_round:
@@ -40,6 +42,7 @@ def pronos_view(request):
         "home_team",
         "away_team",
     )
+
     if competition_id:
         matches = matches.filter(round__season__competition_id=competition_id)
     if round_id:
@@ -57,9 +60,12 @@ def pronos_view(request):
         match_ids = request.POST.getlist("match_ids")
         for mid in match_ids:
             match = get_object_or_404(Match, id=mid)
+
+            # 🔒 Ignore les matchs déjà commencés
             if match.kickoff_at <= now:
                 continue
 
+            # Scores
             try:
                 home_score = int(request.POST.get(f"home_score_{mid}", 0))
                 away_score = int(request.POST.get(f"away_score_{mid}", 0))
@@ -67,8 +73,9 @@ def pronos_view(request):
                 home_score = 0
                 away_score = 0
 
-            bonus_home = request.POST.get(f"bonus_home_{mid}") == "on"
-            bonus_away = request.POST.get(f"bonus_away_{mid}") == "on"
+            # Bonus (méthode robuste)
+            bonus_home = f"bonus_home_{mid}" in request.POST
+            bonus_away = f"bonus_away_{mid}" in request.POST
 
             prediction, created = Prediction.objects.get_or_create(
                 match=match,
@@ -87,6 +94,7 @@ def pronos_view(request):
                 prediction.bonus_home_pred = bonus_home
                 prediction.bonus_away_pred = bonus_away
 
+            # Calcul points
             try:
                 prediction.points = calculate_points(prediction, match)
             except Exception as e:
@@ -99,9 +107,16 @@ def pronos_view(request):
             request,
             "Vos pronostics ont été enregistrés (hors matchs déjà commencés)."
         )
+        # 🔹 Important : redirection pour éviter double POST / problème desktop
+        redirect_url = request.path
+        if competition_id:
+            redirect_url += f"?competition={competition_id}"
+        if round_id:
+            redirect_url += f"&round={round_id}"
+        return redirect(redirect_url)
 
     # ------------------
-    # Toujours recharger toutes les prédictions après le POST
+    # Pronostics existants
     # ------------------
     predictions = Prediction.objects.filter(player=player)
     predictions_by_match = {p.match_id: p for p in predictions}
