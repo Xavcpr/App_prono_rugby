@@ -130,6 +130,9 @@ def pronos_view(request):
     if competition_id:
         rounds = rounds.filter(season__competition_id=competition_id)
 
+    for match in matches:
+        print(f"Match {match.id}: user_prediction={match.user_prediction}")
+
     return render(request, "pronos/pronos.html", {
         "player": player,
         "matches": matches,
