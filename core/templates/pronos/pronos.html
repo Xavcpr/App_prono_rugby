@@ -5,52 +5,37 @@
     <h1 class="h4 mb-0">Pronos de {{ request.user.player.name }}</h1>
 
     <div class="d-flex gap-2">
-        <!-- Lien Réglages -->
-        <a href="{% url 'settings' %}" class="btn btn-outline-secondary btn-sm">
-            ⚙ Réglages
-        </a>
+        <a href="{% url 'settings' %}" class="btn btn-outline-secondary btn-sm">⚙ Réglages</a>
         <a href="{% url 'classement_prediction' %}" class="btn btn-outline-primary btn-sm">📊 Classements</a>
-
-        <!-- Bouton déconnexion POST -->
         <form method="post" action="{% url 'logout' %}">
             {% csrf_token %}
-            <button type="submit" class="btn btn-outline-danger btn-sm">
-                Déconnexion
-            </button>
+            <button type="submit" class="btn btn-outline-danger btn-sm">Déconnexion</button>
         </form>
     </div>
 </div>
 
-<!-- FILTRES -->
 <form method="get" class="row g-2 mb-4">
     <div class="col-12 col-md-6">
         <label class="form-label">Compétition</label>
         <select name="competition" class="form-select" onchange="this.form.submit()">
             <option value="">Toutes</option>
             {% for comp in competitions %}
-                <option value="{{ comp.id }}"
-                    {% if request.GET.competition == comp.id|stringformat:"s" %}selected{% endif %}>
-                    {{ comp.name }}
-                </option>
+                <option value="{{ comp.id }}" {% if request.GET.competition == comp.id|stringformat:"s" %}selected{% endif %}>{{ comp.name }}</option>
             {% endfor %}
         </select>
     </div>
-
     <div class="col-12 col-md-6">
         <label class="form-label">Journée</label>
         <select name="round" class="form-select" onchange="this.form.submit()">
             <option value="">Toutes</option>
             {% for r in rounds %}
-                <option value="{{ r.id }}"
-                    {% if selected_round == r.id|stringformat:"s" %}selected{% endif %}>
-                    {{ r }}
-                </option>
+                <option value="{{ r.id }}" {% if selected_round == r.id|stringformat:"s" %}selected{% endif %}>{{ r }}</option>
             {% endfor %}
         </select>
     </div>
 </form>
 
-<form method="post" id="pronosForm">
+<form method="post">
     {% csrf_token %}
 
     <!-- DESKTOP -->
@@ -77,30 +62,20 @@
                         <td class="text-center">🔒</td>
                     {% else %}
                         <td>
-                            <input type="checkbox"
-                                   name="bonus_home_{{ match.id }}"
-                                   class="form-check-input"
-                                   {% if match.user_prediction and match.user_prediction.bonus_home_pred %}checked{% endif %}>
+                            <input type="checkbox" name="bonus_home_{{ match.id }}" class="form-check-input" {% if match.user_prediction and match.user_prediction.bonus_home_pred %}checked{% endif %}>
                         </td>
 
                         <td class="d-flex gap-1">
-                            <input type="number" name="home_score_{{ match.id }}"
-                                   value="{{ match.user_prediction.home_score_pred|default:'' }}"
-                                   class="form-control form-control-sm" style="width:60px">
-                            <input type="number" name="away_score_{{ match.id }}"
-                                   value="{{ match.user_prediction.away_score_pred|default:'' }}"
-                                   class="form-control form-control-sm" style="width:60px">
+                            <input type="number" name="home_score_{{ match.id }}" value="{{ match.user_prediction.home_score_pred|default:'' }}" class="form-control form-control-sm" style="width:60px">
+                            <input type="number" name="away_score_{{ match.id }}" value="{{ match.user_prediction.away_score_pred|default:'' }}" class="form-control form-control-sm" style="width:60px">
                         </td>
 
                         <td>
-                            <input type="checkbox"
-                                   name="bonus_away_{{ match.id }}"
-                                   class="form-check-input"
-                                   {% if match.user_prediction and match.user_prediction.bonus_away_pred %}checked{% endif %}>
+                            <input type="checkbox" name="bonus_away_{{ match.id }}" class="form-check-input" {% if match.user_prediction and match.user_prediction.bonus_away_pred %}checked{% endif %}>
                         </td>
                     {% endif %}
 
-                    <input type="hidden" name="match_ids[]" value="{{ match.id }}">
+                    <input type="hidden" name="match_ids" value="{{ match.id }}">
                 </tr>
                 {% endfor %}
             </tbody>
@@ -120,50 +95,34 @@
                 {% else %}
                     <div class="row g-2">
                         <div class="col-6">
-                            <input type="number" name="home_score_{{ match.id }}"
-                                   value="{{ match.user_prediction.home_score_pred|default:'' }}"
-                                   class="form-control form-control-sm" placeholder="Dom">
+                            <input type="number" name="home_score_{{ match.id }}" value="{{ match.user_prediction.home_score_pred|default:'' }}" class="form-control form-control-sm" placeholder="Dom">
                         </div>
                         <div class="col-6">
-                            <input type="number" name="away_score_{{ match.id }}"
-                                   value="{{ match.user_prediction.away_score_pred|default:'' }}"
-                                   class="form-control form-control-sm" placeholder="Ext">
+                            <input type="number" name="away_score_{{ match.id }}" value="{{ match.user_prediction.away_score_pred|default:'' }}" class="form-control form-control-sm" placeholder="Ext">
                         </div>
                     </div>
 
                     <div class="form-check mt-2">
-                        <input type="checkbox" name="bonus_home_{{ match.id }}"
-                               class="form-check-input"
-                               {% if match.user_prediction and match.user_prediction.bonus_home_pred %}checked{% endif %}>
+                        <input type="checkbox" name="bonus_home_{{ match.id }}" class="form-check-input" {% if match.user_prediction and match.user_prediction.bonus_home_pred %}checked{% endif %}>
                         <label class="form-check-label">BO domicile</label>
                     </div>
 
                     <div class="form-check">
-                        <input type="checkbox" name="bonus_away_{{ match.id }}"
-                               class="form-check-input"
-                               {% if match.user_prediction and match.user_prediction.bonus_away_pred %}checked{% endif %}>
+                        <input type="checkbox" name="bonus_away_{{ match.id }}" class="form-check-input" {% if match.user_prediction and match.user_prediction.bonus_away_pred %}checked{% endif %}>
                         <label class="form-check-label">BO extérieur</label>
                     </div>
                 {% endif %}
 
-                <input type="hidden" name="match_ids[]" value="{{ match.id }}">
+                <input type="hidden" name="match_ids" value="{{ match.id }}">
             </div>
         </div>
         {% endfor %}
     </div>
 
     <!-- BOUTON ENREGISTRER -->
-    <button type="button" id="submitPronos" class="btn btn-success w-100 mt-3"
-            {% if submit_disabled %}disabled{% endif %}>
+    <button type="submit" class="btn btn-success w-100 mt-3" {% if submit_disabled %}disabled{% endif %}>
         💾 Enregistrer mes pronostics
     </button>
 </form>
-
-<!-- JS pour forcer le submit -->
-<script>
-document.getElementById('submitPronos').addEventListener('click', function(){
-    document.getElementById('pronosForm').submit();
-});
-</script>
 
 {% endblock %}
