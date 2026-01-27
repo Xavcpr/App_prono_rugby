@@ -35,14 +35,8 @@ def pronos_view(request):
 
     now = timezone.now().date()
 
-    # 🎯 Journée par défaut = prochaine journée à venir
     if round_id is None:
-        next_round = (
-            Round.objects
-            .filter(date__gte=now)
-            .order_by("date")
-            .first()
-        )
+        next_round = Round.objects.filter(date__gte=now).order_by("date").first()
         if next_round:
             round_id = str(next_round.id)
 
@@ -70,7 +64,7 @@ def pronos_view(request):
     now_datetime = timezone.now()
 
     # ------------------
-    # Sauvegarde des pronostics
+    # Sauvegarde des pronostics si POST
     # ------------------
     if request.method == "POST":
         match_ids = request.POST.getlist("match_ids")
@@ -78,7 +72,6 @@ def pronos_view(request):
         for mid in match_ids:
             match = get_object_or_404(Match, id=mid)
 
-            # 🔒 Ignore les matchs déjà commencés
             if match.kickoff_at <= now_datetime:
                 continue
 
@@ -123,7 +116,7 @@ def pronos_view(request):
         )
 
     # ------------------
-    # Préparer les pronostics à afficher
+    # 🔹 Toujours recharger les pronostics depuis la base
     # ------------------
     predictions = Prediction.objects.filter(player=player)
     predictions_by_match = {p.match_id: p for p in predictions}
@@ -137,13 +130,9 @@ def pronos_view(request):
 
     competitions = Competition.objects.all()
     rounds = Round.objects.all()
-
     if competition_id:
         rounds = rounds.filter(season__competition_id=competition_id)
 
-    # ------------------
-    # Rendu final
-    # ------------------
     return render(
         request,
         "pronos/pronos.html",
@@ -156,6 +145,7 @@ def pronos_view(request):
             "selected_round": round_id,
         }
     )
+
 
 
 # @login_required
