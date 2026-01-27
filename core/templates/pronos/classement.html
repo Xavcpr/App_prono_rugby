@@ -46,6 +46,16 @@
         value="{{ bonus.best_point_scorer|default:'' }}"
       />
     </div>
+
+    <div class="col-md-6">
+      <label class="form-label">Vainqueur compétition</label>
+      <input
+        type="text"
+        name="winner"
+        class="form-control"
+        value="{{ bonus.winner|default:'' }}"
+      />
+    </div>
   </div>
 
   <!-- ================= CLASSEMENTS ================= -->
