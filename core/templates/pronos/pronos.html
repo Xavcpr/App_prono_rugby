@@ -45,7 +45,8 @@
 <form method="post">
     {% csrf_token %}
 
-    <div class="table-responsive d-none d-md-block">
+    <!-- DESKTOP -->
+    <div class="d-none d-md-block table-responsive">
         <table class="table table-striped align-middle">
             <thead>
                 <tr>
@@ -92,7 +93,7 @@
         </table>
     </div>
 
-    <!-- Version mobile -->
+    <!-- MOBILE -->
     <div class="d-md-none">
         {% for match in matches %}
         <div class="card mb-3">
@@ -131,6 +132,7 @@
         {% endfor %}
     </div>
 
+    <!-- BOUTON ENREGISTRER -->
     <button class="btn btn-success w-100 mt-3" {% if submit_disabled %}disabled{% endif %}>
         💾 Enregistrer mes pronostics
     </button>
