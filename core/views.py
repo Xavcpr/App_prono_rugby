@@ -1,3 +1,4 @@
+from urllib import request
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout as auth_logout
@@ -369,9 +370,6 @@ def classement_prediction(request):
                 if saved_team:
                     block['saved'][pos] = saved_team.team.id  # On récupère l'équipe enregistrée
     
-    if request.method == "POST":
-        print(dict(request.POST))
-    
     return render(
         request,
         "pronos/classement.html",
@@ -382,3 +380,7 @@ def classement_prediction(request):
             "bonus": bonus,
         }
     )
+
+    
+if request.method == "POST":
+    print(dict(request.POST))
