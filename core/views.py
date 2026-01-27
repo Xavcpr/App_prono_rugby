@@ -16,7 +16,6 @@ from .services.scoring import calculate_points
 def pronos_view(request):
     user = request.user
 
-    # Vérification Player
     try:
         player = user.player
     except Player.DoesNotExist:
@@ -26,9 +25,6 @@ def pronos_view(request):
         )
         return redirect("logout")
 
-    # ------------------
-    # Filtres GET / journée par défaut
-    # ------------------
     competition_id = request.GET.get("competition")
     round_id = request.GET.get("round")
     now = timezone.now()
@@ -39,9 +35,6 @@ def pronos_view(request):
         if next_round:
             round_id = str(next_round.id)
 
-    # ------------------
-    # Récupération des matches
-    # ------------------
     matches = Match.objects.select_related(
         "round__season__competition",
         "home_team",
@@ -58,7 +51,7 @@ def pronos_view(request):
     )
 
     # ------------------
-    # POST = sauvegarde des pronostics
+    # POST = sauvegarde
     # ------------------
     if request.method == "POST":
         match_ids = request.POST.getlist("match_ids")
@@ -102,25 +95,20 @@ def pronos_view(request):
 
             prediction.save()
 
-            # 🔑 clé pour que le template voit le pronostic tout de suite
-            match.user_prediction = prediction
-
         messages.success(
             request,
             "Vos pronostics ont été enregistrés (hors matchs déjà commencés)."
         )
 
     # ------------------
-    # Charger toutes les prédictions existantes
+    # Toujours recharger toutes les prédictions après le POST
     # ------------------
     predictions = Prediction.objects.filter(player=player)
     predictions_by_match = {p.match_id: p for p in predictions}
 
     submit_disabled = True
     for match in matches:
-        # Si le match n'a pas été mis à jour pendant le POST, on charge depuis la DB
-        if not hasattr(match, "user_prediction") or match.user_prediction is None:
-            match.user_prediction = predictions_by_match.get(match.id)
+        match.user_prediction = predictions_by_match.get(match.id)
         match.is_locked = match.kickoff_at <= now
         if not match.is_locked:
             submit_disabled = False
@@ -130,9 +118,6 @@ def pronos_view(request):
     if competition_id:
         rounds = rounds.filter(season__competition_id=competition_id)
 
-    for match in matches:
-        print(f"Match {match.id}: user_prediction={match.user_prediction}")
-
     return render(request, "pronos/pronos.html", {
         "player": player,
         "matches": matches,
@@ -140,7 +125,7 @@ def pronos_view(request):
         "rounds": rounds,
         "submit_disabled": submit_disabled,
         "selected_round": round_id,
-        "selected_competition": competition_id,  # utile pour garder la sélection
+        "selected_competition": competition_id,
     })
 
 
