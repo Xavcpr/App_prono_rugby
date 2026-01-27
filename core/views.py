@@ -118,7 +118,7 @@ def pronos_view(request):
             request,
             "Vos pronostics ont été enregistrés (hors matchs déjà commencés)."
         )
-        return redirect("pronostics")
+        return redirect("pronos")
 
     # Pronostics existants
     predictions = Prediction.objects.filter(player=player)
