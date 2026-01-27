@@ -12,7 +12,6 @@ from .constants import COMPETITION_RULES
 from .models import CompetitionTeam, Match, Prediction, Competition, Round, Player, Season, Team, CompetitionTeamPrediction, CompetitionRankingPrediction, TeamRankingPrediction, CompetitionBonusPrediction
 from .services.scoring import calculate_points
 
-
 @login_required
 def pronos_view(request):
     user = request.user
@@ -27,52 +26,38 @@ def pronos_view(request):
         )
         return redirect("logout")
 
-    # ------------------
-    # Filtres GET / journée par défaut
-    # ------------------
     competition_id = request.GET.get("competition")
     round_id = request.GET.get("round")
-
-    now = timezone.now().date()
+    now = timezone.now()
+    today = now.date()
 
     if round_id is None:
-        next_round = Round.objects.filter(date__gte=now).order_by("date").first()
+        next_round = Round.objects.filter(date__gte=today).order_by("date").first()
         if next_round:
             round_id = str(next_round.id)
 
-    # ------------------
-    # Récupération des matches
-    # ------------------
+    # Matches
     matches = Match.objects.select_related(
         "round__season__competition",
         "home_team",
         "away_team",
     )
-
     if competition_id:
         matches = matches.filter(round__season__competition_id=competition_id)
-
     if round_id:
         matches = matches.filter(round_id=round_id)
-
     matches = matches.order_by(
         "round__season__competition__name",
         "round__number",
         "kickoff_at"
     )
 
-    now_datetime = timezone.now()
-
-    # ------------------
-    # Sauvegarde des pronostics si POST
-    # ------------------
+    # POST = sauvegarde des pronostics
     if request.method == "POST":
         match_ids = request.POST.getlist("match_ids")
-
         for mid in match_ids:
             match = get_object_or_404(Match, id=mid)
-
-            if match.kickoff_at <= now_datetime:
+            if match.kickoff_at <= now:
                 continue
 
             try:
@@ -110,21 +95,24 @@ def pronos_view(request):
 
             prediction.save()
 
+            # 🔑 Associer le pronostic directement pour que le template le voie
+            match.user_prediction = prediction
+
         messages.success(
             request,
             "Vos pronostics ont été enregistrés (hors matchs déjà commencés)."
         )
 
-    # ------------------
-    # 🔹 Toujours recharger les pronostics depuis la base
-    # ------------------
+    # Recharger tous les pronostics pour sécurité
     predictions = Prediction.objects.filter(player=player)
     predictions_by_match = {p.match_id: p for p in predictions}
 
     submit_disabled = True
     for match in matches:
-        match.user_prediction = predictions_by_match.get(match.id)
-        match.is_locked = match.kickoff_at <= now_datetime
+        # Si user_prediction déjà défini dans POST, ne pas l'écraser
+        if not hasattr(match, 'user_prediction') or match.user_prediction is None:
+            match.user_prediction = predictions_by_match.get(match.id)
+        match.is_locked = match.kickoff_at <= now
         if not match.is_locked:
             submit_disabled = False
 
@@ -133,18 +121,14 @@ def pronos_view(request):
     if competition_id:
         rounds = rounds.filter(season__competition_id=competition_id)
 
-    return render(
-        request,
-        "pronos/pronos.html",
-        {
-            "player": player,
-            "matches": matches,
-            "competitions": competitions,
-            "rounds": rounds,
-            "submit_disabled": submit_disabled,
-            "selected_round": round_id,
-        }
-    )
+    return render(request, "pronos/pronos.html", {
+        "player": player,
+        "matches": matches,
+        "competitions": competitions,
+        "rounds": rounds,
+        "submit_disabled": submit_disabled,
+        "selected_round": round_id,
+    })
 
 
 
