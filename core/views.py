@@ -58,6 +58,7 @@ def pronos_view(request):
     # POST = sauvegarde
     # ------------------
     if request.method == "POST":
+        print("POST DATA =", dict(request.POST))
         match_ids = request.POST.getlist("match_ids")
         for mid in match_ids:
             match = get_object_or_404(Match, id=mid)
@@ -382,5 +383,3 @@ def classement_prediction(request):
     )
 
     
-if request.method == "POST":
-    print(dict(request.POST))
