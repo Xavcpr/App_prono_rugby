@@ -1,9 +1,10 @@
 To do list :
 - En cours Xavier : Onglet pronos/classement
-    - ça reste sur le classement enregistré (pas que les scoreurs) : ça je n'y arrive pas
+    - enregistrement des pronos à partir ordi
+    - enregistrement des BO à partir ordi ET tel 
+    - menu déroulant winner
 
 
-Pandas ?
 Créer users ?
 
 *Scoring
