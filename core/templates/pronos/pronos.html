@@ -44,7 +44,8 @@
 <form method="post">
 {% csrf_token %}
 
-<div class="table-responsive d-none d-md-block">
+<!-- DESKTOP -->
+<div class="d-none d-md-block table-responsive">
   <table class="table table-striped align-middle">
     <thead>
       <tr>
@@ -56,7 +57,6 @@
       </tr>
     </thead>
     <tbody>
-
     {% for match in matches %}
       <tr>
         <td>{{ match.home_team }} – {{ match.away_team }}</td>
@@ -67,28 +67,29 @@
         {% else %}
           <td class="text-center">
             <input type="checkbox" name="bonus_home_{{ match.id }}"
-                   {% if match.user_prediction and match.user_prediction.bonus_home_pred %}checked{% endif %}>
+                   {% if match.user_prediction and match.user_prediction.bonus_home_pred %}checked{% endif %}
+                   class="desktop-input">
           </td>
 
           <td class="d-flex gap-1">
             <input type="number" name="home_score_{{ match.id }}"
                    value="{{ match.user_prediction.home_score_pred|default:'' }}"
-                   class="form-control form-control-sm" style="width:60px">
+                   class="form-control form-control-sm desktop-input" style="width:60px">
             <input type="number" name="away_score_{{ match.id }}"
                    value="{{ match.user_prediction.away_score_pred|default:'' }}"
-                   class="form-control form-control-sm" style="width:60px">
+                   class="form-control form-control-sm desktop-input" style="width:60px">
           </td>
 
           <td class="text-center">
             <input type="checkbox" name="bonus_away_{{ match.id }}"
-                   {% if match.user_prediction and match.user_prediction.bonus_away_pred %}checked{% endif %}>
+                   {% if match.user_prediction and match.user_prediction.bonus_away_pred %}checked{% endif %}
+                   class="desktop-input">
           </td>
         {% endif %}
 
         <input type="hidden" name="match_ids" value="{{ match.id }}">
       </tr>
     {% endfor %}
-
     </tbody>
   </table>
 </div>
@@ -108,25 +109,27 @@
           <div class="col-6">
             <input type="number" name="home_score_{{ match.id }}"
                    value="{{ match.user_prediction.home_score_pred|default:'' }}"
-                   class="form-control form-control-sm" placeholder="Dom">
+                   class="form-control form-control-sm mobile-input"
+                   placeholder="Dom">
           </div>
           <div class="col-6">
             <input type="number" name="away_score_{{ match.id }}"
                    value="{{ match.user_prediction.away_score_pred|default:'' }}"
-                   class="form-control form-control-sm" placeholder="Ext">
+                   class="form-control form-control-sm mobile-input"
+                   placeholder="Ext">
           </div>
         </div>
 
         <div class="form-check mt-2">
-          <input type="checkbox" class="form-check-input"
-                 name="bonus_home_{{ match.id }}"
+          <input type="checkbox" name="bonus_home_{{ match.id }}"
+                 class="form-check-input mobile-input"
                  {% if match.user_prediction and match.user_prediction.bonus_home_pred %}checked{% endif %}>
           <label class="form-check-label">BO domicile</label>
         </div>
 
         <div class="form-check">
-          <input type="checkbox" class="form-check-input"
-                 name="bonus_away_{{ match.id }}"
+          <input type="checkbox" name="bonus_away_{{ match.id }}"
+                 class="form-check-input mobile-input"
                  {% if match.user_prediction and match.user_prediction.bonus_away_pred %}checked{% endif %}>
           <label class="form-check-label">BO extérieur</label>
         </div>
@@ -138,14 +141,15 @@
 {% endfor %}
 </div>
 
-<button type="submit" class="btn btn-success w-100 mt-3"
-        {% if submit_disabled %}disabled{% endif %}>
+<!-- BOUTON ENREGISTRER -->
+<button type="submit" class="btn btn-success w-100 mt-3" {% if submit_disabled %}disabled{% endif %}>
   💾 Enregistrer mes pronostics
 </button>
 
 </form>
 
 {% endblock %}
+
 
 
 {% comment %} version ok du 27/01 à 17h24 {% extends "base.html" %}
