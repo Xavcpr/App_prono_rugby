@@ -1,6 +1,6 @@
 To do list :
 - En cours Xavier : Onglet pronos/classement
-    - ça reste sur le classement enregistré (pas que les scoreurs)
+    - ça reste sur le classement enregistré (pas que les scoreurs) : ça je n'y arrive pas
 
 
 Pandas ?
