@@ -368,7 +368,10 @@ def classement_prediction(request):
                     ).first()
                 if saved_team:
                     block['saved'][pos] = saved_team.team.id  # On récupère l'équipe enregistrée
-
+    
+    if request.method == "POST":
+        print(dict(request.POST))
+    
     return render(
         request,
         "pronos/classement.html",
