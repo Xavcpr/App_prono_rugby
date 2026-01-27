@@ -47,29 +47,6 @@
       />
     </div>
 
-    <div class="col-md-6">
-      <label class="form-label">Vainqueur compétition</label>
-      <input
-        type="text"
-        name="winner"
-        class="form-control"
-        value="{{ bonus.winner|default:'' }}"
-      />
-    </div>
-
-    <div class="col-md-6">
-      <label class="form-label">Vainqueur compétition</label>
-      <select name="winner" class="form-select">
-        <option value="">-- Choisir une équipe --</option>
-        {% for team in block.teams %}
-          <option value="{{ team.name }}"
-            {% if bonus.winner == team.name %}selected{% endif %}>
-            {{ team.name }}
-          </option>
-        {% endfor %}
-      </select>
-    </div>
-
     {% with first_block=blocks.0 %}
     <div class="col-md-6">
       <label class="form-label">Vainqueur compétition</label>
