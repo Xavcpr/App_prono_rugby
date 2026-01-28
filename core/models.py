@@ -125,7 +125,7 @@ class Match(models.Model):
         
         diff = abs(self.home_score - self.away_score)
         # On récupère le seuil de la compétition (ex: 7 points)
-        threshold = self.round.season.competition.bonus_threshold 
+        threshold = self.round.season.competition.bonus_defense_threshold
         
         if 0 < diff <= threshold:
             # L'équipe perdante prend le bonus

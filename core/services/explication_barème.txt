@@ -17,21 +17,25 @@
     Il y a un bonus de 30 si en plus tu pronostiques bien une victoire à l'extérieur 
     et de 100 si matches nuls. 
     
-    2/ Les bonus. 
-        Tu as 15 points si tu pronostiques un bon Bonus offensif (pronostiqué directement par le pronostiqueur sur la vue /pronos/) ou un bon bonus défensif (calculé directement si l'écart est inférieur au bonus_threshold défini dans chaque compétition). 
-        Malus de -3 si bonus offensif ou défensif pronostiqué alors qu'il ne s'est pas avéré. 
+    2/ Bonus offensif. 
+        Tu as 15 points si tu pronostiques un bon Bonus offensif (pronostiqué directement par le pronostiqueur sur la vue /pronos/) . 
+        Malus de -3 si bonus offensif pronostiqué alors qu'il ne s'est pas avéré
+
+    3/ Bonus défensif
+        Tu as 15 points si tu pronostiques un bon Bonus défensif (calculé directement si l'écart est inférieur au bonus_threshold défini dans chaque compétition). 
+        Malus de -3 si bonus défensif pronostiqué alors qu'il ne s'est pas avéré. Il n'y a pas de malus en cas de BD pronostiqué pour une équipe et avéré pour l'autre
         Attention, il n'y a pas de bonus défensif lors de phases finales !
         
-    3/ Différence de points. 
+    4/ Différence de points. 
         Si le joueur a pronostiqué un écart proche du réel il a un bonus "DIFF_TABLE": {0: 15, 1: 12, 2: 10, 3: 8, 4: 6, 5: 4, 6: 2, 7: 1},
         
-    4/ Somme de points. Si le joueur a pronostiqué une somme de scores proche du réel il a un bonus "SUM_TABLE": {0: 8, 1: 6, 2: 5, 3: 4, 4: 3, 5: 2, 6: 1},
+    5/ Somme de points. Si le joueur a pronostiqué une somme de scores proche du réel il a un bonus "SUM_TABLE": {0: 8, 1: 6, 2: 5, 3: 4, 4: 3, 5: 2, 6: 1},
     
-    5/ En cas de tout-pile (donc score exact) bonus de 680 points. 
+    6/ En cas de tout-pile (donc score exact) bonus de 680 points. 
     
-    6/ en cas de bon score pour une des deux équipes (demi-tout-pile), bonus de 40 points.
+    7/ en cas de bon score pour une des deux équipes (demi-tout-pile), bonus de 40 points.
 
-    7/ phase finale coefficient pondérateur en cas de phases finales selon le code suivant : 
+    8/ phase finale coefficient pondérateur en cas de phases finales selon le code suivant : 
     PHASE_MULTIPLIERS = {"POOL": 1.0, "R16": 1.25, "QF": 1.5, "SF": 2, "FINAL": 3} 
 
     Nota pour les phases finales : on compte à la fin des prolongations
