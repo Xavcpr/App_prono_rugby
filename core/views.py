@@ -260,7 +260,7 @@ def classement_prediction(request):
         )
         winner_teams = selected_competition.teams.all().order_by("name")
 
-        # Configuration des blocs selon la compétition
+        # Construction des blocs
         if selected_competition.name.lower() == "champions cup":
             season = Season.objects.filter(competition=selected_competition).order_by("-year").first()
             for pool in range(1, 5):
@@ -282,67 +282,59 @@ def classement_prediction(request):
                 "positions": range(1, teams.count() + 1),
             })
 
-    # --- TRAITEMENT POST ---
     if request.method == "POST" and selected_competition:
-        # 1. Sauvegarde des Bonus (champs texte et vainqueur)
+        # Sauvegarde Bonus
         bonus.best_try_scorer = request.POST.get("best_try_scorer", "").strip()
         bonus.best_point_scorer = request.POST.get("best_point_scorer", "").strip()
-        winner_id = request.POST.get("winner")
-        bonus.winner = Team.objects.filter(id=winner_id).first() if winner_id else None
+        w_id = request.POST.get("winner")
+        bonus.winner = Team.objects.filter(id=w_id).first() if w_id else None
         bonus.save()
 
-        # 2. Collecte et validation des doublons dans le formulaire
+        # Validation doublons
         selected_teams_ids = set()
         duplicate_found = False
-        data_to_save = []
+        to_save = []
 
         for block in blocks:
             for pos in block["positions"]:
-                key = f"team_{block['key']}_{pos}"
-                team_id = request.POST.get(key)
-                if team_id:
-                    if team_id in selected_teams_ids:
+                val = request.POST.get(f"team_{block['key']}_{pos}")
+                if val:
+                    if val in selected_teams_ids:
                         duplicate_found = True
-                    selected_teams_ids.add(team_id)
-                    data_to_save.append({
-                        'block_key': block['key'],
-                        'position': pos,
-                        'team_id': team_id
-                    })
+                    selected_teams_ids.add(val)
+                    to_save.append({'bk': block['key'], 'p': pos, 'tid': val})
 
         if duplicate_found:
-            messages.error(request, "❌ Erreur : Vous avez sélectionné la même équipe plusieurs fois.")
+            messages.error(request, "❌ Doublon détecté.")
         else:
-            # 3. SAUVEGARDE : On nettoie l'ancien classement pour éviter l'IntegrityError
+            # Nettoyage et recréation
             CompetitionTeamPrediction.objects.filter(
-                competition=selected_competition,
-                player=request.user.player
+                competition=selected_competition, player=request.user.player
             ).delete()
 
-            # 4. On crée les nouvelles lignes
-            for item in data_to_save:
+            for item in to_save:
                 CompetitionTeamPrediction.objects.create(
                     competition=selected_competition,
                     player=request.user.player,
-                    block_key=item['block_key'],
-                    position=item['position'],
-                    team_id=item['team_id']
+                    block_key=item['bk'],
+                    position=item['p'],
+                    team_id=int(item['tid']) # Conversion cruciale
                 )
-            
-            messages.success(request, "Classement enregistré avec succès ✅")
+            messages.success(request, "Classement enregistré ✅")
             return redirect(f"{request.path}?competition={selected_competition.id}")
 
-    # --- PRÉPARATION DE L'AFFICHAGE (GET) ---
+    # --- PRÉPARATION RÉCUPÉRATION ---
     if selected_competition:
         for block in blocks:
             block["saved"] = {}
-            saved_preds = CompetitionTeamPrediction.objects.filter(
+            preds = CompetitionTeamPrediction.objects.filter(
                 competition=selected_competition,
                 player=request.user.player,
                 block_key=block["key"]
             )
-            for pred in saved_preds:
-                block["saved"][pred.position] = pred.team.id
+            for p in preds:
+                # On stocke l'ID en entier pour le comparer facilement dans le template
+                block["saved"][p.position] = p.team.id
 
     return render(request, "pronos/classement.html", {
         "competitions": competitions,
