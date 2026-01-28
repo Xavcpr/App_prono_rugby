@@ -1,8 +1,6 @@
 To do list :
 - En cours Xavier : Onglet pronos/classement
-    - enregistrement des pronos à partir ordi
-    - enregistrement des BO à partir ordi ET tel 
-    - winners CC qui ne marche pas 
+    - garder classemetn affiché
 
 Créer users ?
 
