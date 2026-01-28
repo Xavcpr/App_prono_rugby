@@ -1,5 +1,4 @@
-To do list :
-
+To do list ! :
 *Scoring
 - * match
     - Vérifier que le scoring 'match' fonctionne. attention à la nouvelle règle pour le BD
