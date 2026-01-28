@@ -310,17 +310,6 @@ def classement_prediction(request):
         # Vérification doublons
         selected_teams = set()
         duplicate_found = False
-
-        # Toutes les équipes de la compétition (toutes poules confondues)
-        winner_teams = []
-
-        if selected_competition:
-            season = Season.objects.filter(competition=selected_competition).order_by("-year").first()
-            winner_teams = Team.objects.filter(
-                competitionteam__competition=selected_competition,
-                competitionteam__season=season
-            ).distinct().order_by("name")
-
         
         for block in blocks:
             for pos in block["positions"]:
@@ -347,7 +336,6 @@ def classement_prediction(request):
                     "selected_competition": selected_competition,
                     "blocks": blocks,
                     "bonus": bonus,
-                    "winner_teams": winner_teams,
                 }
             )
 
