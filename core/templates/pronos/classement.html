@@ -60,7 +60,6 @@
       />
     </div>
 
-    <!-- ====== VAINQUEUR ====== -->
     <div class="col-md-6 mt-3">
       <label class="form-label">Vainqueur compétition</label>
       <select name="winner" class="form-select">
@@ -128,7 +127,6 @@
       {% endfor %}
     </tbody>
   </table>
-
   {% endfor %}
 
   <button type="submit" class="btn btn-primary">
@@ -153,6 +151,7 @@
   block_key %}
   <p class="mb-1"><strong>Poule {{ block_key|slice:"4:" }}</strong></p>
   {% endif %}
+
   <ul class="small text-muted mb-2">
     {% for pos, team in teams.items %}
     <li>{{ pos }}. {{ team.name }}</li>
