@@ -61,8 +61,8 @@
               value="{{ team.id }}"
               {%
               if
-              bonus.winner.id=""
-              ="team.id"
+              bonus.winner.id|add:0=""
+              ="team.id|add:0"
               %}selected{%
               endif
               %}
@@ -92,25 +92,21 @@
             <td>
               <select name="team_{{ block.key }}_{{ pos }}" class="form-select">
                 <option value="">-- Sélectionner --</option>
-                {% for team in block.teams %}
+                {% for team in block.teams %} {% with
+                saved_id=block.saved|dict_key:pos %}
                 <option
                   value="{{ team.id }}"
                   {%
-                  with
-                  saved_id="block.saved|dict_key:pos"
-                  %}{%
                   if
-                  saved_id=""
-                  ="team.id"
+                  saved_id|add:0=""
+                  ="team.id|add:0"
                   %}selected{%
                   endif
-                  %}{%
-                  endwith
                   %}
                 >
                   {{ team.name }}
                 </option>
-                {% endfor %}
+                {% endwith %} {% endfor %}
               </select>
             </td>
           </tr>
