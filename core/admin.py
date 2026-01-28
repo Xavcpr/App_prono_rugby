@@ -213,25 +213,25 @@ class TeamRankingPredictionInline(admin.TabularInline):
     extra = 0
     autocomplete_fields = ["team"]
     
-@admin.register(CompetitionRankingPrediction)
-class CompetitionRankingPredictionAdmin(admin.ModelAdmin):
-    list_display = (
-        "player",
-        "competition",
-        "season",
-        "winner_team",
-        "locked_at",
-    )
-    list_filter = ("competition", "season")
-    search_fields = ("player__name",)
-    autocomplete_fields = ("player", "winner_team")
-    inlines = [TeamRankingPredictionInline]
+# @admin.register(CompetitionRankingPrediction)
+# class CompetitionRankingPredictionAdmin(admin.ModelAdmin):
+#     list_display = (
+#         "player",
+#         "competition",
+#         "season",
+#         "winner_team",
+#         "locked_at",
+#     )
+#     list_filter = ("competition", "season")
+#     search_fields = ("player__name",)
+#     autocomplete_fields = ("player", "winner_team")
+#     inlines = [TeamRankingPredictionInline]
 
-@admin.register(TeamRankingPrediction)
-class TeamRankingPredictionAdmin(admin.ModelAdmin):
-    list_display = ("ranking", "team", "position", "pool")
-    list_filter = ("ranking__competition", "pool")
-    autocomplete_fields = ("team",)
+# @admin.register(TeamRankingPrediction)
+# class TeamRankingPredictionAdmin(admin.ModelAdmin):
+#     list_display = ("ranking", "team", "position", "pool")
+#     list_filter = ("ranking__competition", "pool")
+#     autocomplete_fields = ("team",)
     
 @admin.register(CompetitionTeam)
 class CompetitionTeamAdmin(admin.ModelAdmin):
