@@ -1,7 +1,7 @@
 from django.contrib import admin, messages
 from .models import (
     CompetitionTeam, Season, Team, Player, Competition, Round, Match, ScoringConfig,
-    Prediction, DailyBonus, CompetitionBonus, DailyScore, SeasonScore, CompetitionRankingPrediction, TeamRankingPrediction
+    Prediction, DailyBonus, CompetitionBonus, DailyScore, SeasonScore, CompetitionRankingPrediction, TeamRankingPrediction, CompetitionBonusPrediction, CompetitionTeamPrediction
 )
 from core.services.scoring import calculate_points
 from django.db.models import Sum
@@ -239,3 +239,13 @@ class CompetitionTeamAdmin(admin.ModelAdmin):
     list_filter = ("competition", "season", "pool")
     ordering = ("competition", "season", "pool")
 
+@admin.register(CompetitionBonusPrediction)
+class CompetitionBonusPredictionAdmin(admin.ModelAdmin):
+    list_display = ("player", "competition", "best_try_scorer", "best_point_scorer")
+    list_filter = ("competition", "player")
+
+@admin.register(CompetitionTeamPrediction)
+class CompetitionTeamPredictionAdmin(admin.ModelAdmin):
+    list_display = ("player", "competition", "team", "position", "block_key")
+    list_filter = ("competition", "player", "block_key")
+    ordering = ("player", "competition", "position")

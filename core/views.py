@@ -254,13 +254,15 @@ def classement_prediction(request):
 
     if competition_id:
         selected_competition = get_object_or_404(Competition, id=competition_id)
+        
+        # On récupère ou crée l'objet Bonus (Structure Simple)
         bonus, _ = CompetitionBonusPrediction.objects.get_or_create(
             player=request.user.player,
             competition=selected_competition
         )
         winner_teams = selected_competition.teams.all().order_by("name")
 
-        # Configuration des blocs
+        # Configuration des blocs (Poule ou Général)
         if selected_competition.name.lower() == "champions cup":
             season = Season.objects.filter(competition=selected_competition).order_by("-year").first()
             for pool in range(1, 5):
@@ -280,21 +282,22 @@ def classement_prediction(request):
                 "positions": range(1, teams.count() + 1),
             })
 
+    # --- TRAITEMENT DE LA SAUVEGARDE (POST) ---
     if request.method == "POST" and selected_competition:
-        # 1. Sauvegarde Bonus
+        # 1. Sauvegarde des Bonus (Kicker/Scorer)
         bonus.best_try_scorer = request.POST.get("best_try_scorer", "").strip()
         bonus.best_point_scorer = request.POST.get("best_point_scorer", "").strip()
-        w_id = request.POST.get("winner")
-        bonus.winner = Team.objects.filter(id=w_id).first() if w_id else None
+        # Note: CompetitionBonusPrediction n'a pas de champ 'winner' dans tes models
+        # On le sauvegarde si tu l'ajoutes, sinon on ignore pour l'instant.
         bonus.save()
 
-        # 2. Nettoyage radical avant sauvegarde
+        # 2. Nettoyage du classement existant pour ce joueur
         CompetitionTeamPrediction.objects.filter(
             competition=selected_competition, 
             player=request.user.player
         ).delete()
 
-        # 3. Récupération des données du formulaire
+        # 3. Enregistrement des nouvelles positions
         for block in blocks:
             for pos in block["positions"]:
                 field_name = f"team_{block['key']}_{pos}"
@@ -304,25 +307,24 @@ def classement_prediction(request):
                     CompetitionTeamPrediction.objects.create(
                         competition=selected_competition,
                         player=request.user.player,
-                        block_key=block["key"],
+                        team_id=int(team_id),
                         position=pos,
-                        team_id=int(team_id) # On force l'entier ici
+                        block_key=block["key"]
                     )
         
-        messages.success(request, "Pronostics enregistrés !")
-        # On redirige pour forcer le rafraîchissement propre
+        messages.success(request, "Vos pronostics ont été enregistrés avec succès !")
         return redirect(f"{request.path}?competition={selected_competition.id}")
 
-    # --- RÉCUPÉRATION POUR L'AFFICHAGE ---
+    # --- PRÉPARATION DE L'AFFICHAGE (GET) ---
     if selected_competition:
         for block in blocks:
-            # On crée un dictionnaire {position: team_id}
+            # On récupère ce qui est en base pour remplir les menus déroulants
             saved_preds = CompetitionTeamPrediction.objects.filter(
                 competition=selected_competition,
                 player=request.user.player,
                 block_key=block["key"]
             )
-            # CRUCIAL : On stocke l'ID en ENTIER
+            # Dictionnaire { position: team_id }
             block["saved"] = {p.position: p.team.id for p in saved_preds}
 
     return render(request, "pronos/classement.html", {

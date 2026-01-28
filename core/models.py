@@ -245,6 +245,7 @@ class CompetitionBonusPrediction(models.Model):
     )
     best_try_scorer = models.CharField(max_length=100, blank=True, default="")
     best_point_scorer = models.CharField(max_length=100, blank=True, default="")
+    winner = models.ForeignKey(Team, null=True, blank=True, on_delete=models.SET_NULL, related_name="bonus_winner")
 
     class Meta:
         unique_together = ("player", "competition")
