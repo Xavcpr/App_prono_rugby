@@ -1,8 +1,8 @@
-{% extends "base.html" %} {% load dict_extras %} {% block content %}
+{% extends "base.html" %} {% block content %}
 
 <h1>Classement par compétition</h1>
 
-<!-- ================= MENU COMPÉTITION ================= -->
+<!-- MENU COMPÉTITION -->
 <form method="get" class="mb-4">
   <select name="competition" class="form-select" onchange="this.form.submit()">
     <option value="">-- Choisir une compétition --</option>
@@ -15,9 +15,7 @@
       and
       competition.id=""
       ="selected_competition.id"
-      %}
-      selected
-      {%
+      %}selected{%
       endif
       %}
     >
@@ -31,13 +29,12 @@
 <p class="text-muted">Veuillez choisir une compétition.</p>
 {% else %}
 
-<!-- ================= FORMULAIRE ================= -->
 <form method="post">
   {% csrf_token %}
 
   <h2 class="mb-4">{{ selected_competition.name }}</h2>
 
-  <!-- ================= BONUS ================= -->
+  <!-- BONUS -->
   <h4>Bonus</h4>
   <div class="row mb-4">
     <div class="col-md-6">
@@ -73,9 +70,7 @@
           and
           bonus.winner.id=""
           ="team.id"
-          %}
-          selected
-          {%
+          %}selected{%
           endif
           %}
         >
@@ -86,7 +81,7 @@
     </div>
   </div>
 
-  <!-- ================= CLASSEMENTS ================= -->
+  <!-- CLASSEMENTS -->
   {% for block in blocks %} {% if block.pool %}
   <h4 class="mt-4">Poule {{ block.pool }}</h4>
   {% endif %}
@@ -112,9 +107,7 @@
               if
               block.saved.pos=""
               ="team.id"
-              %}
-              selected
-              {%
+              %}selected{%
               endif
               %}
             >
@@ -134,31 +127,6 @@
   </button>
 </form>
 
-<!-- ================= AFFICHAGE DERNIER CLASSEMENT ================= -->
-{% if last_saved %}
-<div class="mt-4 p-3 border rounded bg-light">
-  <h5 class="text-muted">Dernier classement enregistré</h5>
-
-  {% if bonus.winner %}
-  <p class="small text-muted mt-1">
-    Dernier vainqueur enregistré : <strong>{{ bonus.winner.name }}</strong>
-  </p>
-  {% endif %} {% if bonus.updated_at %}
-  <p class="small text-muted">
-    Classement enregistré le {{ bonus.updated_at|date:"d/m/Y H:i" }}
-  </p>
-  {% endif %} {% for block_key, teams in last_saved.items %} {% if "pool" in
-  block_key %}
-  <p class="mb-1"><strong>Poule {{ block_key|slice:"4:" }}</strong></p>
-  {% endif %}
-
-  <ul class="small text-muted mb-2">
-    {% for pos, team in teams.items %}
-    <li>{{ pos }}. {{ team.name }}</li>
-    {% endfor %}
-  </ul>
-  {% endfor %}
-</div>
 {% endif %}
 
 <a href="{% url 'pronos' %}" class="btn btn-secondary mt-4">

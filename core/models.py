@@ -260,7 +260,7 @@ class CompetitionTeamPrediction(models.Model):
     block_key = models.CharField(max_length=50, blank=True, null=True)  # Champ ajouté
 
     class Meta:
-        unique_together = ("player", "competition", "block_key", "team")
+        unique_together = ("player", "competition", "team")
         ordering = ["position"]
         
 class CompetitionTeam(models.Model):
