@@ -253,17 +253,19 @@ def classement_prediction(request):
     winner_teams = []
 
     # -------------------------
-    # COMPÉTITION SÉLECTIONNÉE
+    # Si une compétition est sélectionnée
     # -------------------------
     if competition_id:
         selected_competition = get_object_or_404(Competition, id=competition_id)
 
-        # Bonus joueur
+        # Bonus pour le joueur courant
         bonus, _ = CompetitionBonusPrediction.objects.get_or_create(
             player=request.user.player,
             competition=selected_competition
         )
 
+        # ✅ LISTE DES ÉQUIPES POUR LE VAINQUEUR
+        # → on passe par le M2M Team <-> Competition (FIABLE)
         winner_teams = selected_competition.teams.all().order_by("name")
 
         # ===============================
@@ -293,6 +295,7 @@ def classement_prediction(request):
         # ===============================
         else:
             teams = selected_competition.teams.all().order_by("name")
+
             blocks.append({
                 "key": "all",
                 "pool": None,
@@ -301,10 +304,9 @@ def classement_prediction(request):
             })
 
     # -------------------------
-    # POST = SAUVEGARDE
+    # POST = ENREGISTREMENT
     # -------------------------
     if request.method == "POST" and selected_competition:
-        # BONUS
         bonus.best_try_scorer = request.POST.get("best_try_scorer", "").strip()
         bonus.best_point_scorer = request.POST.get("best_point_scorer", "").strip()
 
@@ -314,58 +316,43 @@ def classement_prediction(request):
 
         # Vérification doublons
         selected_teams = set()
+        duplicate_found = False
+
         for block in blocks:
             for pos in block["positions"]:
-                team_id = request.POST.get(f"team_{block['key']}_{pos}")
+                key = f"team_{block['key']}_{pos}"
+                team_id = request.POST.get(key)
                 if team_id:
                     if team_id in selected_teams:
-                        messages.error(
-                            request,
-                            "❌ Une équipe ne peut apparaître qu’une seule fois dans le classement."
-                        )
-                        return redirect(request.path + f"?competition={selected_competition.id}")
+                        duplicate_found = True
+                        break
                     selected_teams.add(team_id)
+            if duplicate_found:
+                break
 
-        # SUPPRESSION anciens classements
-        CompetitionTeamPrediction.objects.filter(
-            competition=selected_competition,
-            player=request.user.player
-        ).delete()
-
-        # SAUVEGARDE
-        for block in blocks:
-            for pos in block["positions"]:
-                team_id = request.POST.get(f"team_{block['key']}_{pos}")
-                if team_id:
-                    CompetitionTeamPrediction.objects.create(
-                        competition=selected_competition,
-                        player=request.user.player,
-                        block_key=block["key"],
-                        position=pos,
-                        team_id=team_id
-                    )
-
-        messages.success(request, "Classement enregistré ✅")
-        return redirect(request.path + f"?competition={selected_competition.id}")
+        if duplicate_found:
+            messages.error(
+                request,
+                "❌ Une même équipe ne peut pas être utilisée plusieurs fois dans le classement."
+            )
+        else:
+            messages.success(request, "Classement enregistré ✅")
+            return redirect(request.path + f"?competition={selected_competition.id}")
 
     # -------------------------
-    # RECHARGEMENT DES DONNÉES
+    # Préparer les équipes déjà sélectionnées
     # -------------------------
-    if selected_competition:
-        saved = CompetitionTeamPrediction.objects.filter(
-            competition=selected_competition,
-            player=request.user.player
-        )
-
-        saved_map = {
-            (s.block_key, s.position): s.team_id
-            for s in saved
-        }
-
-        for block in blocks:
-            block["saved"] = {}
-            for pos in block["positions"]:
-                block["saved"][pos] = saved_map.get((block["key"], pos))
+    for block in blocks:
+        block["saved"] = {}
+        for pos in block["positions"]:
+            saved_team = CompetitionTeamPrediction.objects.filter(
+                competition=selected_competition,
+                player=request.user.player,
+                block_key=block["key"],
+                position=pos
+            ).first()
+            if saved_team:
+                block["saved"][pos] = saved_team.team.id
 
     return render(
         request,

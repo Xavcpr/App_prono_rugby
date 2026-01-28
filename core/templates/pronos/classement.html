@@ -2,6 +2,7 @@
 
 <h1>Classement par compétition</h1>
 
+<!-- MENU COMPÉTITION -->
 <form method="get" class="mb-4">
   <select name="competition" class="form-select" onchange="this.form.submit()">
     <option value="">-- Choisir une compétition --</option>
@@ -14,9 +15,7 @@
       and
       competition.id=""
       ="selected_competition.id"
-      %}
-      selected
-      {%
+      %}selected{%
       endif
       %}
     >
@@ -59,7 +58,7 @@
     </div>
 
     <div class="col-md-6 mt-3">
-      <label class="form-label">Vainqueur</label>
+      <label class="form-label">Vainqueur compétition</label>
       <select name="winner" class="form-select">
         <option value="">-- Choisir une équipe --</option>
         {% for team in winner_teams %}
@@ -71,9 +70,7 @@
           and
           bonus.winner.id=""
           ="team.id"
-          %}
-          selected
-          {%
+          %}selected{%
           endif
           %}
         >
@@ -110,9 +107,7 @@
               if
               block.saved.pos=""
               ="team.id"
-              %}
-              selected
-              {%
+              %}selected{%
               endif
               %}
             >
