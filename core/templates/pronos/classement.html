@@ -30,7 +30,7 @@
   <h4>Bonus</h4>
   <div class="row mb-4">
     <div class="col-md-6">
-      <label>Meilleur marqueur d’essais</label>
+      <label class="form-label">Meilleur marqueur d’essais</label>
       <input
         type="text"
         name="best_try_scorer"
@@ -39,7 +39,7 @@
       />
     </div>
     <div class="col-md-6">
-      <label>Meilleur scoreur</label>
+      <label class="form-label">Meilleur scoreur</label>
       <input
         type="text"
         name="best_point_scorer"
@@ -48,7 +48,7 @@
       />
     </div>
     <div class="col-md-6 mt-3">
-      <label>Vainqueur</label>
+      <label class="form-label">Vainqueur</label>
       <select name="winner" class="form-select">
         <option value="">-- Choisir --</option>
         {% for team in winner_teams %}
@@ -77,24 +77,23 @@
   <table class="table table-bordered">
     <thead>
       <tr>
-        <th>Pos</th>
+        <th style="width: 100px">Pos</th>
         <th>Équipe</th>
       </tr>
     </thead>
     <tbody>
       {% for pos in block.positions %}
       <tr>
-        <td>{{ pos }}</td>
+        <td><strong>{{ pos }}</strong></td>
         <td>
           <select name="team_{{ block.key }}_{{ pos }}" class="form-select">
-            <option value="">-- Choisir --</option>
-            {% for team in block.teams %} {% with
-            saved_id=block.saved|dict_key:pos %}
+            <option value="">-- Choisir une équipe --</option>
+            {% for team in block.teams %}
             <option
               value="{{ team.id }}"
               {%
               if
-              saved_id=""
+              block.saved|dict_key:pos=""
               ="team.id"
               %}selected{%
               endif
@@ -102,7 +101,7 @@
             >
               {{ team.name }}
             </option>
-            {% endwith %} {% endfor %}
+            {% endfor %}
           </select>
         </td>
       </tr>
@@ -110,6 +109,13 @@
     </tbody>
   </table>
   {% endfor %}
-  <button type="submit" class="btn btn-primary">Enregistrer</button>
+
+  <button type="submit" class="btn btn-primary mt-3">
+    Enregistrer le classement
+  </button>
 </form>
-{% endif %} {% endblock %}
+{% endif %}
+
+<a href="{% url 'pronos' %}" class="btn btn-secondary mt-4">← Retour</a>
+
+{% endblock %}
