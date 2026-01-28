@@ -48,7 +48,7 @@
       />
     </div>
     <div class="col-md-6 mt-3">
-      <label class="form-label">Vainqueur</label>
+      <label class="form-label">Vainqueur final</label>
       <select name="winner" class="form-select">
         <option value="">-- Choisir --</option>
         {% for team in winner_teams %}
@@ -74,6 +74,7 @@
     {% if block.pool %}Poule {{ block.pool }}{% else %}Classement Général{%
     endif %}
   </h4>
+
   <table class="table table-bordered">
     <thead>
       <tr>
@@ -116,6 +117,8 @@
 </form>
 {% endif %}
 
-<a href="{% url 'pronos' %}" class="btn btn-secondary mt-4">← Retour</a>
+<a href="{% url 'pronos' %}" class="btn btn-secondary mt-4"
+  >← Retour aux pronos</a
+>
 
 {% endblock %}
