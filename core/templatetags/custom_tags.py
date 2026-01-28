@@ -3,4 +3,6 @@ register = template.Library()
 
 @register.filter
 def dict_key(d, key):
-    return d.get(key)
+    if d and key in d:
+        return d[key]
+    return None
