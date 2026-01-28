@@ -1,5 +1,5 @@
-{% extends "base.html" %} {% load custom_tags %} {% block content %} {% comment
-%} Version ok !!!!! {% endcomment %}
+{% comment %} Version ok !!!!! {% endcomment %} {% extends "base.html" %} {%
+load custom_tags %} {% block content %}
 <div class="container">
   <h1>Classement par compétition</h1>
 
@@ -62,8 +62,8 @@
               value="{{ team.id }}"
               {%
               if
-              bonus.winner.id|add:0=""
-              ="team.id|add:0"
+              bonus.winner.id=""
+              ="team.id"
               %}selected{%
               endif
               %}
