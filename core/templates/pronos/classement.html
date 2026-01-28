@@ -96,11 +96,16 @@
                 <option
                   value="{{ team.id }}"
                   {%
+                  with
+                  saved_id="block.saved|dict_key:pos"
+                  %}{%
                   if
-                  block.saved|dict_key:pos=""
+                  saved_id=""
                   ="team.id"
                   %}selected{%
                   endif
+                  %}{%
+                  endwith
                   %}
                 >
                   {{ team.name }}

@@ -331,9 +331,9 @@ def classement_prediction(request):
                 player=request.user.player,
                 block_key=block["key"]
             )
-            # CRUCIAL : on crée un dictionnaire { position: team_id }
-            # On s'assure que position est un entier pour le filtre dict_key
-            block["saved"] = {int(p.position): p.team.id for p in saved_preds}
+            # CRUCIAL : On s'assure que la clé est un entier (pos) 
+            # et la valeur est un entier (ID de l'équipe)
+            block["saved"] = {int(p.position): int(p.team.id) for p in saved_preds}
 
     return render(request, "pronos/classement.html", {
         "competitions": competitions,
