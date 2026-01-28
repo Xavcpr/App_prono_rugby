@@ -106,12 +106,13 @@
         <td>
           <select name="team_{{ block.key }}_{{ pos }}" class="form-select">
             <option value="">-- Choisir une équipe --</option>
+
             {% for team in block.teams %}
             <option
               value="{{ team.id }}"
               {%
               if
-              block.saved[pos]=""
+              block.saved.pos=""
               ="team.id"
               %}
               selected
@@ -128,6 +129,7 @@
       {% endfor %}
     </tbody>
   </table>
+
   {% endfor %}
 
   <button type="submit" class="btn btn-primary">
@@ -148,8 +150,8 @@
   <p class="small text-muted">
     Classement enregistré le {{ bonus.updated_at|date:"d/m/Y H:i" }}
   </p>
-  {% endif %} {% for block_key, teams in last_saved.items %} {% if
-  block_key.startswith "pool" %}
+  {% endif %} {% for block_key, teams in last_saved.items %} {% if "pool" in
+  block_key %}
   <p class="mb-1"><strong>Poule {{ block_key|slice:"4:" }}</strong></p>
   {% endif %}
   <ul class="small text-muted mb-2">
