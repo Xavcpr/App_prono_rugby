@@ -1,6 +1,7 @@
 To do list :
 - En cours Xavier : Onglet pronos/classement
     - garder classemetn affiché
+    - ok ?
 
 Créer users ?
 
