@@ -123,6 +123,26 @@
     <button type="submit" class="btn btn-success btn-lg w-100">
       💾 Enregistrer mes pronostics
     </button>
+
+    <hr />
+    <div class="mt-5 p-4 bg-light border rounded">
+      <h3>📋 Mon dernier classement enregistré</h3>
+
+      {% if last_saved_ranking %}
+      <div class="row">
+        {% for pred in last_saved_ranking %}
+        <div class="col-md-3 mb-2">
+          <div class="p-2 border bg-white">
+            <small class="text-muted">{{ pred.block_key }}</small><br />
+            <strong>{{ pred.position }}.</strong> {{ pred.team.name }}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-muted">Aucun classement enregistré pour le moment.</p>
+      {% endif %}
+    </div>
   </form>
   {% endif %}
 

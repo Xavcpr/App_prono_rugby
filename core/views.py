@@ -334,6 +334,14 @@ def classement_prediction(request):
             # CRUCIAL : On s'assure que la clé est un entier (pos) 
             # et la valeur est un entier (ID de l'équipe)
             block["saved"] = {int(p.position): int(p.team.id) for p in saved_preds}
+            
+    # Récupération propre pour l'affichage du récapitulatif
+    last_saved_ranking = []
+    if selected_competition:
+        last_saved_ranking = CompetitionTeamPrediction.objects.filter(
+            competition=selected_competition,
+            player=request.user.player
+        ).select_related('team').order_by('block_key', 'position')
 
     return render(request, "pronos/classement.html", {
         "competitions": competitions,
@@ -341,4 +349,5 @@ def classement_prediction(request):
         "blocks": blocks,
         "bonus": bonus,
         "winner_teams": winner_teams,
+        "last_saved_ranking": last_saved_ranking,
     })
