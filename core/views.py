@@ -288,15 +288,12 @@ def classement_prediction(request):
 
     # --- SAUVEGARDE (POST) ---
     if request.method == "POST" and selected_competition:
-        # 1. Sauvegarde des Bonus (Kicker/Scorer/Vainqueur)
+        # 1. Sauvegarde des Bonus
         bonus.best_try_scorer = request.POST.get("best_try_scorer", "").strip()
         bonus.best_point_scorer = request.POST.get("best_point_scorer", "").strip()
         
         winner_id = request.POST.get("winner")
-        if winner_id and winner_id.isdigit():
-            bonus.winner_id = int(winner_id)
-        else:
-            bonus.winner = None
+        bonus.winner_id = int(winner_id) if winner_id and winner_id.isdigit() else None
         bonus.save()
 
         # 2. Nettoyage du classement existant
@@ -305,22 +302,31 @@ def classement_prediction(request):
             player=request.user.player
         ).delete()
 
-        # 3. Enregistrement des nouvelles positions
+        # 3. Enregistrement des nouvelles positions avec SECURITÉ DOUBLONS
+        recorded_teams = set()  # Pour suivre les équipes déjà sauvées
+        
         for block in blocks:
             for pos in block["positions"]:
                 field_name = f"team_{block['key']}_{pos}"
-                team_id = request.POST.get(field_name)
+                team_id_raw = request.POST.get(field_name)
                 
-                if team_id and team_id.isdigit():
+                if team_id_raw and team_id_raw.isdigit():
+                    t_id = int(team_id_raw)
+                    
+                    # SI L'ÉQUIPE EST DÉJÀ CHOISIE DANS CETTE COMPÉTITION, ON PASSE
+                    if t_id in recorded_teams:
+                        continue
+                    
                     CompetitionTeamPrediction.objects.create(
                         competition=selected_competition,
                         player=request.user.player,
-                        team_id=int(team_id),
+                        team_id=t_id,
                         position=pos,
                         block_key=block["key"]
                     )
+                    recorded_teams.add(t_id) # On marque l'équipe comme enregistrée
         
-        messages.success(request, "Vos pronostics ont été enregistrés !")
+        messages.success(request, "Vos pronostics ont été enregistrés ! (Les équipes en doublon ont été ignorées)")
         return redirect(f"{request.path}?competition={selected_competition.id}")
 
     # --- RÉCUPÉRATION POUR AFFICHAGE (GET) ---
