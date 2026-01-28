@@ -109,9 +109,9 @@ class Match(models.Model):
     phase = models.CharField(max_length=10, choices=MatchPhase.choices, default=MatchPhase.POOL)
     bonus_offense_home = models.BooleanField(default=False)
     bonus_offense_away = models.BooleanField(default=False)
-    bonus_defense_home = models.BooleanField(default=False)
-    bonus_defense_away = models.BooleanField(default=False)
-    match_datetime = models.DateTimeField(null=True, blank=True)
+    # bonus_defense_home = models.BooleanField(default=False)
+    # bonus_defense_away = models.BooleanField(default=False)
+    # match_datetime = models.DateTimeField(null=True, blank=True)
 
     def total_score(self):
         if self.home_score is not None and self.away_score is not None:
