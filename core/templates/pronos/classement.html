@@ -1,18 +1,14 @@
 {% extends "base.html" %} {% load custom_tags %} {% block content %}
 <div class="container mt-4">
-  <h1 class="mb-4">Classement par compétition</h1>
+  <h1>Classement par compétition</h1>
 
   <form method="get" class="mb-4">
-    <label for="competition_select" class="form-label"
-      >Choisir une compétition :</label
-    >
     <select
       name="competition"
-      id="competition_select"
       class="form-select"
       onchange="this.form.submit()"
     >
-      <option value="">-- Sélectionner --</option>
+      <option value="">-- Choisir une compétition --</option>
       {% for comp in competitions %}
       <option
         value="{{ comp.id }}"
@@ -31,129 +27,103 @@
   </form>
 
   {% if selected_competition %}
-  <form method="post" class="mt-4">
+  <form method="post">
     {% csrf_token %}
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h2>{{ selected_competition.name }}</h2>
-      <button type="submit" class="btn btn-success btn-lg">
-        💾 Enregistrer tout
-      </button>
-    </div>
+    <h2>{{ selected_competition.name }}</h2>
 
-    <div class="card shadow-sm mb-5">
-      <div class="card-header bg-primary text-white">
-        <h4 class="mb-0">Bonus de Compétition</h4>
-      </div>
-      <div class="card-body">
-        <div class="row g-3">
-          <div class="col-md-4">
-            <label class="form-label fw-bold">Meilleur marqueur d'essais</label>
-            <input
-              type="text"
-              name="best_try_scorer"
-              class="form-control"
-              value="{{ bonus.best_try_scorer|default:'' }}"
-              placeholder="Nom du joueur"
-            />
-          </div>
-          <div class="col-md-4">
-            <label class="form-label fw-bold"
-              >Meilleur réalisateur (points)</label
+    <div class="card p-3 mb-4">
+      <h4>Bonus</h4>
+      <div class="row">
+        <div class="col-md-4">
+          <label>Meilleur marqueur d'essais</label>
+          <input
+            type="text"
+            name="best_try_scorer"
+            class="form-control"
+            value="{{ bonus.best_try_scorer|default:'' }}"
+          />
+        </div>
+        <div class="col-md-4">
+          <label>Meilleur scoreur</label>
+          <input
+            type="text"
+            name="best_point_scorer"
+            class="form-control"
+            value="{{ bonus.best_point_scorer|default:'' }}"
+          />
+        </div>
+        <div class="col-md-4">
+          <label>Vainqueur final</label>
+          <select name="winner" class="form-select">
+            <option value="">-- Choisir --</option>
+            {% for team in winner_teams %}
+            <option
+              value="{{ team.id }}"
+              {%
+              if
+              bonus.winner.id|add:0=""
+              ="team.id|add:0"
+              %}selected{%
+              endif
+              %}
             >
-            <input
-              type="text"
-              name="best_point_scorer"
-              class="form-control"
-              value="{{ bonus.best_point_scorer|default:'' }}"
-              placeholder="Nom du joueur"
-            />
-          </div>
-          <div class="col-md-4">
-            <label class="form-label fw-bold">Vainqueur Final</label>
-            <select name="winner" class="form-select">
-              <option value="">-- Choisir le vainqueur --</option>
-              {% for team in winner_teams %}
-              <option
-                value="{{ team.id }}"
-                {%
-                if
-                bonus.winner.id|add:0=""
-                ="team.id|add:0"
-                %}selected{%
-                endif
-                %}
-              >
-                {{ team.name }}
-              </option>
-              {% endfor %}
-            </select>
-          </div>
+              {{ team.name }}
+            </option>
+            {% endfor %}
+          </select>
         </div>
       </div>
     </div>
 
     {% for block in blocks %}
-    <div class="card shadow-sm mb-5">
-      <div class="card-header bg-dark text-white">
-        <h4 class="mb-0">Pronostic Classement : {{ block.key|upper }}</h4>
-      </div>
-      <div class="card-body p-0">
-        <table class="table table-hover mb-0">
-          <thead class="table-light">
-            <tr>
-              <th style="width: 150px" class="ps-4">Position</th>
-              <th class="pe-4">Équipe</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for pos in block.positions %}
-            <tr>
-              <td class="align-middle ps-4">
-                <span class="badge bg-secondary fs-6">{{ pos }}</span>
-              </td>
-              <td class="pe-4">
-                <select
-                  name="team_{{ block.key }}_{{ pos }}"
-                  class="form-select"
+    <div class="mb-5">
+      <h4>Poule/Groupe : {{ block.key }}</h4>
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th style="width: 100px">Position</th>
+            <th>Équipe</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for pos in block.positions %}
+          <tr>
+            <td><strong>{{ pos }}</strong></td>
+            <td>
+              <select name="team_{{ block.key }}_{{ pos }}" class="form-select">
+                <option value="">-- Sélectionner --</option>
+                {% for team in block.teams %} {% with
+                saved_id=block.saved|dict_key:pos %}
+                <option
+                  value="{{ team.id }}"
+                  {%
+                  if
+                  saved_id|add:0=""
+                  ="team.id|add:0"
+                  %}selected{%
+                  endif
+                  %}
                 >
-                  <option value="">-- Sélectionner l'équipe --</option>
-                  {% for team in block.teams %} {% with
-                  saved_team_id=block.saved|dict_key:pos %}
-                  <option
-                    value="{{ team.id }}"
-                    {%
-                    if
-                    saved_team_id|add:0=""
-                    ="team.id|add:0"
-                    %}selected{%
-                    endif
-                    %}
-                  >
-                    {{ team.name }}
-                  </option>
-                  {% endwith %} {% endfor %}
-                </select>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+                  {{ team.name }}
+                </option>
+                {% endwith %} {% endfor %}
+              </select>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
     {% endfor %}
 
-    <div class="sticky-bottom bg-white p-3 border-top shadow-lg">
-      <button type="submit" class="btn btn-success btn-lg w-100">
-        💾 Enregistrer mes pronostics
-      </button>
-    </div>
+    <button type="submit" class="btn btn-success btn-lg w-100 mb-5">
+      💾 Enregistrer
+    </button>
   </form>
   {% endif %}
 
   <div class="mt-4 mb-5">
-    <a href="{% url 'pronos' %}" class="btn btn-outline-secondary"
-      >← Retour aux matchs</a
-    >
+    <a href="{% url 'pronos' %}" class="btn btn-secondary">← Retour</a>
   </div>
 </div>
 {% endblock %}
