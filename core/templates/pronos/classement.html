@@ -29,7 +29,7 @@
 
   <h4>Bonus</h4>
   <div class="row mb-4">
-    <div class="col-md-6">
+    <div class="col-md-4">
       <label class="form-label">Meilleur marqueur d’essais</label>
       <input
         type="text"
@@ -38,7 +38,7 @@
         value="{{ bonus.best_try_scorer|default:'' }}"
       />
     </div>
-    <div class="col-md-6">
+    <div class="col-md-4">
       <label class="form-label">Meilleur scoreur</label>
       <input
         type="text"
@@ -47,7 +47,7 @@
         value="{{ bonus.best_point_scorer|default:'' }}"
       />
     </div>
-    <div class="col-md-6 mt-3">
+    <div class="col-md-4">
       <label class="form-label">Vainqueur final</label>
       <select name="winner" class="form-select">
         <option value="">-- Choisir --</option>
@@ -71,14 +71,14 @@
 
   {% for block in blocks %}
   <h4 class="mt-4">
-    {% if block.pool %}Poule {{ block.pool }}{% else %}Classement Général{%
+    {% if block.pool %} Poule {{ block.pool }} {% else %} Classement Général {%
     endif %}
   </h4>
 
   <table class="table table-bordered">
     <thead>
       <tr>
-        <th style="width: 100px">Pos</th>
+        <th style="width: 80px">Pos</th>
         <th>Équipe</th>
       </tr>
     </thead>
@@ -88,7 +88,7 @@
         <td><strong>{{ pos }}</strong></td>
         <td>
           <select name="team_{{ block.key }}_{{ pos }}" class="form-select">
-            <option value="">-- Choisir une équipe --</option>
+            <option value="">-- Choisir --</option>
             {% for team in block.teams %}
             <option
               value="{{ team.id }}"
