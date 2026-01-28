@@ -62,8 +62,8 @@ load custom_tags %} {% block content %}
               value="{{ team.id }}"
               {%
               if
-              bonus.winner.id=""
-              ="team.id"
+              bonus.winner.id|add:0=""
+              ="team.id|add:0"
               %}selected{%
               endif
               %}
