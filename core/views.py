@@ -241,7 +241,7 @@ def _ensure_lines(qs, count, ranking, pool=None):
 
 # ------------------
 # CLASSEMENT_PREDICTION VIEW
-# # ------------------
+# ------------------
 @login_required
 def classement_prediction(request):
     competitions = Competition.objects.all()
@@ -255,11 +255,13 @@ def classement_prediction(request):
     if competition_id:
         selected_competition = get_object_or_404(Competition, id=competition_id)
         
-        # On récupère ou crée l'objet Bonus (Structure Simple)
+        # Récupération des bonus (Structure Simple)
         bonus, _ = CompetitionBonusPrediction.objects.get_or_create(
             player=request.user.player,
             competition=selected_competition
         )
+        
+        # Liste des équipes pour le menu "Vainqueur"
         winner_teams = selected_competition.teams.all().order_by("name")
 
         # Configuration des blocs (Poule ou Général)
@@ -272,26 +274,32 @@ def classement_prediction(request):
                 blocks.append({
                     "key": f"pool{pool}",
                     "teams": [ct.team for ct in comp_teams],
-                    "positions": range(1, 7),
+                    "positions": list(range(1, 7)),
+                    "pool": pool
                 })
         else:
             teams = selected_competition.teams.all().order_by("name")
             blocks.append({
                 "key": "all",
                 "teams": teams,
-                "positions": range(1, teams.count() + 1),
+                "positions": list(range(1, teams.count() + 1)),
+                "pool": None
             })
 
-    # --- TRAITEMENT DE LA SAUVEGARDE (POST) ---
+    # --- SAUVEGARDE (POST) ---
     if request.method == "POST" and selected_competition:
-        # 1. Sauvegarde des Bonus (Kicker/Scorer)
+        # 1. Sauvegarde des Bonus (Kicker/Scorer/Vainqueur)
         bonus.best_try_scorer = request.POST.get("best_try_scorer", "").strip()
         bonus.best_point_scorer = request.POST.get("best_point_scorer", "").strip()
-        # Note: CompetitionBonusPrediction n'a pas de champ 'winner' dans tes models
-        # On le sauvegarde si tu l'ajoutes, sinon on ignore pour l'instant.
+        
+        winner_id = request.POST.get("winner")
+        if winner_id and winner_id.isdigit():
+            bonus.winner_id = int(winner_id)
+        else:
+            bonus.winner = None
         bonus.save()
 
-        # 2. Nettoyage du classement existant pour ce joueur
+        # 2. Nettoyage du classement existant
         CompetitionTeamPrediction.objects.filter(
             competition=selected_competition, 
             player=request.user.player
@@ -312,20 +320,20 @@ def classement_prediction(request):
                         block_key=block["key"]
                     )
         
-        messages.success(request, "Vos pronostics ont été enregistrés avec succès !")
+        messages.success(request, "Vos pronostics ont été enregistrés !")
         return redirect(f"{request.path}?competition={selected_competition.id}")
 
-    # --- PRÉPARATION DE L'AFFICHAGE (GET) ---
+    # --- RÉCUPÉRATION POUR AFFICHAGE (GET) ---
     if selected_competition:
         for block in blocks:
-            # On récupère ce qui est en base pour remplir les menus déroulants
             saved_preds = CompetitionTeamPrediction.objects.filter(
                 competition=selected_competition,
                 player=request.user.player,
                 block_key=block["key"]
             )
-            # Dictionnaire { position: team_id }
-            block["saved"] = {p.position: p.team.id for p in saved_preds}
+            # CRUCIAL : on crée un dictionnaire { position: team_id }
+            # On s'assure que position est un entier pour le filtre dict_key
+            block["saved"] = {int(p.position): p.team.id for p in saved_preds}
 
     return render(request, "pronos/classement.html", {
         "competitions": competitions,

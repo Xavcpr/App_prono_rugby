@@ -3,6 +3,9 @@ register = template.Library()
 
 @register.filter
 def dict_key(d, key):
-    if d and key in d:
-        return d[key]
-    return None
+    try:
+        # On force la clé en entier au cas où
+        res = d.get(int(key))
+        return res
+    except (AttributeError, TypeError, KeyError, ValueError):
+        return None
