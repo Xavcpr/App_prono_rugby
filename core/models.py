@@ -118,6 +118,20 @@ class Match(models.Model):
             return self.home_score + self.away_score
         return 0
 
+    def get_defense_bonus(self):
+        """Retourne 'HOME', 'AWAY' ou None si un bonus défensif est mérité"""
+        if self.home_score is None or self.away_score is None:
+            return None
+        
+        diff = abs(self.home_score - self.away_score)
+        # On récupère le seuil de la compétition (ex: 7 points)
+        threshold = self.round.season.competition.bonus_threshold 
+        
+        if 0 < diff <= threshold:
+            # L'équipe perdante prend le bonus
+            return "HOME" if self.home_score < self.away_score else "AWAY"
+        return None
+    
     def winner(self):
         if self.home_score is None or self.away_score is None:
             return None

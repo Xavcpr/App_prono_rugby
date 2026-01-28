@@ -1,0 +1,84 @@
+- à l'échelle de la journée : 
+    - bonus journée : si tu as plus de X bons pronostics par journée (X dépendant de la compétition. 
+        Pour le top 14, {7: 150, 6: 60, 5: 20}
+        Pour la Champions Cup {12: 300, 11: 150, 10: 100, 9:40})
+
+    - les chopes
+        - le meilleur de la journée remporte 3 points spéciaux (des chopes d'or) qui sont comptabilisés dans un classement totalement à part
+        - le 2e remporte 2 chopes d'or
+        - le 3e remporte 1 chope d'or
+            A la fin il y a un classement des chopes d'or
+        - le dernier remporte une chope de plomb
+            A la fin il ya  un classement des chopes de plomb
+
+
+- à l'échelle du match : 
+    1/ chaque match a un certain poids (680 cette année). Tous les pronostiqueurs qui ont mis le bon vainqueur se partagent ces 680 points. 
+    Il y a un bonus de 30 si en plus tu pronostiques bien une victoire à l'extérieur 
+    et de 100 si matches nuls. 
+    
+    2/ Les bonus. 
+        Tu as 15 points si tu pronostiques un bon Bonus offensif (pronostiqué directement par le pronostiqueur sur la vue /pronos/) ou un bon bonus défensif (calculé directement si l'écart est inférieur au bonus_threshold défini dans chaque compétition). 
+        Malus de -3 si bonus offensif ou défensif pronostiqué alors qu'il ne s'est pas avéré. 
+        Attention, il n'y a pas de bonus défensif lors de phases finales !
+        
+    3/ Différence de points. 
+        Si le joueur a pronostiqué un écart proche du réel il a un bonus "DIFF_TABLE": {0: 15, 1: 12, 2: 10, 3: 8, 4: 6, 5: 4, 6: 2, 7: 1},
+        
+    4/ Somme de points. Si le joueur a pronostiqué une somme de scores proche du réel il a un bonus "SUM_TABLE": {0: 8, 1: 6, 2: 5, 3: 4, 4: 3, 5: 2, 6: 1},
+    
+    5/ En cas de tout-pile (donc score exact) bonus de 680 points. 
+    
+    6/ en cas de bon score pour une des deux équipes (demi-tout-pile), bonus de 40 points.
+
+    7/ phase finale coefficient pondérateur en cas de phases finales selon le code suivant : 
+    PHASE_MULTIPLIERS = {"POOL": 1.0, "R16": 1.25, "QF": 1.5, "SF": 2, "FINAL": 3} 
+
+    Nota pour les phases finales : on compte à la fin des prolongations
+        
+- à l'échelle de la compétition :
+    1/ le meilleur au classement de la compétition empoche un bonus :
+        - Top 14 : {1: 300, 2: 150,3: 50}
+        - Champions Cup : {1: 150, 2: 75,3: 25}
+        - 6 nations : {1: 50, 2: 25,3: 10}
+    
+    2/ le classement prédit rapporte:
+        - chaque bon classement rapporte :
+            - Top14 : 80
+            - CC : 50
+            - 6 nations : 50
+        - écart d'une place pour chaque équipe pronostiqué:
+            - top14 : 40
+            - CC : 20
+            - 6 nations : 0
+        - écart de 2 places !
+            - top14 : 20 points
+            - CC : 0
+            - 6 nations : 0
+    
+    3/ le bon classement en entier :
+        - Top14 : 300
+        - CC : 100 par poule
+        - 6 nations : 100
+
+    4/ Le bon vainqueur de la compétition :
+        - Top14 : 200
+        - CC : 200
+        - 6 nations : 100
+
+    5/ Le meilleur marqueur d'essais :
+        - Top 14 : 200
+        - CC : 0
+        - 6 nations : 0
+
+    6/ Le meilleur réalisateur :
+        - Top 14 : 200
+        - CC : 0
+        - 6 nations : 0
+
+    7/ Pour le tournoi des 6 nations, on compte le nombre de bons vainqueurs pronostiqués sur les 15 matches. A l'instar du bonus journée, il y a un bonus selon le barème :
+         {15: 250, 14: 200, 13: 150, 12:50}
+
+
+Tous les barèmes évoluent en début de chaque année, donc je veux pouvoir avoir un accès facile et en début de fichier scoring et pas au milieu de plein de formules et de fonctions...
+
