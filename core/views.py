@@ -362,6 +362,7 @@ def classement_prediction(request):
     )
 
 
+
 # version ok du 28/01
 # def classement_prediction(request):
 #     competitions = Competition.objects.all()

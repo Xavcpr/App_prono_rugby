@@ -60,6 +60,7 @@
       />
     </div>
 
+    <!-- ====== VAINQUEUR ====== -->
     <div class="col-md-6 mt-3">
       <label class="form-label">Vainqueur compétition</label>
       <select name="winner" class="form-select">
@@ -110,7 +111,7 @@
               value="{{ team.id }}"
               {%
               if
-              block.saved.pos=""
+              block.saved[pos]=""
               ="team.id"
               %}
               selected
@@ -127,7 +128,6 @@
       {% endfor %}
     </tbody>
   </table>
-
   {% endfor %}
 
   <button type="submit" class="btn btn-primary">
