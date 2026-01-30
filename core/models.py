@@ -1,3 +1,4 @@
+from django.utils import timezone
 from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -44,7 +45,6 @@ class Team(models.Model):
 class Season(models.Model):
     competition = models.ForeignKey(Competition, on_delete=models.CASCADE, related_name="seasons")
     year = models.CharField(max_length=20, default="2025/2026")  # ex: "2025/2026"
-    # La magie est ici : une saison a plusieurs équipes et une équipe peut avoir participé à plusieurs saisons.
     teams = models.ManyToManyField('Team', related_name="seasons", blank=True)
 
     class Meta:
@@ -109,9 +109,6 @@ class Match(models.Model):
     phase = models.CharField(max_length=10, choices=MatchPhase.choices, default=MatchPhase.POOL)
     bonus_offense_home = models.BooleanField(default=False)
     bonus_offense_away = models.BooleanField(default=False)
-    # bonus_defense_home = models.BooleanField(default=False)
-    # bonus_defense_away = models.BooleanField(default=False)
-    # match_datetime = models.DateTimeField(null=True, blank=True)
 
     def total_score(self):
         if self.home_score is not None and self.away_score is not None:
@@ -145,6 +142,12 @@ class Match(models.Model):
         if self.home_team and self.away_team:
             return f"{self.home_team} vs {self.away_team}"
         return f"Match à définir ({self.round})"
+    
+    @property
+    def is_locked(self):
+        if self.kickoff_at:
+            return timezone.now() > self.kickoff_at
+        return False
 
 # ----- Configuration de scoring -----
 class ScoringConfig(models.Model):

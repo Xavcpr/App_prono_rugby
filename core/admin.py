@@ -13,28 +13,29 @@ from datetime import datetime, time
 # ---------------------
 def recalc_scores(modeladmin, request, queryset):
     for competition in queryset:
-        for round_obj in competition.round_set.all():
-            for match in round_obj.match_set.all():
-                for pred in match.prediction_set.all():
-                    calculate_points(pred, match)
+        for season in competition.seasons.all():
+            for round_obj in competition.round_set.all():
+                for match in round_obj.match_set.all():
+                    for pred in match.prediction_set.all():
+                        calculate_points(pred, match)
 
-            for player_id, total in round_obj.match_set.filter(prediction__isnull=False)\
-                    .values('prediction__player').annotate(points_sum=Sum('prediction__points'))\
-                    .values_list('prediction__player', 'points_sum'):
-                DailyScore.objects.update_or_create(
+                for player_id, total in round_obj.match_set.filter(prediction__isnull=False)\
+                        .values('prediction__player').annotate(points_sum=Sum('prediction__points'))\
+                        .values_list('prediction__player', 'points_sum'):
+                    DailyScore.objects.update_or_create(
+                        user_id=player_id,
+                        round=round_obj,
+                        defaults={'points': total}
+                    )
+
+            for player_id, total in competition.round_set.filter(match__prediction__isnull=False)\
+                    .values('match__prediction__player').annotate(points_sum=Sum('match__prediction__points'))\
+                    .values_list('match__prediction__player', 'points_sum'):
+                SeasonScore.objects.update_or_create(
                     user_id=player_id,
-                    round=round_obj,
+                    competition=competition,
                     defaults={'points': total}
                 )
-
-        for player_id, total in competition.round_set.filter(match__prediction__isnull=False)\
-                .values('match__prediction__player').annotate(points_sum=Sum('match__prediction__points'))\
-                .values_list('match__prediction__player', 'points_sum'):
-            SeasonScore.objects.update_or_create(
-                user_id=player_id,
-                competition=competition,
-                defaults={'points': total}
-            )
 
     messages.success(request, "Recalcul des points terminé pour la compétition sélectionnée !")
 
@@ -107,7 +108,8 @@ class RoundAdmin(admin.ModelAdmin):
     @admin.action(description="Générer les matchs automatiquement si équipes disponibles")
     def generate_matches(self, request, queryset):
         for round_obj in queryset:
-            teams = list(round_obj.season.competition.teams.all())
+            # teams = list(round_obj.season.competition.teams.all())
+            teams = list(round_obj.season.teams.all())
 
             if len(teams) % 2 != 0:
                 self.message_user(
