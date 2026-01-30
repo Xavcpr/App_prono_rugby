@@ -44,9 +44,8 @@ class Team(models.Model):
 class Season(models.Model):
     competition = models.ForeignKey(Competition, on_delete=models.CASCADE, related_name="seasons")
     year = models.CharField(max_length=20, default="2025/2026")  # ex: "2025/2026"
-    # La magie est ici : une saison a plusieurs équipes, 
-    # et une équipe peut avoir participé à plusieurs saisons.
-    # teams = models.ManyToManyField('Team', related_name="seasons", blank=True)
+    # La magie est ici : une saison a plusieurs équipes et une équipe peut avoir participé à plusieurs saisons.
+    teams = models.ManyToManyField('Team', related_name="seasons", blank=True)
 
     class Meta:
         unique_together = ("competition", "year")
