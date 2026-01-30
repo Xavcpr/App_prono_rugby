@@ -1,7 +1,9 @@
 To do list ! :
+- pourquoi la page /pronos/ ne fonctionne pas sur edge ?
+
 *Scoring
 - * match
-    - Vérifier que le scoring 'match' fonctionne. attention à la nouvelle règle pour le BD
+    - Implémenter tout le scoring
     - attention particulière au poids match divisé (et au #DIV/O)
     
 - * journée 
@@ -55,3 +57,5 @@ To do list ! :
 - * règlement
 
 - * guide admin
+
+- ajouter sur l'onglet classement qqch qui interdit de modifier une fois la compétition commencée

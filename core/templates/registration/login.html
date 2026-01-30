@@ -1,6 +1,10 @@
 {% extends "base.html" %} {% block content %}
 <div class="row justify-content-center">
   <div class="col-12 col-sm-8 col-md-5 col-lg-4">
+    {% comment %} col-12 : Sur mobile (très petit écran), le formulaire prend
+    toute la largeur (12/12). col-sm-8 : Sur tablette, il prend 8 unités sur 12.
+    col-md-5 : Sur un ordinateur portable, il prend 5 unités sur 12. col-lg-4 :
+    Sur un grand écran, il ne prend plus que 4 unités sur 12. {% endcomment %}
     <div class="card shadow-sm">
       <div class="card-body">
         <h2 class="h4 text-center mb-3">Connexion</h2>

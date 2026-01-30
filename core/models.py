@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 class MatchPhase(models.TextChoices):
     POOL = "POOL", "Phase de poules"
     R16 = "R16", "Huitièmes de finale"
-    QF = "QF", "Quarts de finale"
+    QF = "QF", "Quarts de finale / Barrages"
     SF = "SF", "Demi-finales"
     FINAL = "FINAL", "Finale"
 
@@ -22,12 +22,10 @@ class Player(models.Model):
 class Competition(models.Model):
     name = models.CharField(max_length=100)
     matches_per_round = models.PositiveIntegerField(default=0)
-    # season = models.CharField(max_length=20)  # ex: "2025/2026"
     bonus_defense_threshold = models.IntegerField(default=7)
     match_weight = models.IntegerField(default=680)
 
     def __str__(self):
-        # return f"{self.name} {self.season}"
         return self.name
 
 # ----- Équipes -----
@@ -46,6 +44,9 @@ class Team(models.Model):
 class Season(models.Model):
     competition = models.ForeignKey(Competition, on_delete=models.CASCADE, related_name="seasons")
     year = models.CharField(max_length=20, default="2025/2026")  # ex: "2025/2026"
+    # La magie est ici : une saison a plusieurs équipes, 
+    # et une équipe peut avoir participé à plusieurs saisons.
+    # teams = models.ManyToManyField('Team', related_name="seasons", blank=True)
 
     class Meta:
         unique_together = ("competition", "year")

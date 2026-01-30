@@ -1,4 +1,7 @@
 # backend/init_top14_mvp.py
+# pour utiliser : faire python backend/init_top14_mvp.py
+# en revanche, cela ne sert que pour initialiser la compétition. Comme tous les joueurs ont déjà été créés, on peut supprimer
+
 
 import os
 import django
