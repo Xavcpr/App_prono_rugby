@@ -1,61 +1,57 @@
-import datetime
 from django.core.management.base import BaseCommand, CommandError
-from core.models import Competition, Round, Match, Team
+from core.models import Competition, Season, Round, Match, Team
 
 class Command(BaseCommand):
-    help = "Génère 7 matchs pour une journée de Top 14 à partir d'une liste d'équipes"
+    help = "Génère des matchs pour une compétition, une saison et une journée précise."
 
     def add_arguments(self, parser):
-        # On définit les arguments que tu devras taper dans le terminal
-        parser.add_argument('round_number', type=int, help="Numéro de la journée")
-        parser.add_argument('date', type=str, help="Date indicative (YYYY-MM-DD)")
-        parser.add_argument('teams', nargs='+', type=str, help="Liste des 14 noms d'équipes séparés par des espaces")
+        # Arguments obligatoires
+        parser.add_argument('comp_name', type=str, help="Nom de la compétition (ex: 'Top 14')")
+        parser.add_argument('season_year', type=str, help="Année de la saison (ex: '2025/2026')")
+        parser.add_argument('round_num', type=int, help="Numéro de la journée")
+        parser.add_argument('date', type=str, help="Date (YYYY-MM-DD)")
+        # Liste des équipes (nargs='+' récupère tout ce qui reste)
+        parser.add_argument('teams', nargs='+', type=str, help="Les 14 équipes")
 
     def handle(self, *args, **options):
-        round_number = options['round_number']
+        comp_name = options['comp_name']
+        season_year = options['season_year']
+        round_num = options['round_num']
         date_str = options['date']
         team_names = options['teams']
 
-        # 1. Vérifications de base
-        if len(team_names) != 14:
-            raise CommandError(f"Il faut exactement 14 équipes (tu en as mis {len(team_names)})")
-
+        # 1. Trouver la Saison (qui contient déjà la compétition)
         try:
-            comp = Competition.objects.get(name="Top 14")
-        except Competition.DoesNotExist:
-            raise CommandError("La compétition 'Top 14' n'existe pas en base de données.")
+            season = Season.objects.get(competition__name=comp_name, year=season_year)
+        except Season.DoesNotExist:
+            raise CommandError(f"La saison {season_year} pour {comp_name} n'existe pas.")
 
-        # 2. Création/Récupération de la journée
-        round_obj, created = Round.objects.get_or_create(
-            competition=comp,
-            number=round_number,
+        # 2. Créer ou récupérer la journée (Round) liée à cette saison
+        # Note : Si ton modèle Round n'a pas encore de lien vers Season, 
+        # il utilise celui de Competition.
+        round_obj, _ = Round.objects.get_or_create(
+            competition=season.competition,
+            number=round_num,
             defaults={'date': date_str}
         )
 
-        # 3. Récupération des objets Teams
+        # 3. Récupération des équipes (avec gestion des guillemets pour les espaces)
         teams = []
         for name in team_names:
-            try:
-                teams.append(Team.objects.get(name=name))
-            except Team.DoesNotExist:
-                raise CommandError(f"L'équipe '{name}' n'existe pas.")
+            team = Team.objects.filter(name__iexact=name).first()
+            if not team:
+                raise CommandError(f"L'équipe '{name}' est introuvable.")
+            teams.append(team)
 
-        # 4. Appariement (7 premiers vs 7 derniers)
+        # 4. Création des matchs
         home_teams = teams[:7]
         away_teams = teams[7:]
         
-        count = 0
         for home, away in zip(home_teams, away_teams):
-            _, created = Match.objects.get_or_create(
+            Match.objects.get_or_create(
                 round=round_obj,
                 home_team=home,
                 away_team=away,
-                defaults={'weight': comp.match_weight, 'phase': "POOL"}
+                defaults={'phase': "POOL"}
             )
-            if created:
-                count += 1
-                self.stdout.write(self.style.SUCCESS(f"Match créé : {home} vs {away}"))
-            else:
-                self.stdout.write(self.style.WARNING(f"Match déjà existant : {home} vs {away}"))
-
-        self.stdout.write(self.style.SUCCESS(f"Opération terminée : {count} matchs ajoutés à la J{round_number}."))
+            self.stdout.write(self.style.SUCCESS(f"Match créé : {home} vs {away} ({comp_name} {season_year})"))
