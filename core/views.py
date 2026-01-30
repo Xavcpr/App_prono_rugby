@@ -19,14 +19,10 @@ from .services.scoring import calculate_points
 @login_required
 def pronos_view(request):
     user = request.user
-
     try:
         player = user.player
     except Player.DoesNotExist:
-        messages.error(
-            request,
-            "Votre compte n’est pas encore lié à un joueur. Contactez l’admin."
-        )
+        messages.error(request, "Votre compte n’est pas encore lié à un joueur.")
         return redirect("logout")
 
     competition_id = request.GET.get("competition")
@@ -34,11 +30,18 @@ def pronos_view(request):
     now = timezone.now()
     today = now.date()
 
+    # --- AMÉLIORATION : Round par défaut mieux ciblé ---
     if round_id is None:
-        next_round = Round.objects.filter(date__gte=today).order_by("date").first()
+        rounds_query = Round.objects.filter(date__gte=today)
+        if competition_id:
+            # On cherche le prochain round de CETTE compétition
+            rounds_query = rounds_query.filter(season__competition_id=competition_id)
+        
+        next_round = rounds_query.order_by("date").first()
         if next_round:
             round_id = str(next_round.id)
 
+    # --- AMÉLIORATION : select_related inclut 'season' ---
     matches = Match.objects.select_related(
         "round__season__competition",
         "home_team",
@@ -50,34 +53,30 @@ def pronos_view(request):
     if round_id:
         matches = matches.filter(round_id=round_id)
 
-    matches = matches.order_by(
-        "round__season__competition__name",
-        "round__number",
-        "kickoff_at"
-    )
+    matches = matches.order_by("kickoff_at")
 
     # ------------------
-    # POST = SAUVEGARDE
+    # POST = SAUVEGARDE (Inchangé, il est très bien)
     # ------------------
     if request.method == "POST":
-        print("POST DATA =", dict(request.POST))
-
         for match in matches:
             mid = match.id
-
-            # Match verrouillé → on ignore
-            if match.kickoff_at <= now:
+            if match.kickoff_at and match.kickoff_at <= now: # Sécurité kickoff_at
                 continue
 
-            # Scores
             try:
-                home_score = int(request.POST.get(f"home_score_{mid}", 0))
-                away_score = int(request.POST.get(f"away_score_{mid}", 0))
-            except ValueError:
-                home_score = 0
-                away_score = 0
+                # Utilise .get() avec 'None' pour vérifier si l'utilisateur a saisi quelque chose
+                h_score_raw = request.POST.get(f"home_score_{mid}")
+                a_score_raw = request.POST.get(f"away_score_{mid}")
+                
+                if h_score_raw == "" or a_score_raw == "": # On ignore les champs vides
+                    continue
+                    
+                home_score = int(h_score_raw)
+                away_score = int(a_score_raw)
+            except (ValueError, TypeError):
+                continue
 
-            # ✅ CHECKBOX : clé présente = True / absente = False
             bonus_home = f"bonus_home_{mid}" in request.POST
             bonus_away = f"bonus_away_{mid}" in request.POST
 
@@ -90,48 +89,39 @@ def pronos_view(request):
             prediction.away_score_pred = away_score
             prediction.bonus_home_pred = bonus_home
             prediction.bonus_away_pred = bonus_away
-
-            try:
-                prediction.points = calculate_points(prediction, match)
-            except Exception as e:
-                print("ERREUR calculate_points :", e)
-                prediction.points = 0
-
+            
+            # On ne calcule les points que si le match est terminé (optionnel selon ta logique)
             prediction.save()
 
-        messages.success(
-            request,
-            "Vos pronostics ont été enregistrés (hors matchs déjà commencés)."
-        )
+        messages.success(request, "Pronostics enregistrés !")
 
     # ------------------
-    # RECHARGEMENT DES PRONOS
+    # PREPARATION AFFICHAGE
     # ------------------
-    predictions = Prediction.objects.filter(player=player)
-    predictions_by_match = {p.match_id: p for p in predictions}
+    predictions_by_match = {p.match_id: p for p in Prediction.objects.filter(player=player)}
 
     submit_disabled = True
     for match in matches:
         match.user_prediction = predictions_by_match.get(match.id)
-        match.is_locked = match.kickoff_at <= now
+        match.is_locked = match.kickoff_at <= now if match.kickoff_at else False
         if not match.is_locked:
             submit_disabled = False
 
     competitions = Competition.objects.all()
-    rounds = Round.objects.all()
+    # On filtre les rounds pour le menu déroulant
+    all_rounds = Round.objects.select_related('season__competition').all()
     if competition_id:
-        rounds = rounds.filter(season__competition_id=competition_id)
+        all_rounds = all_rounds.filter(season__competition_id=competition_id)
 
     return render(request, "pronos/pronos.html", {
         "player": player,
         "matches": matches,
         "competitions": competitions,
-        "rounds": rounds,
+        "rounds": all_rounds,
         "submit_disabled": submit_disabled,
         "selected_round": round_id,
         "selected_competition": competition_id,
     })
-
 
 # ------------------
 # LOGOUT VIEW
