@@ -13,6 +13,9 @@ from .constants import COMPETITION_RULES
 from .models import CompetitionTeam, Match, Prediction, Competition, Round, Player, Season, Team, CompetitionTeamPrediction, CompetitionRankingPrediction, TeamRankingPrediction, CompetitionBonusPrediction
 from .services.scoring import calculate_points
 
+
+
+
 # ------------------
 # PRONOS VIEW
 # ------------------
@@ -30,18 +33,17 @@ def pronos_view(request):
     now = timezone.now()
     today = now.date()
 
-    # --- AMÉLIORATION : Round par défaut mieux ciblé ---
+    # --- Round par défaut ---
     if round_id is None:
         rounds_query = Round.objects.filter(date__gte=today)
         if competition_id:
-            # On cherche le prochain round de CETTE compétition
             rounds_query = rounds_query.filter(season__competition_id=competition_id)
         
         next_round = rounds_query.order_by("date").first()
         if next_round:
             round_id = str(next_round.id)
 
-    # --- AMÉLIORATION : select_related inclut 'season' ---
+    # --- Récupération des matchs ---
     matches = Match.objects.select_related(
         "round__season__competition",
         "home_team",
@@ -56,20 +58,21 @@ def pronos_view(request):
     matches = matches.order_by("kickoff_at")
 
     # ------------------
-    # POST = SAUVEGARDE (Inchangé, il est très bien)
+    # POST = SAUVEGARDE
     # ------------------
     if request.method == "POST":
         for match in matches:
             mid = match.id
-            if match.kickoff_at and match.kickoff_at <= now: # Sécurité kickoff_at
+            
+            # Utilisation de la propriété du modèle pour bloquer le POST
+            if match.is_locked:
                 continue
 
             try:
-                # Utilise .get() avec 'None' pour vérifier si l'utilisateur a saisi quelque chose
                 h_score_raw = request.POST.get(f"home_score_{mid}")
                 a_score_raw = request.POST.get(f"away_score_{mid}")
                 
-                if h_score_raw == "" or a_score_raw == "": # On ignore les champs vides
+                if h_score_raw == "" or a_score_raw == "":
                     continue
                     
                 home_score = int(h_score_raw)
@@ -89,11 +92,11 @@ def pronos_view(request):
             prediction.away_score_pred = away_score
             prediction.bonus_home_pred = bonus_home
             prediction.bonus_away_pred = bonus_away
-            
-            # On ne calcule les points que si le match est terminé (optionnel selon ta logique)
             prediction.save()
 
         messages.success(request, "Pronostics enregistrés !")
+        # Optionnel: redirection pour éviter le renvoi du formulaire au rafraîchissement
+        # return redirect(f"{request.path}?competition={competition_id or ''}&round={round_id or ''}")
 
     # ------------------
     # PREPARATION AFFICHAGE
@@ -102,13 +105,14 @@ def pronos_view(request):
 
     submit_disabled = True
     for match in matches:
+        # On attache le prono existant au match pour le template
         match.user_prediction = predictions_by_match.get(match.id)
-        match.is_locked = match.kickoff_at <= now if match.kickoff_at else False
+        
+        # On vérifie si au moins un match est modifiable pour activer le bouton
         if not match.is_locked:
             submit_disabled = False
 
     competitions = Competition.objects.all()
-    # On filtre les rounds pour le menu déroulant
     all_rounds = Round.objects.select_related('season__competition').all()
     if competition_id:
         all_rounds = all_rounds.filter(season__competition_id=competition_id)
@@ -122,6 +126,8 @@ def pronos_view(request):
         "selected_round": round_id,
         "selected_competition": competition_id,
     })
+
+# ... reste de tes vues (logout, settings, etc.) inchangé ...
 
 # ------------------
 # LOGOUT VIEW
