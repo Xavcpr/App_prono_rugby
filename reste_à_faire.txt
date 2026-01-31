@@ -1,6 +1,4 @@
 To do list ! :
-- pourquoi la page /pronos/ ne fonctionne pas sur edge ?
-
 *Scoring
 - * match
     - Implémenter tout le scoring
@@ -59,3 +57,5 @@ To do list ! :
 - * guide admin
 
 - ajouter sur l'onglet classement qqch qui interdit de modifier une fois la compétition commencée
+
+- debug = true ?
