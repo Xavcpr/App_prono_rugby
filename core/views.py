@@ -21,6 +21,7 @@ from .services.scoring import calculate_points
 # ------------------
 @login_required
 def pronos_view(request):
+    print("--- LA VUE EST TRES BIEN CHARGÉE ---")
     user = request.user
     try:
         player = user.player
@@ -64,39 +65,44 @@ def pronos_view(request):
         for match in matches:
             mid = match.id
             
-            # Utilisation de la propriété du modèle pour bloquer le POST
+            # 1. Ne pas traiter si verrouillé
             if match.is_locked:
                 continue
 
+            # 2. Récupération et nettoyage immédiat des espaces
+            h_score_raw = request.POST.get(f"home_score_{mid}", "").strip()
+            a_score_raw = request.POST.get(f"away_score_{mid}", "").strip()
+
+            # 3. Vérification stricte : si l'un des deux est vide, on ignore TOTALEMENT le match
+            if not h_score_raw or not a_score_raw:
+                continue
+
+            # 4. Tentative de conversion en nombre
             try:
-                h_score_raw = request.POST.get(f"home_score_{mid}")
-                a_score_raw = request.POST.get(f"away_score_{mid}")
-                
-                if h_score_raw == "" or a_score_raw == "":
-                    continue
-                    
                 home_score = int(h_score_raw)
                 away_score = int(a_score_raw)
             except (ValueError, TypeError):
+                # Si ce n'est pas un chiffre (ex: du texte), on ignore le match
                 continue
 
+            # 5. Récupération des bonus
             bonus_home = f"bonus_home_{mid}" in request.POST
             bonus_away = f"bonus_away_{mid}" in request.POST
 
-            prediction, created = Prediction.objects.get_or_create(
+            # 6. SAUVEGARDE : On utilise update_or_create pour être plus propre
+            Prediction.objects.update_or_create(
                 match=match,
                 player=player,
+                defaults={
+                    'home_score_pred': home_score,
+                    'away_score_pred': away_score,
+                    'bonus_home_pred': bonus_home,
+                    'bonus_away_pred': bonus_away,
+                }
             )
 
-            prediction.home_score_pred = home_score
-            prediction.away_score_pred = away_score
-            prediction.bonus_home_pred = bonus_home
-            prediction.bonus_away_pred = bonus_away
-            prediction.save()
-
         messages.success(request, "Pronostics enregistrés !")
-        # Optionnel: redirection pour éviter le renvoi du formulaire au rafraîchissement
-        # return redirect(f"{request.path}?competition={competition_id or ''}&round={round_id or ''}")
+        return redirect(f"{request.path}?competition={competition_id or ''}&round={round_id or ''}")
 
     # ------------------
     # PREPARATION AFFICHAGE
@@ -105,10 +111,7 @@ def pronos_view(request):
 
     submit_disabled = True
     for match in matches:
-        # On attache le prono existant au match pour le template
         match.user_prediction = predictions_by_match.get(match.id)
-        
-        # On vérifie si au moins un match est modifiable pour activer le bouton
         if not match.is_locked:
             submit_disabled = False
 
