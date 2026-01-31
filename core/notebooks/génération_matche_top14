@@ -1,0 +1,17 @@
+(venv) PS C:\Users\xavie\Documents\Rugby_app\backend> python manage.py generer_matchs "Top 14" "2025/2026" 18 2026-02-28 Clermont "Racing 92" Toulon "La Rochelle" Montauban Perpignan UBB Montpellier Castres "Stade français" Pau Bayonne Lyon Toulouse
+
+python manage.py generer_matchs "Top 14" "2025/2026" 19 2026-03-21 Clermont "Racing 92" Toulon "La Rochelle" Montauban Perpignan UBB Montpellier Castres "Stade français" Pau Bayonne Lyon Toulouse
+
+python manage.py generer_matchs "Top 14" "2025/2026" 20 2026-03-28 Bayonne Castres Lyon Pau "Stade français" Toulouse Perpignan "La Rochelle" Montauban UBB "Racing 92" Clermont Montpellier Toulon
+
+python manage.py generer_matchs "Top 14" "2025/2026" 21 2026-04-18 Clermont Bayonne Castres Montpellier "Racing 92" "La Rochelle" Montauban Lyon Pau Toulouse Perpignan "Stade français" UBB Toulon
+
+python manage.py generer_matchs "Top 14" "2025/2026" 22 2026-04-25 Lyon Toulon "Stade français" Toulouse UBB Montauban Perpignan Castres Bayonne Pau Clermont Montpellier "Racing 92" "La Rochelle" 
+
+python manage.py generer_matchs "Top 14" "2025/2026" 23 2026-05-09 Clermont Bayonne Montpellier "Racing 92" Toulon Pau "Stade français" Perpignan UBB Montauban "La Rochelle" Toulouse Castres Lyon
+
+python manage.py generer_matchs "Top 14" "2025/2026" 24 2026-05-16 Castres Lyon "Racing 92" Pau "La Rochelle" UBB Montauban Montpellier Bayonne Toulon Clermont Toulouse Perpignan "Stade français"
+
+python manage.py generer_matchs "Top 14" "2025/2026" 25 2026-05-30 Clermont Montpellier Toulon "Stade français" Toulouse Montauban Perpignan "Racing 92" Pau UBB Bayonne Lyon "La Rochelle" Castres
+
+python manage.py generer_matchs "Top 14" "2025/2026" 26 2026-06-06 Bayonne Castres Lyon "Racing 92" Pau "La Rochelle" UBB Perpignan Toulon Montpellier Toulouse Montauban  "Stade français" Clermont 
