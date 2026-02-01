@@ -209,7 +209,7 @@ class PredictionAdmin(admin.ModelAdmin):
         "bonus_away_pred",
         "points",
     )
-    list_filter = ("match", "player")
+    list_filter = ("match__round", "player", "match")
 
 class TeamRankingPredictionInline(admin.TabularInline):
     model = TeamRankingPrediction
