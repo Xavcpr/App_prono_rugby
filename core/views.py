@@ -356,3 +356,64 @@ def classement_prediction(request):
         "winner_teams": winner_teams,
         "last_saved_ranking": last_saved_ranking,
     })
+    
+def all_pronos_view(request):
+    now = timezone.now()
+    
+    # 1. Récupération de l'ID depuis l'URL
+    round_id_raw = request.GET.get("round")
+    print(f"DEBUG: ID reçu dans l'URL = {round_id_raw}") # Regarde ton terminal !
+    
+    # On trie par saison puis par NUMÉRO de journée (pas par ID !)
+    all_rounds = Round.objects.select_related('season').order_by('season__competition', 'number')
+
+    # 2. Logique de sélection robuste
+    if round_id_raw and round_id_raw.isdigit():
+        selected_round_id = int(round_id_raw)
+    else:
+        # Par défaut, on cherche la journée la plus proche d'aujourd'hui
+        current_r = Round.objects.filter(date__gte=now.date()).order_by("date").first()
+        if not current_r:
+            current_r = Round.objects.order_by("-date").first()
+        selected_round_id = current_r.id if current_r else None
+
+    # 3. Filtrage des matchs
+    matches = Match.objects.filter(round_id=selected_round_id).select_related('home_team', 'away_team').order_by("kickoff_at")
+    
+    # 4. Joueurs par ordre alphabétique
+    players = Player.objects.all().select_related('user').order_by('user__username')
+    
+    predictions = Prediction.objects.filter(match__round_id=selected_round_id)
+
+    rows = []
+    for m in matches:
+        is_future = m.kickoff_at > now if m.kickoff_at else True
+        player_pronos = []
+        for p in players:
+            prono = next((pred for pred in predictions if pred.match_id == m.id and pred.player_id == p.id), None)
+            
+            bg_class = ""
+            if is_future:
+                val = "🔒"
+            elif prono:
+                val = f"{prono.home_score_pred}-{prono.away_score_pred}"
+                if prono.home_score_pred > prono.away_score_pred:
+                    bg_class = "bg-home-win"
+                elif prono.away_score_pred > prono.home_score_pred:
+                    bg_class = "bg-away-win"
+            else:
+                val = "-"
+            player_pronos.append({'display': val, 'class': bg_class})
+
+        rows.append({
+            'info': f"{m.home_team.name} - {m.away_team.name}",
+            'reel': f"{m.home_score}-{m.away_score}" if m.home_score is not None else "-",
+            'player_pronos': player_pronos
+        })
+
+    return render(request, "pronos/all_pronos.html", {
+        "rows": rows,
+        "players": players,
+        "rounds": all_rounds,
+        "selected_round": selected_round_id, # Cet entier doit correspondre à r.id
+    })

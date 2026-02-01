@@ -1,0 +1,94 @@
+{% extends "base.html" %} {% block content %}
+<style>
+  /* Couleurs personnalisées pour les pronostics */
+  .bg-home-win {
+    background-color: #d4edda !important;
+    color: #155724;
+  } /* Vert clair */
+  .bg-away-win {
+    background-color: #f8d7da !important;
+    color: #721c24;
+  } /* Rose/Rouge clair */
+  .bg-draw {
+    background-color: #fff3cd !important;
+    color: #856404;
+  } /* Jaune clair (Nul) */
+
+  .table td {
+    vertical-align: middle;
+  }
+</style>
+
+<div class="container-fluid mt-4">
+  <div class="alert alert-info">
+    ID du Round affiché : <strong>{{ selected_round }}</strong> | Nombre de
+    matchs trouvés : <strong>{{ rows|length }}</strong>
+  </div>
+  <h2>Tableau des Pronostics</h2>
+  <form
+    method="get"
+    action="{% url 'all_pronos' %}"
+    id="roundForm"
+    class="mb-4"
+  >
+    <label class="font-weight-bold">Compétition & Journée :</label>
+    <select
+      name="round"
+      class="form-control d-inline-block w-auto"
+      onchange="document.getElementById('roundForm').submit()"
+    >
+      {% for r in rounds %}
+      <option
+        value="{{ r.id }}"
+        {%
+        if
+        r.id=""
+        ="selected_round"
+        %}selected{%
+        endif
+        %}
+      >
+        {{ r.season }} - Journée {{ r.number }}
+      </option>
+      {% endfor %}
+    </select>
+    <noscript
+      ><button type="submit" class="btn btn-primary btn-sm">
+        Valider
+      </button></noscript
+    >
+  </form>
+
+  <div class="table-responsive">
+    <table class="table table-bordered table-sm">
+      <thead class="thead-dark">
+        <tr class="text-center">
+          <th>Match</th>
+          <th>Score Réel</th>
+          {% for player in players %}
+          <th>{{ player.user.username }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td class="font-weight-bold">{{ row.info }}</td>
+          <td class="text-center bg-light"><strong>{{ row.reel }}</strong></td>
+
+          {% for p_data in row.player_pronos %}
+          <td class="text-center {{ p_data.class }}">{{ p_data.display }}</td>
+          {% endfor %}
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="{{ players|length|add:2 }}" class="text-center">
+            Aucun match trouvé pour cette journée.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
