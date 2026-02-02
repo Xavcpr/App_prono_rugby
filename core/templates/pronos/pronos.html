@@ -7,6 +7,7 @@
   <div class="d-flex gap-2">
     <a href="{% url 'settings' %}" class="btn btn-outline-secondary btn-sm">⚙ Réglages</a>
     <a href="{% url 'classement_prediction' %}" class="btn btn-outline-primary btn-sm">📊 Classements</a>
+    <a href="{% url 'all_pronos' %}" class="btn btn-outline-primary btn-sm">📊 Vue commune</a>
     <form method="post" action="{% url 'logout' %}">
       {% csrf_token %}
       <button type="submit" class="btn btn-outline-danger btn-sm">Déconnexion</button>

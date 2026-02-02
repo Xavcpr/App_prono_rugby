@@ -357,44 +357,52 @@ def classement_prediction(request):
         "last_saved_ranking": last_saved_ranking,
     })
     
+from django.shortcuts import render
+from django.utils import timezone
+from .models import Round, Match, Player, Prediction
+
 def all_pronos_view(request):
     now = timezone.now()
     
-    # 1. Récupération de l'ID depuis l'URL
+    # 1. Récupération de l'ID depuis l'URL (?round=XX)
     round_id_raw = request.GET.get("round")
-    print(f"DEBUG: ID reçu dans l'URL = {round_id_raw}") # Regarde ton terminal !
     
-    # On trie par saison puis par NUMÉRO de journée (pas par ID !)
-    all_rounds = Round.objects.select_related('season').order_by('season__competition', 'number')
+    # 2. Préparation de la liste complète des rounds (triée par compétition puis numéro)
+    all_rounds = Round.objects.select_related('season__competition').order_by('season__competition', 'number')
 
-    # 2. Logique de sélection robuste
+    # 3. Détermination de l'ID du round à afficher
+    selected_round_id = None
     if round_id_raw and round_id_raw.isdigit():
         selected_round_id = int(round_id_raw)
     else:
-        # Par défaut, on cherche la journée la plus proche d'aujourd'hui
+        # Si aucun ID, on cherche le round le plus proche d'aujourd'hui
         current_r = Round.objects.filter(date__gte=now.date()).order_by("date").first()
         if not current_r:
+            # Si aucune date future, on prend le dernier round existant
             current_r = Round.objects.order_by("-date").first()
         selected_round_id = current_r.id if current_r else None
 
-    # 3. Filtrage des matchs
+    # 4. Récupération de l'objet Round actuel pour le titre dynamique
+    current_round_obj = all_rounds.filter(id=selected_round_id).first()
+
+    # 5. Données de base : Matchs, Joueurs (A-Z) et Pronos
     matches = Match.objects.filter(round_id=selected_round_id).select_related('home_team', 'away_team').order_by("kickoff_at")
-    
-    # 4. Joueurs par ordre alphabétique
     players = Player.objects.all().select_related('user').order_by('user__username')
-    
     predictions = Prediction.objects.filter(match__round_id=selected_round_id)
 
+    # 6. Construction du tableau (lignes de matchs / colonnes de joueurs)
     rows = []
     for m in matches:
         is_future = m.kickoff_at > now if m.kickoff_at else True
         player_pronos = []
+        
         for p in players:
+            # On cherche le prono du joueur pour ce match
             prono = next((pred for pred in predictions if pred.match_id == m.id and pred.player_id == p.id), None)
             
             bg_class = ""
             if is_future:
-                val = "🔒"
+                val = "🔒" # On cache si le match n'a pas commencé
             elif prono:
                 val = f"{prono.home_score_pred}-{prono.away_score_pred}"
                 if prono.home_score_pred > prono.away_score_pred:
@@ -403,17 +411,20 @@ def all_pronos_view(request):
                     bg_class = "bg-away-win"
             else:
                 val = "-"
+
             player_pronos.append({'display': val, 'class': bg_class})
 
         rows.append({
-            'info': f"{m.home_team.name} - {m.away_team.name}",
+            'info': f"{m.home_team.name if m.home_team else 'TBD'} - {m.away_team.name if m.away_team else 'TBD'}",
             'reel': f"{m.home_score}-{m.away_score}" if m.home_score is not None else "-",
             'player_pronos': player_pronos
         })
 
+    # 7. Envoi au template
     return render(request, "pronos/all_pronos.html", {
         "rows": rows,
         "players": players,
         "rounds": all_rounds,
-        "selected_round": selected_round_id, # Cet entier doit correspondre à r.id
+        "selected_round": selected_round_id,
+        "current_round_obj": current_round_obj, # Pour ton nouveau titre dynamique
     })
