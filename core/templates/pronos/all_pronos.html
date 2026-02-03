@@ -34,7 +34,7 @@
     border-collapse: separate; /* Nécessaire pour le sticky */
     border-spacing: 0;
     font-size: 0.95em;
-    min-width: 1000px; /* Force le scroll si trop de joueurs */
+    min-width: 1100px; /* Légèrement augmenté pour laisser de la place aux noms */
   }
 
   .rugby-board th, .rugby-board td {
@@ -62,7 +62,7 @@
 
   .sticky-score {
     position: sticky;
-    left: 220px; /* Doit correspondre à la largeur de sticky-match */
+    left: 220px;
     z-index: 10;
     background: #edf2f4 !important;
     font-weight: bold;
@@ -70,7 +70,6 @@
     border-right: 2px solid #34495e !important;
   }
 
-  /* Ajustement z-index pour les en-têtes sticky */
   thead th.sticky-match, thead th.sticky-score {
     z-index: 11;
     background: #34495e !important;
@@ -81,25 +80,32 @@
   .bg-away-win { background-color: #f8d7da !important; color: #721c24; font-weight: bold; }
   .bg-draw { background-color: #fff3cd !important; color: #856404; font-weight: bold; }
 
-  select {
-    padding: 6px 12px;
-    border-radius: 4px;
-    border: 1px solid #bdc3c7;
+  /* --- Boutons --- */
+  .btn-group-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 10px;
   }
 
-  .btn-results {
-    background: #3498db;
-    color: white;
+  .btn-custom {
     padding: 8px 15px;
     text-decoration: none;
     border-radius: 4px;
     font-weight: bold;
     transition: background 0.3s;
+    display: inline-block;
   }
 
-  .btn-results:hover {
-    background: #2980b9;
-    color: white;
+  .btn-results { background: #3498db; color: white; }
+  .btn-results:hover { background: #2980b9; color: white; }
+
+  .btn-edit { background: #f39c12; color: white; }
+  .btn-edit:hover { background: #d35400; color: white; }
+
+  select {
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: 1px solid #bdc3c7;
   }
   </style>
   <div class="container-fluid">
@@ -117,7 +123,8 @@
             id="roundForm"
             style="display: flex;
                    align-items: center;
-                   gap: 10px">
+                   gap: 10px;
+                   margin: 0">
         <label style="margin: 0; font-weight: bold;">Journée :</label>
         <select name="round" id="roundSelect" onchange="this.form.submit()">
           <option value="">-- Sélectionner --</option>
@@ -129,11 +136,13 @@
           {% endfor %}
         </select>
       </form>
-      {% if current_round_obj %}
-        <a href="{% url 'round_board' current_round_obj.id %}"
-           class="btn-results"
-           style="margin-left: auto">📊 Voir les résultats & points</a>
-      {% endif %}
+      <div class="btn-group-actions">
+        <a href="/pronos/" class="btn-custom btn-edit">✏️ Faire mes pronos</a>
+        {% if current_round_obj %}
+          <a href="{% url 'round_board' current_round_obj.id %}"
+             class="btn-custom btn-results">📊 Voir les résultats & points</a>
+        {% endif %}
+      </div>
     </div>
     <div class="table-container">
       <table class="rugby-board">
@@ -141,7 +150,7 @@
           <tr class="header-dark">
             <th class="sticky-match">Match</th>
             <th class="sticky-score">Score Réel</th>
-            {% for player in players %}<th style="min-width: 130px;">{{ player.name }}</th>{% endfor %}
+            {% for player in players %}<th style="min-width: 140px;">{{ player.name }}</th>{% endfor %}
           </tr>
         </thead>
         <tbody>
@@ -156,7 +165,8 @@
               <td colspan="{{ players|length|add:2 }}"
                   style="padding: 50px;
                          color: #7f8c8d;
-                         background: white">Aucun match n'est disponible pour cette sélection.</td>
+                         background: white;
+                         text-align: center">Aucun match n'est disponible pour cette sélection.</td>
             </tr>
           {% endfor %}
         </tbody>
