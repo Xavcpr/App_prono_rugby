@@ -3,7 +3,7 @@ from .models import (
     CompetitionTeam, Season, Team, Player, Competition, Round, Match, ScoringConfig,
     Prediction, DailyBonus, CompetitionBonus, DailyScore, SeasonScore, CompetitionRankingPrediction, TeamRankingPrediction, CompetitionBonusPrediction, CompetitionTeamPrediction
 )
-from core.services.scoring import calculate_points
+from core.services.scoring import calculate_match_points 
 from django.db.models import Sum
 from django import forms
 from datetime import datetime, time

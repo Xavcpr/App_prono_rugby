@@ -9,9 +9,11 @@ from django.contrib.auth import update_session_auth_hash
 from django.forms import modelform_factory, modelformset_factory
 from .forms import CompetitionRankingPredictionForm, TeamRankingPredictionFormSet, TeamRankingFormSet
 from .constants import COMPETITION_RULES
+from .services.scoring import process_round_scores
 
 from .models import CompetitionTeam, Match, Prediction, Competition, Round, Player, Season, Team, CompetitionTeamPrediction, CompetitionRankingPrediction, TeamRankingPrediction, CompetitionBonusPrediction
-from .services.scoring import calculate_points
+from .services.scoring import calculate_match_points
+from django.db.models import Prefetch
 
 
 
@@ -356,11 +358,7 @@ def classement_prediction(request):
         "winner_teams": winner_teams,
         "last_saved_ranking": last_saved_ranking,
     })
-    
-from django.shortcuts import render
-from django.utils import timezone
-from .models import Round, Match, Player, Prediction
-
+ 
 def all_pronos_view(request):
     now = timezone.now()
     
@@ -428,3 +426,72 @@ def all_pronos_view(request):
         "selected_round": selected_round_id,
         "current_round_obj": current_round_obj, # Pour ton nouveau titre dynamique
     })
+
+
+def round_results_board(request, round_id):
+    # 1. Récupération du round actuel
+    round_obj = get_object_or_404(Round, id=round_id)
+    players = Player.objects.all().order_by('name')
+    matches = Match.objects.filter(round=round_obj).order_by('kickoff_at')
+
+    # 2. Menu déroulant : On prend toutes les compétitions
+    # Pour chaque compétition, on trie les saisons par année (la plus récente en premier)
+    all_competitions = Competition.objects.prefetch_related(
+        Prefetch(
+            'seasons',
+            queryset=Season.objects.all().order_by('-year')
+        )
+    ).distinct()
+
+    # 3. Construction de la matrice des scores par match/joueur
+    matrix = {}
+    for m in matches:
+        matrix[m.id] = {}
+        for p in players:
+            pred = Prediction.objects.filter(match=m, player=p).first()
+            # On récupère les points, 0 par défaut
+            matrix[m.id][p.id] = pred.points if (pred and pred.points is not None) else 0
+
+    # 4. Calcul des totaux et du podium (Chopes de bière)
+    totals_display = []
+    for p in players:
+        total = sum(matrix[m.id].get(p.id, 0) for m in matches)
+        totals_display.append({'player': p, 'score': total, 'rank_class': ''})
+
+    # Tri des scores uniques pour attribuer les rangs (bières)
+    scores_uniques = sorted(list(set(t['score'] for t in totals_display if t['score'] > 0)), reverse=True)
+    
+    if scores_uniques:
+        # On calcule le score min global pour la cuillère
+        min_score = min(t['score'] for t in totals_display)
+        
+        for entry in totals_display:
+            if entry['score'] > 0:
+                if entry['score'] == scores_uniques[0]:
+                    entry['rank_class'] = 'gold'
+                elif len(scores_uniques) > 1 and entry['score'] == scores_uniques[1]:
+                    entry['rank_class'] = 'silver'
+                elif len(scores_uniques) > 2 and entry['score'] == scores_uniques[2]:
+                    entry['rank_class'] = 'bronze'
+            
+            # Cuillère de bois si score le plus bas
+            if entry['score'] == min_score:
+                entry['rank_class'] = 'wooden-spoon'
+
+    context = {
+        'round': round_obj,
+        'players': players,
+        'matches': matches,
+        'matrix': matrix,
+        'totals': totals_display,
+        'all_competitions': all_competitions,
+    }
+    return render(request, 'round_board.html', context)
+
+
+def compute_round_view(request, round_id):
+    round_obj = get_object_or_404(Round, id=round_id)
+    # On appelle ton script de scoring
+    process_round_scores(round_obj)
+    # Une fois fini, on revient sur la page des résultats
+    return redirect('round_board', round_id=round_id)

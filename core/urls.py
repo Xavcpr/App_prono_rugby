@@ -1,5 +1,5 @@
 from django.urls import path 
-from .views import all_pronos_view, pronos_view, logout_view, settings_view, competition_ranking_view, classement_prediction
+from .views import all_pronos_view, compute_round_view, pronos_view, logout_view, round_results_board, settings_view, competition_ranking_view, classement_prediction
 
 urlpatterns = [
     # Page principale des pronos
@@ -18,6 +18,12 @@ urlpatterns = [
     path("pronos/classement/", classement_prediction, name="classement_prediction"),
     
     path('tous-les-pronos/', all_pronos_view, name='all_pronos'),
+    
+    # Page du tableau des scores (Remplace <int:round_id> par ton identifiant de journée)
+    path('resultats/<int:round_id>/', round_results_board, name='round_board'),
+    
+    # Optionnel : Route pour lancer le calcul des points
+    path('calculer-points/<int:round_id>/', compute_round_view, name='compute_points'),
 ]
 
 

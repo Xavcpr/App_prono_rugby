@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% load dict_extras %}
+{% block content %}
+  <style>
+  .board-header {
+    margin: 20px 0;
+    background: #2c3e50;
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+  }
+  .navigation-zone {
+    background: #ecf0f1;
+    padding: 15px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+  .rugby-board {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+  }
+  .rugby-board th,
+  .rugby-board td {
+    border: 1px solid #bdc3c7;
+    padding: 12px;
+    text-align: center;
+  }
+  .match-cell {
+    text-align: left !important;
+    background: #f9f9f9;
+    font-weight: bold;
+    min-width: 250px;
+  }
+  .gold {
+    background-color: #ffd700 !important;
+    color: #000;
+    font-weight: bold;
+  }
+  .silver {
+    background-color: #c0c0c0 !important;
+    color: #000;
+    font-weight: bold;
+  }
+  .bronze {
+    background-color: #cd7f32 !important;
+    color: #fff;
+    font-weight: bold;
+  }
+  .wooden-spoon {
+    background-color: #8b4513 !important;
+    color: white;
+  }
+  .score-badge {
+    font-size: 0.9em;
+    color: #7f8c8d;
+    font-weight: normal;
+  }
+  </style>
+  <div class="board-header">
+    <h1 style="margin: 0">{{ round.season.competition.name }}</h1>
+    <h3 style="margin: 5px 0 0 0; opacity: 0.9">Résultats : Journée {{ round.number }}</h3>
+  </div>
+  <div class="navigation-zone">
+    <div>
+      <label>Changer de journée :</label>
+      <select onchange=" if (this.value) window.location.href = '/resultats/' + this.value + '/'; ">
+        <option value="" selected disabled>-- Choisir une compétition/journée --</option>
+        {% for comp in all_competitions %}
+          <optgroup label="{{ comp.name }}">
+            {% for season in comp.seasons.all %}
+              {% for r in season.rounds.all %}<option value="{{ r.id }}">J.{{ r.number }} ({{ season.year }})</option>{% endfor %}
+            {% endfor %}
+          </optgroup>
+        {% endfor %}
+      </select>
+    </div>
+    <a href="{% url 'compute_points' round.id %}"
+       style="background: #27ae60;
+              color: white;
+              padding: 8px 15px;
+              text-decoration: none;
+              border-radius: 4px;
+              font-weight: bold">🔄 Recalculer les points</a>
+  </div>
+  <div style="max-width: 600px; margin-bottom: 30px;">
+    <h4 style="color: #2c3e50;
+               border-bottom: 2px solid #2c3e50;
+               padding-bottom: 5px">🏆 Podium de la Journée</h4>
+    <table class="rugby-board" style="box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+      <thead>
+        <tr style="background: #2c3e50; color: white;">
+          <th>Rang</th>
+          <th>Joueur</th>
+          <th>Score</th>
+          <th>Récompense</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in totals|dictsortreversed:"score" %}
+          <tr class="{{ entry.rank_class }}">
+            <td>{{ forloop.counter }}</td>
+            <td style="text-align: left; padding-left: 15px;">{{ entry.player.name }}</td>
+            <td>
+              <strong>{{ entry.score }} pts</strong>
+            </td>
+            <td style="font-size: 1.2em;">
+              {% if entry.rank_class == 'gold' %}
+                🍺🍺🍺
+              {% elif entry.rank_class == 'silver' %}
+                🍺🍺
+              {% elif entry.rank_class == 'bronze' %}
+                🍺
+              {% elif entry.rank_class == 'wooden-spoon' %}
+                🥄
+              {% else %}
+                -
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <table class="rugby-board">
+    <thead>
+      <tr style="background: #34495e; color: white">
+        <th class="match-cell">Match</th>
+        {% for player in players %}<th>{{ player.name }}</th>{% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for match in matches %}
+        <tr>
+          <td class="match-cell">
+            {{ match.home_team.name }} - {{ match.away_team.name }}
+            <br />
+            <span class="score-badge">
+              Score réel :
+              {% if match.home_score is not None %}
+                {{ match.home_score }} - {{ match.away_score }}
+              {% else %}
+                À venir
+              {% endif %}
+            </span>
+          </td>
+          {% for player in players %}
+            <td>
+              {% with match_id=match.id %}
+                {% with player_id=player.id %}
+                  {% with match_results=matrix|get_item:match_id %}{{ match_results|get_item:player_id|default:"-" }}{% endwith %}
+                {% endwith %}
+              {% endwith %}
+            </td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr style="background: #ecf0f1; font-weight: bold">
+        <td class="match-cell">TOTAL POINTS</td>
+        {% for entry in totals %}
+          <td class="{{ entry.rank_class }}">
+            {{ entry.score }}
+            <br />
+            {% if entry.rank_class == 'gold' %}
+              🍺🍺🍺
+            {% elif entry.rank_class == 'silver' %}
+              🍺🍺
+            {% elif entry.rank_class == 'bronze' %}
+              🍺
+            {% elif entry.rank_class == 'wooden-spoon' %}
+              🥄
+            {% endif %}
+          </td>
+        {% endfor %}
+      </tr>
+    </tfoot>
+  </table>
+{% endblock %}

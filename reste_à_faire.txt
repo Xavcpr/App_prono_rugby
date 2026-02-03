@@ -4,12 +4,10 @@ test branche
 
 *Scoring
 - * match
-    - Implémenter tout le scoring
-    - attention particulière au poids match divisé (et au #DIV/O)
+    - check si ok
     
 - * journée 
     - ajout du bonus journée
-    - ajout des chopes 
 
 - * compétition
        - filtre par joueur ou non
@@ -19,7 +17,6 @@ test branche
 
 - * vue commune
     - en haut : filtre compétition + journée
-    - puis classement avec rang / joueur / nombre de points
     - si top 14 : classement chope
     - filtre match + joueur
     - liste des matches avec d'abord le vrai puis liste des matches pronostiqués classés par nombre de points marqués
