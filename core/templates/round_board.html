@@ -35,30 +35,30 @@
     font-weight: bold;
     min-width: 250px;
   }
-  .gold {
-    background-color: #ffd700 !important;
-    color: #000;
-    font-weight: bold;
-  }
-  .silver {
-    background-color: #c0c0c0 !important;
-    color: #000;
-    font-weight: bold;
-  }
-  .bronze {
-    background-color: #cd7f32 !important;
-    color: #fff;
-    font-weight: bold;
-  }
-  .wooden-spoon {
-    background-color: #8b4513 !important;
-    color: white;
-  }
+  .gold { background-color: #ffd700 !important; color: #000; font-weight: bold; }
+  .silver { background-color: #c0c0c0 !important; color: #000; font-weight: bold; }
+  .bronze { background-color: #cd7f32 !important; color: #fff; font-weight: bold; }
+  .wooden-spoon { background-color: #8b4513 !important; color: white; }
+  
   .score-badge {
     font-size: 0.9em;
     color: #7f8c8d;
     font-weight: normal;
   }
+
+  /* Styles des boutons */
+  .btn-custom {
+    padding: 8px 15px;
+    text-decoration: none !important;
+    border-radius: 4px;
+    font-weight: bold;
+    transition: opacity 0.3s;
+    color: white !important;
+  }
+  .btn-custom:hover { opacity: 0.85; }
+  .btn-edit { background: #f39c12; }    /* Orange */
+  .btn-view { background: #34495e; }    /* Bleu Nuit */
+  .btn-compute { background: #27ae60; } /* Vert */
   </style>
   <div class="board-header">
     <h1 style="margin: 0">{{ round.season.competition.name }}</h1>
@@ -66,9 +66,11 @@
   </div>
   <div class="navigation-zone">
     <div>
-      <label>Changer de journée :</label>
-      <select onchange=" if (this.value) window.location.href = '/resultats/' + this.value + '/'; ">
-        <option value="" selected disabled>-- Choisir une compétition/journée --</option>
+      <label style="font-weight: bold;">Changer de journée :</label>
+      <select onchange="if (this.value) window.location.href = '/resultats/' + this.value + '/';"
+              style="padding: 5px;
+                     border-radius: 4px">
+        <option value="" selected disabled>-- Choisir --</option>
         {% for comp in all_competitions %}
           <optgroup label="{{ comp.name }}">
             {% for season in comp.seasons.all %}
@@ -78,13 +80,13 @@
         {% endfor %}
       </select>
     </div>
-    <a href="{% url 'compute_points' round.id %}"
-       style="background: #27ae60;
-              color: white;
-              padding: 8px 15px;
-              text-decoration: none;
-              border-radius: 4px;
-              font-weight: bold">🔄 Recalculer les points</a>
+    <div style="margin-left: auto; display: flex; gap: 10px;">
+      <a href="/pronos/" class="btn-custom btn-edit">✏️ Faire mes pronos</a>
+      <a href="{% url 'all_pronos' %}?round={{ round.id }}"
+         class="btn-custom btn-view">👁️ Voir les pronos</a>
+      <a href="{% url 'compute_points' round.id %}"
+         class="btn-custom btn-compute">🔄 Recalculer</a>
+    </div>
   </div>
   <div style="margin-bottom: 30px;">
     <h4 style="color: #2c3e50;
@@ -165,10 +167,8 @@
           </td>
           {% for player in players %}
             <td>
-              {% with match_id=match.id %}
-                {% with player_id=player.id %}
-                  {% with match_results=matrix|get_item:match_id %}{{ match_results|get_item:player_id|default:"-" }}{% endwith %}
-                {% endwith %}
+              {% with match_id=match.id player_id=player.id %}
+                {% with match_results=matrix|get_item:match_id %}{{ match_results|get_item:player_id|default:"-" }}{% endwith %}
               {% endwith %}
             </td>
           {% endfor %}
@@ -186,13 +186,7 @@
       </tr>
       <tr style="background: #ecf0f1; font-weight: bold;">
         <td class="match-cell">SCORE TOTAL</td>
-        {% for entry in totals %}
-          <td class="{{ entry.rank_class }}">
-            {{ entry.score }}
-            <br>
-            ...
-          </td>
-        {% endfor %}
+        {% for entry in totals %}<td class="{{ entry.rank_class }}">{{ entry.score }}</td>{% endfor %}
       </tr>
     </tfoot>
   </table>
