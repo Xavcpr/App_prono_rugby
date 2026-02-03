@@ -429,53 +429,113 @@ def all_pronos_view(request):
 
 
 def round_results_board(request, round_id):
-    # 1. Récupération du round actuel
     round_obj = get_object_or_404(Round, id=round_id)
     players = Player.objects.all().order_by('name')
     matches = Match.objects.filter(round=round_obj).order_by('kickoff_at')
-
-    # 2. Menu déroulant : On prend toutes les compétitions
-    # Pour chaque compétition, on trie les saisons par année (la plus récente en premier)
     all_competitions = Competition.objects.prefetch_related(
-        Prefetch(
-            'seasons',
-            queryset=Season.objects.all().order_by('-year')
-        )
+        Prefetch('seasons', queryset=Season.objects.all().order_by('-year'))
     ).distinct()
 
-    # 3. Construction de la matrice des scores par match/joueur
+    # 1. Barème des Bonus de Journée (Vainqueurs trouvés)
+    BONUS_SCALES = {
+        "Top 14": {7: 150, 6: 60, 5: 20},
+        "Champions Cup": {12: 300, 11: 150, 10: 100, 9: 40}
+    }
+    comp_name = round_obj.season.competition.name
+    current_scale = BONUS_SCALES.get(comp_name, {})
+
+    # 2. Construction de la matrice des points par match (Détail cellules)
     matrix = {}
     for m in matches:
         matrix[m.id] = {}
         for p in players:
             pred = Prediction.objects.filter(match=m, player=p).first()
-            # On récupère les points, 0 par défaut
             matrix[m.id][p.id] = pred.points if (pred and pred.points is not None) else 0
 
-    # 4. Calcul des totaux et du podium (Chopes de bière)
+    # 3. Calcul des totaux et des stats par joueur
     totals_display = []
     for p in players:
-        total = sum(matrix[m.id].get(p.id, 0) for m in matches)
-        totals_display.append({'player': p, 'score': total, 'rank_class': ''})
-
-    # Tri des scores uniques pour attribuer les rangs (bières)
-    scores_uniques = sorted(list(set(t['score'] for t in totals_display if t['score'] > 0)), reverse=True)
-    
-    if scores_uniques:
-        # On calcule le score min global pour la cuillère
-        min_score = min(t['score'] for t in totals_display)
+        player_preds = Prediction.objects.filter(match__round=round_obj, player=p)
         
+        # Initialisation des compteurs
+        stats = {
+            'pm': 0, 'winners': 0, 'bonus_comp': 0,
+            'bo': 0, 'bd': 0, 'diff': 0, 'somme': 0, 'ext': 0, 'dtp': 0
+        }
+
+        for pr in player_preds:
+            m = pr.match
+            if m.home_score is None or m.away_score is None: continue
+            
+            # 1. On cumule les points totaux du match
+            stats['pm'] += pr.points if pr.points else 0
+
+            # 2. Logique des bonus spécifiques (Basé sur ton barème probable)
+            # Bonus Offensif trouvé
+            if pr.bonus_home_pred == m.bonus_offense_home and m.bonus_offense_home: stats['bo'] += 1
+            if pr.bonus_away_pred == m.bonus_offense_away and m.bonus_offense_away: stats['bo'] += 1
+            
+            # Bonus Défensif trouvé
+            real_bd = m.get_defense_bonus() # HOME ou AWAY
+            if real_bd == "HOME" and pr.bonus_home_pred: stats['bd'] += 1
+            if real_bd == "AWAY" and pr.bonus_away_pred: stats['bd'] += 1
+
+            # 3. Somme, Différence et DTP (Exact score)
+            home_diff = abs(pr.home_score_pred - m.home_score)
+            away_diff = abs(pr.away_score_pred - m.away_score)
+            
+            if home_diff == 0: stats['dtp'] += 1 # Score exact une équipe
+            if away_diff == 0: stats['dtp'] += 1
+            
+            if (pr.home_score_pred + pr.away_score_pred) == (m.home_score + m.away_score):
+                stats['somme'] += 1
+            
+            if (pr.home_score_pred - pr.away_score_pred) == (m.home_score - m.away_score):
+                stats['diff'] += 1
+
+            # 4. Victoire à l'extérieur trouvée
+            real_winner = m.winner()
+            if real_winner == m.away_team and pr.away_score_pred > pr.home_score_pred:
+                stats['ext'] += 1
+            
+            # 5. Compteur vainqueurs simple
+            if (pr.home_score_pred > pr.away_score_pred and m.home_score > m.away_score) or \
+               (pr.away_score_pred > pr.home_score_pred and m.away_score > m.home_score) or \
+               (pr.home_score_pred == pr.away_score_pred and m.home_score == m.away_score):
+                stats['winners'] += 1
+
+        # Calcul du Bonus Palier (comme avant)
+        daily_bonus = 0
+        for threshold in sorted(current_scale.keys(), reverse=True):
+            if stats['winners'] >= threshold:
+                daily_bonus = current_scale[threshold]
+                break
+
+        totals_display.append({
+            'player': p,
+            'pm': stats['pm'],
+            'winners': stats['winners'],
+            'bo': stats['bo'],
+            'bd': stats['bd'],
+            'diff': stats['diff'],
+            'somme': stats['somme'],
+            'ext': stats['ext'],
+            'bonus': daily_bonus,
+            'score': stats['pm'] + daily_bonus,
+            'rank_class': ''
+        })
+
+    # 4. Attribution des chopes de bière (sur le score final)
+    scores_uniques = sorted(list(set(t['score'] for t in totals_display if t['score'] > 0)), reverse=True)
+    if scores_uniques:
+        min_score = min(t['score'] for t in totals_display)
         for entry in totals_display:
             if entry['score'] > 0:
-                if entry['score'] == scores_uniques[0]:
-                    entry['rank_class'] = 'gold'
-                elif len(scores_uniques) > 1 and entry['score'] == scores_uniques[1]:
-                    entry['rank_class'] = 'silver'
-                elif len(scores_uniques) > 2 and entry['score'] == scores_uniques[2]:
-                    entry['rank_class'] = 'bronze'
+                if entry['score'] == scores_uniques[0]: entry['rank_class'] = 'gold'
+                elif len(scores_uniques) > 1 and entry['score'] == scores_uniques[1]: entry['rank_class'] = 'silver'
+                elif len(scores_uniques) > 2 and entry['score'] == scores_uniques[2]: entry['rank_class'] = 'bronze'
             
-            # Cuillère de bois si score le plus bas
-            if entry['score'] == min_score:
+            if entry['score'] == min_score and len(totals_display) > 1:
                 entry['rank_class'] = 'wooden-spoon'
 
     context = {
@@ -487,7 +547,6 @@ def round_results_board(request, round_id):
         'all_competitions': all_competitions,
     }
     return render(request, 'round_board.html', context)
-
 
 def compute_round_view(request, round_id):
     round_obj = get_object_or_404(Round, id=round_id)
