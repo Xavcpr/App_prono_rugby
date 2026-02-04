@@ -15,8 +15,9 @@
     padding: 15px;
     border-radius: 8px;
     display: flex;
+    flex-wrap: wrap; /* Permet l'empilement sur mobile */
     align-items: center;
-    gap: 20px;
+    gap: 15px;
     margin-bottom: 20px;
   }
 
@@ -27,14 +28,15 @@
     border-radius: 8px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     margin-bottom: 30px;
+    -webkit-overflow-scrolling: touch; /* Scroll fluide iOS */
   }
 
   .rugby-board {
     width: 100%;
-    border-collapse: separate; /* Nécessaire pour le sticky */
+    border-collapse: separate;
     border-spacing: 0;
     font-size: 0.95em;
-    min-width: 1100px; /* Légèrement augmenté pour laisser de la place aux noms */
+    min-width: 1000px; 
   }
 
   .rugby-board th, .rugby-board td {
@@ -56,17 +58,17 @@
     background: #f9f9f9 !important;
     font-weight: bold;
     text-align: left !important;
-    min-width: 220px;
+    min-width: 200px;
     border-right: 2px solid #34495e !important;
   }
 
   .sticky-score {
     position: sticky;
-    left: 220px;
+    left: 200px;
     z-index: 10;
     background: #edf2f4 !important;
     font-weight: bold;
-    min-width: 100px;
+    min-width: 90px;
     border-right: 2px solid #34495e !important;
   }
 
@@ -89,11 +91,12 @@
 
   .btn-custom {
     padding: 8px 15px;
-    text-decoration: none;
+    text-decoration: none !important;
     border-radius: 4px;
     font-weight: bold;
     transition: background 0.3s;
     display: inline-block;
+    white-space: nowrap;
   }
 
   .btn-results { background: #3498db; color: white; }
@@ -106,15 +109,50 @@
     padding: 6px 12px;
     border-radius: 4px;
     border: 1px solid #bdc3c7;
+    max-width: 100%;
+  }
+
+  /* --- MEDIA QUERIES (MOBILE) --- */
+  @media (max-width: 768px) {
+    .navigation-zone {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .btn-group-actions {
+      margin-left: 0;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .btn-custom {
+      text-align: center;
+      padding: 10px 5px;
+      font-size: 0.85em;
+    }
+
+    .sticky-match {
+      min-width: 140px !important;
+      font-size: 0.85em;
+    }
+
+    .sticky-score {
+      left: 140px !important;
+      min-width: 70px !important;
+      font-size: 0.85em;
+    }
+
+    .rugby-board {
+        min-width: 800px; /* Réduit pour mobile pour éviter trop de vide */
+    }
   }
   </style>
   <div class="container-fluid">
     <div class="board-header">
       <h1 style="margin: 0">Grille des Pronostics</h1>
       {% if current_round_obj %}
-        <h3 style="margin: 5px 0 0 0; opacity: 0.9">
-          {{ current_round_obj.season }} — Journée {{ current_round_obj.number }}
-        </h3>
+        <h3 style="margin: 5px 0 0 0; opacity: 0.9">{{ current_round_obj.season }} — J.{{ current_round_obj.number }}</h3>
       {% endif %}
     </div>
     <div class="navigation-zone">
@@ -137,10 +175,10 @@
         </select>
       </form>
       <div class="btn-group-actions">
-        <a href="/pronos/" class="btn-custom btn-edit">✏️ Faire mes pronos</a>
+        <a href="/pronos/" class="btn-custom btn-edit">✏️ Mes pronos</a>
         {% if current_round_obj %}
           <a href="{% url 'round_board' current_round_obj.id %}"
-             class="btn-custom btn-results">📊 Voir les résultats & points</a>
+             class="btn-custom btn-results">📊 Résultats</a>
         {% endif %}
       </div>
     </div>
@@ -150,7 +188,7 @@
           <tr class="header-dark">
             <th class="sticky-match">Match</th>
             <th class="sticky-score">Score Réel</th>
-            {% for player in players %}<th style="min-width: 140px;">{{ player.name }}</th>{% endfor %}
+            {% for player in players %}<th style="min-width: 120px;">{{ player.name }}</th>{% endfor %}
           </tr>
         </thead>
         <tbody>
@@ -166,7 +204,7 @@
                   style="padding: 50px;
                          color: #7f8c8d;
                          background: white;
-                         text-align: center">Aucun match n'est disponible pour cette sélection.</td>
+                         text-align: center">Aucun match n'est disponible.</td>
             </tr>
           {% endfor %}
         </tbody>
