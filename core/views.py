@@ -362,71 +362,84 @@ def classement_prediction(request):
 def all_pronos_view(request):
     now = timezone.now()
     
-    # 1. Récupération de l'ID depuis l'URL (?round=XX)
     round_id_raw = request.GET.get("round")
-    
-    # 2. Préparation de la liste complète des rounds (triée par compétition puis numéro)
     all_rounds = Round.objects.select_related('season__competition').order_by('season__competition', 'number')
 
-    # 3. Détermination de l'ID du round à afficher
     selected_round_id = None
     if round_id_raw and round_id_raw.isdigit():
         selected_round_id = int(round_id_raw)
     else:
-        # Si aucun ID, on cherche le round le plus proche d'aujourd'hui
         current_r = Round.objects.filter(date__gte=now.date()).order_by("date").first()
         if not current_r:
-            # Si aucune date future, on prend le dernier round existant
             current_r = Round.objects.order_by("-date").first()
         selected_round_id = current_r.id if current_r else None
 
-    # 4. Récupération de l'objet Round actuel pour le titre dynamique
     current_round_obj = all_rounds.filter(id=selected_round_id).first()
 
-    # 5. Données de base : Matchs, Joueurs (A-Z) et Pronos
     matches = Match.objects.filter(round_id=selected_round_id).select_related('home_team', 'away_team').order_by("kickoff_at")
     players = Player.objects.all().select_related('user').order_by('user__username')
     predictions = Prediction.objects.filter(match__round_id=selected_round_id)
 
-    # 6. Construction du tableau (lignes de matchs / colonnes de joueurs)
     rows = []
     for m in matches:
-        is_future = m.kickoff_at > now if m.kickoff_at else True
+        # Un match est verrouillé si la date de coup d'envoi est passée
+        is_locked = now > m.kickoff_at if m.kickoff_at else False
         player_pronos = []
         
         for p in players:
-            # On cherche le prono du joueur pour ce match
             prono = next((pred for pred in predictions if pred.match_id == m.id and pred.player_id == p.id), None)
             
-            bg_class = ""
-            if is_future:
-                val = "🔒" # On cache si le match n'a pas commencé
-            elif prono:
-                val = f"{prono.home_score_pred}-{prono.away_score_pred}"
-                if prono.home_score_pred > prono.away_score_pred:
-                    bg_class = "bg-home-win"
-                elif prono.away_score_pred > prono.home_score_pred:
-                    bg_class = "bg-away-win"
-            else:
-                val = "-"
+            p_dict = {
+                'score_home': None,
+                'score_away': None,
+                'bonus_home': False,
+                'bonus_away': False,
+                'is_perfect_home': False,
+                'is_perfect_away': False,
+                'class': "",
+                'display_locked': False
+            }
 
-            player_pronos.append({'display': val, 'class': bg_class})
+            if not is_locked:
+                p_dict['display_locked'] = True # On affichera le cadenas
+            elif prono:
+                p_dict['score_home'] = prono.home_score_pred
+                p_dict['score_away'] = prono.away_score_pred
+                p_dict['bonus_home'] = prono.bonus_home_pred
+                p_dict['bonus_away'] = prono.bonus_away_pred
+                
+                # Test Score Exact (si le score réel existe)
+                if m.home_score is not None:
+                    p_dict['is_perfect_home'] = (prono.home_score_pred == m.home_score)
+                if m.away_score is not None:
+                    p_dict['is_perfect_away'] = (prono.away_score_pred == m.away_score)
+
+                # Classes de couleurs
+                if prono.home_score_pred > prono.away_score_pred:
+                    p_dict['class'] = "bg-home-win"
+                elif prono.away_score_pred > prono.home_score_pred:
+                    p_dict['class'] = "bg-away-win"
+                elif prono.home_score_pred == prono.away_score_pred:
+                    p_dict['class'] = "bg-draw"
+
+            player_pronos.append(p_dict)
 
         rows.append({
             'info': f"{m.home_team.name if m.home_team else 'TBD'} - {m.away_team.name if m.away_team else 'TBD'}",
-            'reel': f"{m.home_score}-{m.away_score}" if m.home_score is not None else "-",
+            'reel_home': m.home_score,
+            'reel_away': m.away_score,
+            'bonus_home_reel': m.bonus_offense_home,
+            'bonus_away_reel': m.bonus_offense_away,
             'player_pronos': player_pronos
         })
 
-    # 7. Envoi au template
     return render(request, "pronos/all_pronos.html", {
         "rows": rows,
         "players": players,
         "rounds": all_rounds,
         "selected_round": selected_round_id,
-        "current_round_obj": current_round_obj, # Pour ton nouveau titre dynamique
+        "current_round_obj": current_round_obj,
     })
-
 
 def round_results_board(request, round_id):
     round_obj = get_object_or_404(Round, id=round_id)
