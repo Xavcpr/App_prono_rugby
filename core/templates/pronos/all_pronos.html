@@ -23,23 +23,46 @@
 
   /* --- Mise en valeur des scores --- */
   .perfect-score {
-    border: 2px solid #27ae60; /* Cadre Vert pour score exact */
+    border: 2px solid #27ae60; 
     background-color: rgba(39, 174, 96, 0.1);
     padding: 1px 4px;
     border-radius: 4px;
     font-weight: bold;
   }
 
+  /* Bonus prédit et RÉUSSI (Vert) */
+  .bonus-success {
+    text-decoration: underline;
+    text-decoration-thickness: 3px;
+    text-decoration-color: #27ae60; 
+  }
+
+  /* Bonus prédit mais RATÉ (Rouge) */
+  .bonus-fail {
+    text-decoration: underline;
+    text-decoration-thickness: 3px;
+    text-decoration-color: #e74c3c;
+  }
+
+  /* Bonus juste prédit (Match non fini -> Orange) */
+  .bonus-pending {
+    text-decoration: underline;
+    text-decoration-thickness: 3px;
+    text-decoration-color: #f39c12;
+  }
+
+  /* Style générique pour le score réel (Admin) */
   .bonus-off {
     text-decoration: underline;
     text-decoration-thickness: 3px;
-    text-decoration-color: #f39c12; /* Soulignement Orange pour bonus */
+    text-decoration-color: #34495e;
   }
 
   .legend-small {
     font-size: 0.8rem;
     display: flex;
-    gap: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
     margin: 0 0 15px 5px;
     color: #2c3e50;
     font-weight: 500;
@@ -102,12 +125,10 @@
     background: #34495e !important;
   }
 
-  /* --- Couleurs de fond (issus du views.py) --- */
   .bg-home-win { background-color: #d4edda !important; color: #155724; }
   .bg-away-win { background-color: #f8d7da !important; color: #721c24; }
   .bg-draw { background-color: #fff3cd !important; color: #856404; }
 
-  /* --- Boutons d'action --- */
   .btn-group-actions {
     margin-left: auto;
     display: flex;
@@ -125,11 +146,8 @@
   }
 
   .btn-results { background: #3498db; color: white; }
-  .btn-results:hover { background: #2980b9; color: white; }
   .btn-edit { background: #f39c12; color: white; }
-  .btn-edit:hover { background: #d35400; color: white; }
 
-  /* --- Responsive --- */
   @media (max-width: 768px) {
     .navigation-zone { flex-direction: column; align-items: stretch; }
     .btn-group-actions { margin-left: 0; display: grid; grid-template-columns: 1fr 1fr; }
@@ -174,7 +192,9 @@
     </div>
     <div class="legend-small">
       <span><span class="perfect-score" style="border-width: 1px;">24</span> Score exact</span>
-      <span><span class="bonus-off">24</span> Bonus Offensif prédit</span>
+      <span><span class="bonus-success">24</span> Bonus Validé</span>
+      <span><span class="bonus-fail">24</span> Bonus Raté</span>
+      <span><span class="bonus-pending">24</span> En attente</span>
     </div>
     <div class="table-container">
       <table class="rugby-board">
@@ -197,13 +217,13 @@
               {% for p_data in row.player_pronos %}
                 <td class="{{ p_data.class }}">
                   {% if p_data.display_locked %}
-                    <span class="text-muted" title="Match non commencé">🔒</span>
+                    <span class="text-muted">🔒</span>
                   {% elif p_data.score_home != None %}
-                    <span class="{% if p_data.bonus_home %}bonus-off{% endif %} {% if p_data.is_perfect_home %}perfect-score{% endif %}">
+                    <span class="{% if p_data.bonus_home_success %}bonus-success{% elif p_data.bonus_home_fail %}bonus-fail{% elif p_data.bonus_home %}bonus-pending{% endif %} {% if p_data.is_perfect_home %}perfect-score{% endif %}">
                       {{ p_data.score_home }}
                     </span>
                     <span class="text-muted mx-1">-</span>
-                    <span class="{% if p_data.bonus_away %}bonus-off{% endif %} {% if p_data.is_perfect_away %}perfect-score{% endif %}">
+                    <span class="{% if p_data.bonus_away_success %}bonus-success{% elif p_data.bonus_away_fail %}bonus-fail{% elif p_data.bonus_away %}bonus-pending{% endif %} {% if p_data.is_perfect_away %}perfect-score{% endif %}">
                       {{ p_data.score_away }}
                     </span>
                   {% else %}
@@ -211,14 +231,6 @@
                   {% endif %}
                 </td>
               {% endfor %}
-            </tr>
-          {% empty %}
-            <tr>
-              <td colspan="{{ players|length|add:2 }}"
-                  style="padding: 60px;
-                         color: #95a5a6;
-                         background: #fff;
-                         text-align: center">Aucune donnée n'est disponible pour cette journée.</td>
             </tr>
           {% endfor %}
         </tbody>

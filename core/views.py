@@ -382,9 +382,11 @@ def all_pronos_view(request):
 
     rows = []
     for m in matches:
-        # Un match est verrouillé si la date de coup d'envoi est passée
         is_locked = now > m.kickoff_at if m.kickoff_at else False
         player_pronos = []
+        
+        # On définit si le résultat réel est déjà connu
+        has_result = m.home_score is not None and m.away_score is not None
         
         for p in players:
             prono = next((pred for pred in predictions if pred.match_id == m.id and pred.player_id == p.id), None)
@@ -394,6 +396,10 @@ def all_pronos_view(request):
                 'score_away': None,
                 'bonus_home': False,
                 'bonus_away': False,
+                'bonus_home_success': False,
+                'bonus_home_fail': False,
+                'bonus_away_success': False,
+                'bonus_away_fail': False,
                 'is_perfect_home': False,
                 'is_perfect_away': False,
                 'class': "",
@@ -401,20 +407,36 @@ def all_pronos_view(request):
             }
 
             if not is_locked:
-                p_dict['display_locked'] = True # On affichera le cadenas
+                p_dict['display_locked'] = True
             elif prono:
                 p_dict['score_home'] = prono.home_score_pred
                 p_dict['score_away'] = prono.away_score_pred
                 p_dict['bonus_home'] = prono.bonus_home_pred
                 p_dict['bonus_away'] = prono.bonus_away_pred
                 
-                # Test Score Exact (si le score réel existe)
+                # --- Logique des Bonus (Vert / Rouge / Orange) ---
+                if prono.bonus_home_pred:
+                    if has_result:
+                        if m.bonus_offense_home:
+                            p_dict['bonus_home_success'] = True # Vert
+                        else:
+                            p_dict['bonus_home_fail'] = True    # Rouge
+                    # Si pas de résultat, bonus_home reste True -> Orange dans le HTML
+
+                if prono.bonus_away_pred:
+                    if has_result:
+                        if m.bonus_offense_away:
+                            p_dict['bonus_away_success'] = True # Vert
+                        else:
+                            p_dict['bonus_away_fail'] = True    # Rouge
+                
+                # --- Test Score Exact ---
                 if m.home_score is not None:
                     p_dict['is_perfect_home'] = (prono.home_score_pred == m.home_score)
                 if m.away_score is not None:
                     p_dict['is_perfect_away'] = (prono.away_score_pred == m.away_score)
 
-                # Classes de couleurs
+                # --- Classes de couleurs de fond (Gagnant/Perdant) ---
                 if prono.home_score_pred > prono.away_score_pred:
                     p_dict['class'] = "bg-home-win"
                 elif prono.away_score_pred > prono.home_score_pred:
