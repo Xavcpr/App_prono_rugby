@@ -157,6 +157,8 @@ class Match(models.Model):
         if self.round and self.round.date:
             return self.round.date
         return None
+    
+    
 # ----- Configuration de scoring -----
 class ScoringConfig(models.Model):
     competition = models.ForeignKey(Competition, on_delete=models.CASCADE)
