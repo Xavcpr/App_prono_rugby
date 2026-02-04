@@ -441,6 +441,7 @@ def all_pronos_view(request):
         "current_round_obj": current_round_obj,
     })
 
+
 def round_results_board(request, round_id):
     round_obj = get_object_or_404(Round, id=round_id)
     players = Player.objects.all().order_by('name')
