@@ -148,7 +148,15 @@ class Match(models.Model):
         if self.kickoff_at:
             return timezone.now() > self.kickoff_at
         return False
-
+    
+    @property
+    def display_kickoff(self):
+        """Retourne l'heure du match ou, à défaut, la date de la journée"""
+        if self.kickoff_at:
+            return self.kickoff_at
+        if self.round and self.round.date:
+            return self.round.date
+        return None
 # ----- Configuration de scoring -----
 class ScoringConfig(models.Model):
     competition = models.ForeignKey(Competition, on_delete=models.CASCADE)

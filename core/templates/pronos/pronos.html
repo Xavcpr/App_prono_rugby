@@ -1,102 +1,203 @@
 {% extends "base.html" %}
 {% block content %}
-  <!-- HEADER -->
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h4 mb-0">Pronos de {{ request.user.player.name }}</h1>
-    <div class="d-flex gap-2">
-      <a href="{% url 'settings' %}" class="btn btn-outline-secondary btn-sm">⚙ Réglages</a>
+  <style>
+  /* --- Charte Graphique Harmonisée --- */
+  .board-header {
+    margin: 20px 0;
+    background: #2c3e50;
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+  .navigation-zone {
+    background: #ecf0f1;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+  }
+  .match-card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transition: transform 0.2s;
+    margin-bottom: 15px;
+    border-left: 5px solid #3498db;
+  }
+  .match-card:hover { transform: translateY(-2px); }
+  .match-card.locked {
+    border-left-color: #95a5a6;
+    opacity: 0.85;
+    background-color: #f8f9fa;
+  }
+  .team-name {
+    font-weight: 800;
+    color: #2c3e50;
+    font-size: 1.1rem;
+    flex: 1;
+  }
+  .kickoff-group { display: flex; gap: 5px; }
+  .kickoff-badge {
+    background: #edf2f4;
+    color: #7f8c8d;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    white-space: nowrap;
+  }
+  .badge-time { background: #34495e; color: white; }
+  .score-input {
+    font-weight: bold;
+    border: 2px solid #bdc3c7;
+    height: 45px;
+    font-size: 1.2rem;
+  }
+  .score-input:focus {
+    border-color: #3498db;
+    box-shadow: none;
+  }
+  .btn-save {
+    background: #27ae60;
+    color: white;
+    font-weight: bold;
+    padding: 15px;
+    border-radius: 8px;
+    border: none;
+    transition: 0.3s;
+  }
+  .btn-save:hover {
+    background: #219150;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4);
+  }
+  .bonus-check-label { font-size: 0.7rem; font-weight: bold; color: #7f8c8d; display: block; }
+
+  @media (max-width: 768px) {
+    .btn-group-sm-responsive { display: grid; grid-template-columns: 1fr 1fr; width: 100%; gap: 8px; }
+    .team-name { font-size: 1rem; }
+  }
+  </style>
+  <div class="board-header">
+    <div>
+      <h1 class="h3 mb-0">🏉 Mes Pronostics</h1>
+      <small class="opacity-75">Joueur : <strong>{{ request.user.player.name }}</strong></small>
+    </div>
+    <div class="d-flex gap-2 btn-group-sm-responsive">
+      {% if request.user.is_staff %}<a href="/admin/" class="btn btn-danger btn-sm">🛠 Admin</a>{% endif %}
+      <a href="{% url 'settings' %}" class="btn btn-light btn-sm">⚙ Réglages</a>
       <a href="{% url 'classement_prediction' %}"
-         class="btn btn-outline-primary btn-sm">📊 Classements</a>
-      <a href="{% url 'all_pronos' %}" class="btn btn-outline-primary btn-sm">📊 Pronos des autres</a>
-      <form method="post" action="{% url 'logout' %}">
+         class="btn btn-info btn-sm text-white">🏆 Classements</a>
+      <form method="post" action="{% url 'logout' %}" class="d-inline">
         {% csrf_token %}
-        <button type="submit" class="btn btn-outline-danger btn-sm">Déconnexion</button>
+        <button type="submit" class="btn btn-outline-light btn-sm w-100">Sortie</button>
       </form>
     </div>
   </div>
-  <!-- FILTRES -->
-  <form method="get" class="row g-2 mb-4">
-    <div class="col-12 col-md-6">
-      <label class="form-label">Compétition</label>
-      <select name="competition" class="form-select" onchange="this.form.submit()">
-        <option value="">Toutes</option>
-        {% for comp in competitions %}
-          <option value="{{ comp.id }}"
-                  {% if selected_competition == comp.id|stringformat:"s" %}selected{% endif %}>{{ comp.name }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="col-12 col-md-6">
-      <label class="form-label">Journée</label>
-      <select name="round" class="form-select" onchange="this.form.submit()">
-        <option value="">Toutes</option>
-        {% for r in rounds %}
-          <option value="{{ r.id }}"
-                  {% if selected_round == r.id|stringformat:"s" %}selected{% endif %}>{{ r }}</option>
-        {% endfor %}
-      </select>
-    </div>
-  </form>
-  <!-- ================= FORM PRONOS ================= -->
+  <div class="navigation-zone">
+    <form method="get" class="row g-3">
+      <div class="col-12 col-md-5">
+        <label class="form-label fw-bold small text-muted text-uppercase">Compétition</label>
+        <select name="competition" class="form-select" onchange="this.form.submit()">
+          <option value="">Toutes les compétitions</option>
+          {% for comp in competitions %}
+            <option value="{{ comp.id }}"
+                    {% if selected_competition == comp.id|stringformat:"s" %}selected{% endif %}>
+              {{ comp.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="form-label fw-bold small text-muted text-uppercase">Journée</label>
+        <select name="round" class="form-select" onchange="this.form.submit()">
+          <option value="">Toutes les journées</option>
+          {% for r in rounds %}
+            <option value="{{ r.id }}"
+                    {% if selected_round == r.id|stringformat:"s" %}selected{% endif %}>{{ r }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-3 d-flex align-items-end">
+        <a href="{% url 'all_pronos' %}" class="btn btn-dark w-100">👁️ Pronos des autres</a>
+      </div>
+    </form>
+  </div>
   <form method="post">
     {% csrf_token %}
     {% for match in matches %}
-      <div class="card mb-3">
-        <div class="card-body">
-          <!-- TITRE MATCH -->
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <strong>{{ match.home_team }} – {{ match.away_team }}</strong>
-            <span class="small text-muted">{{ match.kickoff_at|date:"d/m/Y H:i" }}</span>
+      <div class="card match-card {% if match.is_locked %}locked{% endif %}">
+        <div class="card-body p-3">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="team-name">
+              {{ match.home_team.name }} <span class="text-muted fw-light">/</span> {{ match.away_team.name }}
+            </div>
+            <div class="kickoff-group">
+              {% with kickoff=match.display_kickoff %}
+                {% if kickoff %}
+                  <span class="kickoff-badge">{{ kickoff|date:"d/m" }}</span>
+                  {% if match.kickoff_at %}<span class="kickoff-badge badge-time">{{ kickoff|date:"H:i" }}</span>{% endif %}
+                {% else %}
+                  <span class="kickoff-badge text-danger small">Date à définir</span>
+                {% endif %}
+              {% endwith %}
+            </div>
           </div>
           {% if match.is_locked %}
-            <p class="text-danger text-center mb-0">🔒 Match commencé ou terminé</p>
-          {% else %}
-            <!-- LIGNE RESPONSIVE UNIQUE -->
-            <div class="row align-items-center g-2">
-              <!-- BONUS DOM -->
-              <div class="col-6 col-md-2 text-center">
-                <div class="form-check d-inline-block">
-                  <input type="checkbox"
-                         class="form-check-input"
-                         name="bonus_home_{{ match.id }}"
-                         {% if match.user_prediction and match.user_prediction.bonus_home_pred %}checked{% endif %}>
-                  <label class="form-check-label small">BO dom</label>
-                </div>
+            <div class="text-center py-2 bg-light rounded border">
+              <small class="text-muted d-block mb-1">🔒 Match commencé ou terminé</small>
+              <div class="fw-bold" style="font-size: 1.3rem; color: #2c3e50;">
+                {{ match.user_prediction.home_score_pred|default:"-" }} — {{ match.user_prediction.away_score_pred|default:"-" }}
               </div>
-              <!-- SCORE DOM -->
-              <div class="col-3 col-md-2">
+            </div>
+          {% else %}
+            <div class="row align-items-center g-2 text-center">
+              <div class="col-3">
+                <input type="checkbox"
+                       class="form-check-input"
+                       name="bonus_home_{{ match.id }}"
+                       {% if match.user_prediction.bonus_home_pred %}checked{% endif %}>
+                <span class="bonus-check-label">BO Dom</span>
+              </div>
+              <div class="col-3">
                 <input type="number"
                        name="home_score_{{ match.id }}"
                        value="{{ match.user_prediction.home_score_pred|default:'' }}"
-                       class="form-control form-control-sm text-center"
-                       placeholder="Dom">
+                       class="form-control score-input text-center"
+                       placeholder="--">
               </div>
-              <!-- SCORE EXT -->
-              <div class="col-3 col-md-2">
+              <div class="col-3">
                 <input type="number"
                        name="away_score_{{ match.id }}"
                        value="{{ match.user_prediction.away_score_pred|default:'' }}"
-                       class="form-control form-control-sm text-center"
-                       placeholder="Ext">
+                       class="form-control score-input text-center"
+                       placeholder="--">
               </div>
-              <!-- BONUS EXT -->
-              <div class="col-6 col-md-2 text-center">
-                <div class="form-check d-inline-block">
-                  <input type="checkbox"
-                         class="form-check-input"
-                         name="bonus_away_{{ match.id }}"
-                         {% if match.user_prediction and match.user_prediction.bonus_away_pred %}checked{% endif %}>
-                  <label class="form-check-label small">BO ext</label>
-                </div>
+              <div class="col-3">
+                <input type="checkbox"
+                       class="form-check-input"
+                       name="bonus_away_{{ match.id }}"
+                       {% if match.user_prediction.bonus_away_pred %}checked{% endif %}>
+                <span class="bonus-check-label">BO Ext</span>
               </div>
             </div>
           {% endif %}
         </div>
       </div>
+    {% empty %}
+      <div class="alert alert-info text-center py-4 shadow-sm">
+        <i class="fas fa-search mb-2 d-block fa-2x"></i>
+        Aucun match ne correspond à votre sélection actuelle.
+      </div>
     {% endfor %}
-    <!-- BOUTON ENREGISTRER -->
-    <button type="submit"
-            class="btn btn-success w-100 mt-3"
-            {% if submit_disabled %}disabled{% endif %}>💾 Enregistrer mes pronostics</button>
+    {% if matches %}
+      <button type="submit"
+              class="btn btn-save w-100 mt-4 mb-5"
+              {% if submit_disabled %}disabled{% endif %}>💾 ENREGISTRER MES PRONOSTICS</button>
+    {% endif %}
   </form>
 {% endblock %}
