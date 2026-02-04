@@ -3,78 +3,26 @@
   <style>
   /* --- Charte Graphique Harmonisée --- */
   .board-header {
-    margin: 20px 0;
-    background: #2c3e50;
-    color: white;
-    padding: 20px;
-    border-radius: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 15px;
+    margin: 20px 0; background: #2c3e50; color: white; padding: 20px; border-radius: 8px;
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;
   }
-  .navigation-zone {
-    background: #ecf0f1;
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 25px;
-  }
+  .navigation-zone { background: #ecf0f1; padding: 15px; border-radius: 8px; margin-bottom: 25px; }
   .match-card {
-    border: none;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    transition: transform 0.2s;
-    margin-bottom: 15px;
-    border-left: 5px solid #3498db;
+    border: none; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transition: transform 0.2s; margin-bottom: 15px; border-left: 5px solid #3498db;
   }
   .match-card:hover { transform: translateY(-2px); }
-  .match-card.locked {
-    border-left-color: #95a5a6;
-    opacity: 0.85;
-    background-color: #f8f9fa;
-  }
-  .team-name {
-    font-weight: 800;
-    color: #2c3e50;
-    font-size: 1.1rem;
-    flex: 1;
-  }
+  .match-card.locked { border-left-color: #95a5a6; opacity: 0.85; background-color: #f8f9fa; }
+  .team-name { font-weight: 800; color: #2c3e50; font-size: 1.1rem; flex: 1; }
   .kickoff-group { display: flex; gap: 5px; }
   .kickoff-badge {
-    background: #edf2f4;
-    color: #7f8c8d;
-    padding: 4px 10px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: bold;
-    white-space: nowrap;
+    background: #edf2f4; color: #7f8c8d; padding: 4px 10px; border-radius: 4px;
+    font-size: 0.8rem; font-weight: bold; white-space: nowrap;
   }
   .badge-time { background: #34495e; color: white; }
-  .score-input {
-    font-weight: bold;
-    border: 2px solid #bdc3c7;
-    height: 45px;
-    font-size: 1.2rem;
-  }
-  .score-input:focus {
-    border-color: #3498db;
-    box-shadow: none;
-  }
-  .btn-save {
-    background: #27ae60;
-    color: white;
-    font-weight: bold;
-    padding: 15px;
-    border-radius: 8px;
-    border: none;
-    transition: 0.3s;
-  }
-  .btn-save:hover {
-    background: #219150;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4);
-  }
+  .score-input { font-weight: bold; border: 2px solid #bdc3c7; height: 45px; font-size: 1.2rem; }
+  .btn-save { background: #27ae60; color: white; font-weight: bold; padding: 15px; border-radius: 8px; border: none; transition: 0.3s; }
+  .btn-save:hover { background: #219150; transform: translateY(-2px); box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4); }
   .bonus-check-label { font-size: 0.7rem; font-weight: bold; color: #7f8c8d; display: block; }
 
   @media (max-width: 768px) {
@@ -91,7 +39,7 @@
       {% if request.user.is_staff %}<a href="/admin/" class="btn btn-danger btn-sm">🛠 Admin</a>{% endif %}
       <a href="{% url 'settings' %}" class="btn btn-light btn-sm">⚙ Réglages</a>
       <a href="{% url 'classement_prediction' %}"
-         class="btn btn-info btn-sm text-white">🏆 Classements</a>
+         class="btn btn-info btn-sm text-white">🏆 Mes Class.</a>
       <form method="post" action="{% url 'logout' %}" class="d-inline">
         {% csrf_token %}
         <button type="submit" class="btn btn-outline-light btn-sm w-100">Sortie</button>
@@ -100,10 +48,10 @@
   </div>
   <div class="navigation-zone">
     <form method="get" class="row g-3">
-      <div class="col-12 col-md-5">
+      <div class="col-12 col-md-4">
         <label class="form-label fw-bold small text-muted text-uppercase">Compétition</label>
         <select name="competition" class="form-select" onchange="this.form.submit()">
-          <option value="">Toutes les compétitions</option>
+          <option value="">Toutes</option>
           {% for comp in competitions %}
             <option value="{{ comp.id }}"
                     {% if selected_competition == comp.id|stringformat:"s" %}selected{% endif %}>
@@ -112,18 +60,20 @@
           {% endfor %}
         </select>
       </div>
-      <div class="col-12 col-md-4">
+      <div class="col-12 col-md-3">
         <label class="form-label fw-bold small text-muted text-uppercase">Journée</label>
         <select name="round" class="form-select" onchange="this.form.submit()">
-          <option value="">Toutes les journées</option>
+          <option value="">Toutes</option>
           {% for r in rounds %}
             <option value="{{ r.id }}"
                     {% if selected_round == r.id|stringformat:"s" %}selected{% endif %}>{{ r }}</option>
           {% endfor %}
         </select>
       </div>
-      <div class="col-12 col-md-3 d-flex align-items-end">
-        <a href="{% url 'all_pronos' %}" class="btn btn-dark w-100">👁️ Pronos des autres</a>
+      <div class="col-12 col-md-5 d-flex align-items-end gap-2">
+        <a href="{% if selected_round %}{% url 'round_board' selected_round %}{% else %}#{% endif %}"
+           class="btn btn-primary flex-grow-1 {% if not selected_round %}disabled{% endif %}">📊 Résultats</a>
+        <a href="{% url 'all_pronos' %}" class="btn btn-dark flex-grow-1">👁️ Pronos des autres</a>
       </div>
     </form>
   </div>
@@ -149,8 +99,8 @@
           </div>
           {% if match.is_locked %}
             <div class="text-center py-2 bg-light rounded border">
-              <small class="text-muted d-block mb-1">🔒 Match commencé ou terminé</small>
-              <div class="fw-bold" style="font-size: 1.3rem; color: #2c3e50;">
+              <small class="text-muted d-block mb-1">🔒 Verrouillé</small>
+              <div class="fw-bold" style="font-size: 1.3rem;">
                 {{ match.user_prediction.home_score_pred|default:"-" }} — {{ match.user_prediction.away_score_pred|default:"-" }}
               </div>
             </div>
@@ -189,10 +139,7 @@
         </div>
       </div>
     {% empty %}
-      <div class="alert alert-info text-center py-4 shadow-sm">
-        <i class="fas fa-search mb-2 d-block fa-2x"></i>
-        Aucun match ne correspond à votre sélection actuelle.
-      </div>
+      <div class="alert alert-info text-center py-4">Aucun match trouvé.</div>
     {% endfor %}
     {% if matches %}
       <button type="submit"
