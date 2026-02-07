@@ -558,10 +558,10 @@ def round_results_board(request, round_id):
             
             # Bonus Défensif trouvé
             real_bd = m.get_defense_bonus() # HOME ou AWAY
-            home_diff = abs(pr.home_score_pred - m.home_score)
+            player_diff = abs(pr.home_score_pred - pr.away_score_pred)
             pred_bd = None
             
-            if home_diff <= threshold :
+            if player_diff <= threshold :
                 if pr.home_score_pred < pr.away_score_pred:
                     pred_bd = 'HOME'
                 else:
