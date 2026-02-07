@@ -10,6 +10,7 @@ from django.forms import modelform_factory, modelformset_factory
 from .forms import CompetitionRankingPredictionForm, TeamRankingPredictionFormSet, TeamRankingFormSet
 from .constants import COMPETITION_RULES
 from .services.scoring import process_round_scores
+from .services import scoring
 
 from .models import CompetitionTeam, Match, Prediction, Competition, Round, Player, Season, Team, CompetitionTeamPrediction, CompetitionRankingPrediction, TeamRankingPrediction, CompetitionBonusPrediction
 from .services.scoring import calculate_match_points
@@ -508,13 +509,13 @@ def round_results_board(request, round_id):
 
             # 2. Logique des bonus spécifiques (Basé sur ton barème probable)
             # Bonus Offensif trouvé
-            if pr.bonus_home_pred == m.bonus_offense_home and m.bonus_offense_home: stats['bo'] += 1
-            if pr.bonus_away_pred == m.bonus_offense_away and m.bonus_offense_away: stats['bo'] += 1
+            if pr.bonus_home_pred == m.bonus_offense_home and m.bonus_offense_home: stats['bo'] += scoring.SCORING_CONFIG['OFFENSIVE_BONUS_VALUE']
+            if pr.bonus_away_pred == m.bonus_offense_away and m.bonus_offense_away: stats['bo'] += scoring.SCORING_CONFIG['OFFENSIVE_BONUS_VALUE']
             
             # Bonus Défensif trouvé
             real_bd = m.get_defense_bonus() # HOME ou AWAY
-            if real_bd == "HOME" and pr.bonus_home_pred: stats['bd'] += 1
-            if real_bd == "AWAY" and pr.bonus_away_pred: stats['bd'] += 1
+            if real_bd == "HOME" and pr.bonus_home_pred: stats['bd'] += scoring.SCORING_CONFIG['DEFENSIVE_BONUS_VALUE']
+            if real_bd == "AWAY" and pr.bonus_away_pred: stats['bd'] += scoring.SCORING_CONFIG['DEFENSIVE_BONUS_VALUE']
 
             # 3. Somme, Différence et DTP (Exact score)
             home_diff = abs(pr.home_score_pred - m.home_score)
@@ -532,7 +533,7 @@ def round_results_board(request, round_id):
             # 4. Victoire à l'extérieur trouvée
             real_winner = m.winner()
             if real_winner == m.away_team and pr.away_score_pred > pr.home_score_pred:
-                stats['ext'] += 1
+                stats['ext'] += scoring.SCORING_CONFIG['AWAY_WIN_BONUS']    
             
             # 5. Compteur vainqueurs simple
             if (pr.home_score_pred > pr.away_score_pred and m.home_score > m.away_score) or \
