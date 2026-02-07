@@ -9,7 +9,7 @@ from django.contrib.auth import update_session_auth_hash
 from django.forms import modelform_factory, modelformset_factory
 from .forms import CompetitionRankingPredictionForm, TeamRankingPredictionFormSet, TeamRankingFormSet
 from .constants import COMPETITION_RULES
-from .services.scoring import process_round_scores
+from .services.scoring import process_round_scores, get_winner_side
 from .services import scoring
 
 from .models import CompetitionTeam, Match, Prediction, Competition, Round, Player, Season, Team, CompetitionTeamPrediction, CompetitionRankingPrediction, TeamRankingPrediction, CompetitionBonusPrediction
@@ -481,6 +481,31 @@ def round_results_board(request, round_id):
     comp_name = round_obj.season.competition.name
     current_scale = BONUS_SCALES.get(comp_name, {})
 
+    # 0. On pré-calcule le nombre de gagnants par match pour le partage du pool
+    match_winners_counts = {}
+    for m in matches:
+        if m.home_score is not None and m.away_score is not None:
+            # On définit le côté gagnant réel
+            if m.home_score > m.away_score: real_side = "HOME"
+            elif m.away_score > m.home_score: real_side = "AWAY"
+            else: real_side = "DRAW"
+            
+            # On compte combien de prédictions correspondent
+            winners_count = Prediction.objects.filter(
+                match=m,
+                # Logique pour trouver le bon côté dans les scores prédits
+            ).extra(where=[
+                "(home_score_pred > away_score_pred AND %s = 'HOME') OR "
+                "(away_score_pred > home_score_pred AND %s = 'AWAY') OR "
+                "(home_score_pred = away_score_pred AND %s = 'DRAW')"
+            ], params=[real_side, real_side, real_side]).count()
+            
+            match_winners_counts[m.id] = winners_count
+        else:
+            match_winners_counts[m.id] = 0
+
+
+
     # 2. Construction de la matrice des points par match (Détail cellules)
     matrix = {}
     for m in matches:
@@ -497,15 +522,29 @@ def round_results_board(request, round_id):
         # Initialisation des compteurs
         stats = {
             'pm': 0, 'winners': 0, 'bonus_comp': 0,
-            'bo': 0, 'bd': 0, 'diff': 0, 'somme': 0, 'ext': 0, 'dtp': 0
+            'bo': 0, 'bd': 0, 'diff': 0, 'somme': 0, 'ext': 0, 'dtp': 0, 'draw' :0, 'tp': 0
         }
 
         for pr in player_preds:
             m = pr.match
             if m.home_score is None or m.away_score is None: continue
             
-            # 1. On cumule les points totaux du match
-            stats['pm'] += pr.points if pr.points else 0
+            # # 1. On cumule les points totaux du match
+            # stats['pm'] += pr.points if pr.points else 0
+
+            # --- CALCUL DU "PM" PUR (Partage du pool uniquement) ---
+            winners_count = match_winners_counts.get(m.id, 0)
+            real_winner_side = get_winner_side(m.home_score, m.away_score)
+            pred_winner_side = get_winner_side(pr.home_score_pred, pr.away_score_pred)
+            
+            if real_winner_side == pred_winner_side:
+                stats['winners'] += 1 # On incrémente le compteur de victoires trouvées
+                
+                if winners_count > 0:
+                    # Ici, on n'ajoute QUE la part du poids du match
+                    stats['pm'] += (m.weight // winners_count)
+
+
 
             # 2. Logique des bonus spécifiques (Basé sur ton barème probable)
             # Bonus Offensif trouvé
@@ -522,7 +561,9 @@ def round_results_board(request, round_id):
             away_diff = abs(pr.away_score_pred - m.away_score)
             
             if home_diff == 0: stats['dtp'] += scoring.SCORING_CONFIG['HALF_PERFECT_BONUS'] # Score exact une équipe
-            if away_diff == 0: stats['dtp'] += scoring.SCORING_CONFIG['HALF_PERFECT_BONUS']
+            if away_diff == 0: stats['dtp'] += scoring.SCORING_CONFIG['HALF_PERFECT_BONUS'] # Score exact une équipe
+            #3.1 tout-pile
+            if home_diff == 0 and away_diff == 0: stats['tp'] += scoring.SCORING_CONFIG['PERFECT_SCORE_BONUS'] # Score exact total
 
             diff = abs((pr.home_score_pred - pr.away_score_pred) - (m.home_score - m.away_score))
             sum = abs((pr.home_score_pred + pr.away_score_pred) - (m.home_score + m.away_score))       
@@ -543,6 +584,11 @@ def round_results_board(request, round_id):
             real_winner = m.winner()
             if real_winner == m.away_team and pr.away_score_pred > pr.home_score_pred:
                 stats['ext'] += scoring.SCORING_CONFIG['AWAY_WIN_BONUS']    
+                
+
+            # 4.1. Match nul trouvé
+            if real_winner == "DRAW" and pr.home_score_pred == pr.away_score_pred:
+                stats['draw'] += scoring.SCORING_CONFIG['DRAW_BONUS']  
             
             # 5. Compteur vainqueurs simple
             if (pr.home_score_pred > pr.away_score_pred and m.home_score > m.away_score) or \
@@ -550,7 +596,7 @@ def round_results_board(request, round_id):
                (pr.home_score_pred == pr.away_score_pred and m.home_score == m.away_score):
                 stats['winners'] += 1
 
-        # Calcul du Bonus Palier (comme avant)
+        # Calcul du Bonus journée Palier (comme avant)
         daily_bonus = 0
         for threshold in sorted(current_scale.keys(), reverse=True):
             if stats['winners'] >= threshold:
@@ -568,7 +614,7 @@ def round_results_board(request, round_id):
             'somme': stats['somme'],
             'ext': stats['ext'],
             'bonus': daily_bonus,
-            'score': stats['pm'] + daily_bonus,
+            'score': stats['pm'] + stats['tp'] + stats['dtp'] + stats['bo'] + stats['bd'] + stats['diff'] + stats['somme'] + stats['ext'] + stats['draw'] + daily_bonus,
             'rank_class': ''
         })
 
