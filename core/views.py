@@ -521,14 +521,23 @@ def round_results_board(request, round_id):
             home_diff = abs(pr.home_score_pred - m.home_score)
             away_diff = abs(pr.away_score_pred - m.away_score)
             
-            if home_diff == 0: stats['dtp'] += 1 # Score exact une équipe
-            if away_diff == 0: stats['dtp'] += 1
+            if home_diff == 0: stats['dtp'] += scoring.SCORING_CONFIG['HALF_PERFECT_BONUS'] # Score exact une équipe
+            if away_diff == 0: stats['dtp'] += scoring.SCORING_CONFIG['HALF_PERFECT_BONUS']
+
+            diff = abs((pr.home_score_pred - pr.away_score_pred) - (m.home_score - m.away_score))
+            sum = abs((pr.home_score_pred + pr.away_score_pred) - (m.home_score + m.away_score))       
             
-            if (pr.home_score_pred + pr.away_score_pred) == (m.home_score + m.away_score):
-                stats['somme'] += 1
+            if sum in scoring.SCORING_CONFIG['SUM_TABLE'].keys():
+                stats['somme'] += scoring.SCORING_CONFIG['SUM_TABLE'][sum]
             
-            if (pr.home_score_pred - pr.away_score_pred) == (m.home_score - m.away_score):
-                stats['diff'] += 1
+            if diff in scoring.SCORING_CONFIG['DIFF_TABLE'].keys():
+                stats['diff'] += scoring.SCORING_CONFIG['DIFF_TABLE'][diff]
+            
+            # if (pr.home_score_pred + pr.away_score_pred) == (m.home_score + m.away_score):
+            #     stats['somme'] += 1
+            
+            # if (pr.home_score_pred - pr.away_score_pred) == (m.home_score - m.away_score):
+            #     stats['diff'] += 1
 
             # 4. Victoire à l'extérieur trouvée
             real_winner = m.winner()
@@ -552,6 +561,7 @@ def round_results_board(request, round_id):
             'player': p,
             'pm': stats['pm'],
             'winners': stats['winners'],
+            'dtp': stats['dtp'],
             'bo': stats['bo'],
             'bd': stats['bd'],
             'diff': stats['diff'],
