@@ -570,13 +570,13 @@ def round_results_board(request, round_id):
                 else: pred_bd = 'DRAW'
                 
             if pred_bd == 'HOME' : #si je prédis un bonus défensif pour l'équipe à domicile
-                if real_bd == "HOME" or real_winner == "DRAW": # et que le bonus défensif est bien pour l'équipe à domicile ou s'il y a un nul, le joueur mérite le bonus défensif
+                if real_bd == "HOME" or m.home_score == m.away_score : # et que le bonus défensif est bien pour l'équipe à domicile ou s'il y a un nul, le joueur mérite le bonus défensif
                     stats['bd'] += scoring.SCORING_CONFIG['DEFENSIVE_BONUS_VALUE']
                 elif real_bd is None:
                     stats['bd'] += scoring.SCORING_CONFIG['BONUS_MALUS'] # Malus si le joueur a pris un bonus défensif alors qu'il n'y en avait pas
             
             if pred_bd == 'AWAY' :
-                if real_bd == "AWAY" or real_winner == "DRAW":
+                if real_bd == "AWAY" or m.home_score == m.away_score:
                     stats['bd'] += scoring.SCORING_CONFIG['DEFENSIVE_BONUS_VALUE']
                 elif real_bd is None:
                     stats['bd'] += scoring.SCORING_CONFIG['BONUS_MALUS'] # Malus si le joueur a pris un bonus défensif alors qu'il n'y en avait pas
