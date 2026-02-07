@@ -94,7 +94,7 @@ def calculate_match_points(prediction, match, winners_count):
             pts += cfg["BONUS_MALUS"]
     
     # si match nul pronostiqué, alors bonus/malus selon qu'il y a un BD ou pas
-    if pred_bd_side == "DRAW"
+    if pred_bd_side == "DRAW":
         if real_bd_side is None:
             pts += cfg["BONUS_MALUS"]
         else:
