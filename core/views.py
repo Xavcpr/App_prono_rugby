@@ -531,12 +531,12 @@ def round_results_board(request, round_id):
             if m.home_score is None or m.away_score is None: continue
             
             # # 1. On cumule les points totaux du match
-            # stats['pm'] += pr.points if pr.points else 0
-
             # --- CALCUL DU "PM" PUR (Partage du pool uniquement) ---
             winners_count = match_winners_counts.get(m.id, 0)
             real_winner_side = get_winner_side(m.home_score, m.away_score)
             pred_winner_side = get_winner_side(pr.home_score_pred, pr.away_score_pred)
+            if pr.home_score_pred + pr.away_score_pred ==0 :
+                pred_winner_side = "NO SHOW" # Cas où le joueur n'a pas du tout pronostiqué (0-0 sans bonus)
             
             if real_winner_side == pred_winner_side:
                 stats['winners'] += 1 # On incrémente le compteur de victoires trouvées
@@ -558,11 +558,10 @@ def round_results_board(request, round_id):
             
             # Bonus Défensif trouvé
             real_bd = m.get_defense_bonus() # HOME ou AWAY
-            home_diff = abs(pr.home_score_pred - m.home_score)
             player_diff = abs((pr.home_score_pred - pr.away_score_pred))
             pred_bd = None
             
-            if player_diff <= match_threshold :
+            if player_diff <= match_threshold and pred_winner_side != "NO SHOW": # Si je prédis une victoire serrée (diff <= seuil) et que je ne prédis pas un nul, alors je prédis un bonus défensif pour le côté que je pense perdant
                 if pr.home_score_pred < pr.away_score_pred:
                     pred_bd = 'HOME'
                 elif pr.away_score_pred < pr.home_score_pred:
@@ -589,11 +588,11 @@ def round_results_board(request, round_id):
                     stats['bd'] += scoring.SCORING_CONFIG['BONUS_MALUS'] # Malus si le joueur a pris un bonus défensif alors qu'il n'y en avait pas
                     
             # 3. Somme, Différence et DTP (Exact score)
-            
+            home_diff = abs(pr.home_score_pred - m.home_score)
             away_diff = abs(pr.away_score_pred - m.away_score)
             
-            if home_diff == 0: stats['dtp'] += scoring.SCORING_CONFIG['HALF_PERFECT_BONUS'] # Score exact une équipe
-            if away_diff == 0: stats['dtp'] += scoring.SCORING_CONFIG['HALF_PERFECT_BONUS'] # Score exact une équipe
+            if home_diff == 0 and pred_winner_side != "NO SHOW": stats['dtp'] += scoring.SCORING_CONFIG['HALF_PERFECT_BONUS'] # Score exact une équipe
+            if away_diff == 0 and pred_winner_side != "NO SHOW": stats['dtp'] += scoring.SCORING_CONFIG['HALF_PERFECT_BONUS'] # Score exact une équipe
             
             #3.1 tout-pile
             if home_diff == 0 and away_diff == 0: stats['tp'] += scoring.SCORING_CONFIG['PERFECT_SCORE_BONUS'] # Score exact total
@@ -601,10 +600,10 @@ def round_results_board(request, round_id):
             diff = abs((pr.home_score_pred - pr.away_score_pred) - (m.home_score - m.away_score))
             sum = abs((pr.home_score_pred + pr.away_score_pred) - (m.home_score + m.away_score))       
             
-            if sum in scoring.SCORING_CONFIG['SUM_TABLE'].keys():
+            if sum in scoring.SCORING_CONFIG['SUM_TABLE'].keys() and pred_winner_side != "NO SHOW":
                 stats['somme'] += scoring.SCORING_CONFIG['SUM_TABLE'][sum]
             
-            if diff in scoring.SCORING_CONFIG['DIFF_TABLE'].keys():
+            if diff in scoring.SCORING_CONFIG['DIFF_TABLE'].keys() and pred_winner_side != "NO SHOW":
                 stats['diff'] += scoring.SCORING_CONFIG['DIFF_TABLE'][diff]
             
 
@@ -615,15 +614,8 @@ def round_results_board(request, round_id):
                 
 
             # 4.1. Match nul trouvé
-            if real_winner == "DRAW" and pr.home_score_pred == pr.away_score_pred:
+            if real_winner == "DRAW" and pr.home_score_pred == pr.away_score_pred and pred_winner_side != "NO SHOW":
                 stats['draw'] += scoring.SCORING_CONFIG['DRAW_BONUS']  
-            
-            # # 5. Compteur vainqueurs simple
-            
-            # if (pr.home_score_pred > pr.away_score_pred and m.home_score > m.away_score) or \
-            #    (pr.away_score_pred > pr.home_score_pred and m.away_score > m.home_score) or \
-            #    (pr.home_score_pred == pr.away_score_pred and m.home_score == m.away_score):
-            #     stats['winners'] += 1
 
         # Calcul du Bonus journée Palier (comme avant)
         daily_bonus = 0

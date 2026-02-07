@@ -28,6 +28,7 @@ PHASE_MULTIPLIERS = {
 def get_winner_side(score_home, score_away):
     if score_home > score_away: return "HOME"
     if score_away > score_home: return "AWAY"
+    # if score_home + score_away ==0: return "NO SHOW"
     return "DRAW"
 
 def calculate_match_points(prediction, match, winners_count):
