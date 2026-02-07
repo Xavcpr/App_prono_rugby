@@ -565,22 +565,29 @@ def round_results_board(request, round_id):
             if player_diff <= match_threshold :
                 if pr.home_score_pred < pr.away_score_pred:
                     pred_bd = 'HOME'
-                else:
+                elif pr.away_score_pred < pr.home_score_pred:
                     pred_bd = 'AWAY'    
+                else: pred_bd = 'DRAW'
                 
-            if pred_bd == 'HOME' : 
-                if real_bd == "HOME":
+            if pred_bd == 'HOME' : #si je prédis un bonus défensif pour l'équipe à domicile
+                if real_bd == "HOME" or real_winner == "DRAW": # et que le bonus défensif est bien pour l'équipe à domicile ou s'il y a un nul, le joueur mérite le bonus défensif
                     stats['bd'] += scoring.SCORING_CONFIG['DEFENSIVE_BONUS_VALUE']
                 elif real_bd is None:
                     stats['bd'] += scoring.SCORING_CONFIG['BONUS_MALUS'] # Malus si le joueur a pris un bonus défensif alors qu'il n'y en avait pas
             
             if pred_bd == 'AWAY' :
-                if real_bd == "AWAY":
+                if real_bd == "AWAY" or real_winner == "DRAW":
                     stats['bd'] += scoring.SCORING_CONFIG['DEFENSIVE_BONUS_VALUE']
                 elif real_bd is None:
                     stats['bd'] += scoring.SCORING_CONFIG['BONUS_MALUS'] # Malus si le joueur a pris un bonus défensif alors qu'il n'y en avait pas
-        
 
+            # si je prédis un nul et qu'il y a quand même un bonus défensif, je mérite le bonus défensif. s'il n'y en a pas, je mérite le malus
+            if pred_bd == 'DRAW' :
+                if real_bd == "HOME" or real_bd == "AWAY":
+                    stats['bd'] += scoring.SCORING_CONFIG['DEFENSIVE_BONUS_VALUE']
+                else:
+                    stats['bd'] += scoring.SCORING_CONFIG['BONUS_MALUS'] # Malus si le joueur a pris un bonus défensif alors qu'il n'y en avait pas
+                    
             # 3. Somme, Différence et DTP (Exact score)
             
             away_diff = abs(pr.away_score_pred - m.away_score)
