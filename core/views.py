@@ -553,8 +553,22 @@ def round_results_board(request, round_id):
             
             # Bonus Défensif trouvé
             real_bd = m.get_defense_bonus() # HOME ou AWAY
-            if real_bd == "HOME" and pr.bonus_home_pred: stats['bd'] += scoring.SCORING_CONFIG['DEFENSIVE_BONUS_VALUE']
-            if real_bd == "AWAY" and pr.bonus_away_pred: stats['bd'] += scoring.SCORING_CONFIG['DEFENSIVE_BONUS_VALUE']
+            if pr.bonus_home_pred:
+                if real_bd == "HOME":
+                    stats['bd'] += scoring.SCORING_CONFIG['DEFENSIVE_BONUS_VALUE']
+                elif real_bd is None:
+                    stats['bd'] += scoring.SCORING_CONFIG['BONUS_MALUS'] # Malus si le joueur a pris un bonus défensif alors qu'il n'y en avait pas
+            
+            if pr.bonus_away_pred:
+                if real_bd == "AWAY":
+                    stats['bd'] += scoring.SCORING_CONFIG['DEFENSIVE_BONUS_VALUE']
+                elif real_bd is None:
+                    stats['bd'] += scoring.SCORING_CONFIG['BONUS_MALUS'] # Malus si le joueur a pris un bonus défensif alors qu'il n'y en avait pas
+            
+            
+            
+            # if real_bd == "HOME" and pr.bonus_home_pred: stats['bd'] += scoring.SCORING_CONFIG['DEFENSIVE_BONUS_VALUE']
+            # if real_bd == "AWAY" and pr.bonus_away_pred: stats['bd'] += scoring.SCORING_CONFIG['DEFENSIVE_BONUS_VALUE']
 
             # 3. Somme, Différence et DTP (Exact score)
             home_diff = abs(pr.home_score_pred - m.home_score)
