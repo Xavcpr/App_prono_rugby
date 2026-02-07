@@ -548,8 +548,12 @@ def round_results_board(request, round_id):
 
             # 2. Logique des bonus spécifiques (Basé sur ton barème probable)
             # Bonus Offensif trouvé
-            if pr.bonus_home_pred == m.bonus_offense_home and m.bonus_offense_home: stats['bo'] += scoring.SCORING_CONFIG['OFFENSIVE_BONUS_VALUE']
-            if pr.bonus_away_pred == m.bonus_offense_away and m.bonus_offense_away: stats['bo'] += scoring.SCORING_CONFIG['OFFENSIVE_BONUS_VALUE']
+            if pr.bonus_home_pred:
+                if m.bonus_offense_home: stats['bo'] += scoring.SCORING_CONFIG['OFFENSIVE_BONUS_VALUE']
+                else: stats['bo'] += scoring.SCORING_CONFIG['BONUS_MALUS']
+            if pr.bonus_away_pred:
+                if m.bonus_offense_away: stats['bo'] += scoring.SCORING_CONFIG['OFFENSIVE_BONUS_VALUE']
+                else: stats['bo'] += scoring.SCORING_CONFIG['BONUS_MALUS']  
             
             # Bonus Défensif trouvé
             real_bd = m.get_defense_bonus() # HOME ou AWAY
