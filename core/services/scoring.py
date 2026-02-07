@@ -88,7 +88,7 @@ def calculate_match_points(prediction, match, winners_count):
 
     # si BD pronostiqué mais pas de match nul, alors bonus/malus selon que le côté pronostiqué est bien celui qui perd ou pas   
     if pred_bd_side == "HOME" or pred_bd_side == "AWAY":
-        if pred_bd_side == real_bd_side:
+        if pred_bd_side == real_bd_side or real_winner_side == "DRAW": # Si le bonus défensif est bien trouvé ou s'il y a match nul réel (dans ce cas, on considère que les deux équipes ont un bonus défensif)
             pts += cfg["DEFENSIVE_BONUS_VALUE"]
         elif real_bd_side is None:
             pts += cfg["BONUS_MALUS"]
