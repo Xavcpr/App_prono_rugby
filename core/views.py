@@ -479,7 +479,6 @@ def round_results_board(request, round_id):
         "Champions Cup": {12: 300, 11: 150, 10: 100, 9: 40}
     }
     comp_name = round_obj.season.competition.name
-    threshold = round_obj.season.competition.bonus_defense_threshold
     current_scale = BONUS_SCALES.get(comp_name, {})
 
     # 0. On pré-calcule le nombre de gagnants par match pour le partage du pool
@@ -528,6 +527,7 @@ def round_results_board(request, round_id):
 
         for pr in player_preds:
             m = pr.match
+            match_threshold = m.round.season.competition.bonus_defense_threshold
             if m.home_score is None or m.away_score is None: continue
             
             # # 1. On cumule les points totaux du match
@@ -562,7 +562,7 @@ def round_results_board(request, round_id):
             player_diff = abs((pr.home_score_pred - pr.away_score_pred))
             pred_bd = None
             
-            if player_diff <= threshold :
+            if player_diff <= match_threshold :
                 if pr.home_score_pred < pr.away_score_pred:
                     pred_bd = 'HOME'
                 else:
