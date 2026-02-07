@@ -43,6 +43,10 @@ def calculate_match_points(prediction, match, winners_count):
     real_winner_side = get_winner_side(match.home_score, match.away_score)
     pred_winner_side = get_winner_side(prediction.home_score_pred, prediction.away_score_pred)
     
+    # cas du no-show 
+    if prediction.home_score_pred + prediction.away_score_pred ==0:
+        pred_winner_side = "NO SHOW"
+    
     if real_winner_side == pred_winner_side:
         if winners_count > 0:
             pts += (match.weight // winners_count)
@@ -51,9 +55,9 @@ def calculate_match_points(prediction, match, winners_count):
         if real_winner_side == "DRAW": pts += cfg["DRAW_BONUS"]
 
     # 2. TOUT-PILE OU DEMI-TOUT-PILE
-    if prediction.home_score_pred == match.home_score and prediction.away_score_pred == match.away_score:
+    if prediction.home_score_pred == match.home_score and prediction.away_score_pred == match.away_score and pred_winner_side != "NO SHOW":
         pts += cfg["PERFECT_SCORE_BONUS"]
-    elif prediction.home_score_pred == match.home_score or prediction.away_score_pred == match.away_score:
+    elif prediction.home_score_pred == match.home_score or prediction.away_score_pred == match.away_score and pred_winner_side != "NO SHOW":
         pts += cfg["HALF_PERFECT_BONUS"]
 
     # 3. BONUS OFFENSIF
@@ -70,22 +74,39 @@ def calculate_match_points(prediction, match, winners_count):
     real_bd_side = None
     if 0 < real_diff <= threshold:
         real_bd_side = "HOME" if match.home_score < match.away_score else "AWAY"
-
+        # real_bd_side peut être "HOME", "AWAY" ou None
+        
     pred_bd_side = None
-    if 0 < pred_diff_val <= threshold:
-        pred_bd_side = "HOME" if prediction.home_score_pred < prediction.away_score_pred else "AWAY"
+    if 0 < pred_diff_val <= threshold and pred_winner_side != "NO SHOW": # Je ne prends pas de bonus défensif si le joueur ne prédit pas de vainqueur
+        if prediction.home_score_pred < prediction.away_score_pred:
+            pred_bd_side = "HOME"
+        elif prediction.away_score_pred < prediction.home_score_pred:
+            pred_bd_side = "AWAY"
+        else:
+            pred_bd_side = "DRAW"
+            # pred_bd_side peut donc être "DRAW", "HOME", "AWAY" ou None
 
-    if pred_bd_side:
+    # si BD pronostiqué mais pas de match nul, alors bonus/malus selon que le côté pronostiqué est bien celui qui perd ou pas   
+    if pred_bd_side == "HOME" or pred_bd_side == "AWAY":
         if pred_bd_side == real_bd_side:
             pts += cfg["DEFENSIVE_BONUS_VALUE"]
         elif real_bd_side is None:
             pts += cfg["BONUS_MALUS"]
+    
+    # si match nul pronostiqué, alors bonus/malus selon qu'il y a un BD ou pas
+    if pred_bd_side == "DRAW"
+        if real_bd_side is None:
+            pts += cfg["BONUS_MALUS"]
+        else:
+            pts += cfg["DEFENSIVE_BONUS_VALUE"] 
 
     # 5. ÉCARTS
     gap_diff = abs(real_diff - pred_diff_val)
-    pts += cfg["DIFF_TABLE"].get(gap_diff, 0)
+    if pred_winner_side != "NO SHOW":
+        pts += cfg["DIFF_TABLE"].get(gap_diff, 0)
     gap_sum = abs((match.home_score + match.away_score) - (prediction.home_score_pred + prediction.away_score_pred))
-    pts += cfg["SUM_TABLE"].get(gap_sum, 0)
+    if pred_winner_side != "NO SHOW":
+        pts += cfg["SUM_TABLE"].get(gap_sum, 0)
 
     return int(pts * multiplier)
 
