@@ -479,6 +479,7 @@ def round_results_board(request, round_id):
         "Champions Cup": {12: 300, 11: 150, 10: 100, 9: 40}
     }
     comp_name = round_obj.season.competition.name
+    threshold = round_obj.season.competition.bonus_defense_threshold
     current_scale = BONUS_SCALES.get(comp_name, {})
 
     # 0. On pré-calcule le nombre de gagnants par match pour le partage du pool
@@ -557,13 +558,22 @@ def round_results_board(request, round_id):
             
             # Bonus Défensif trouvé
             real_bd = m.get_defense_bonus() # HOME ou AWAY
-            if pr.bonus_home_pred:
+            home_diff = abs(pr.home_score_pred - m.home_score)
+            pred_bd = None
+            
+            if home_diff <= threshold :
+                if pr.home_score_pred < pr.away_score_pred:
+                    pred_bd = 'HOME'
+                else:
+                    pred_bd = 'AWAY'    
+                
+            if pred_bd == 'HOME' : 
                 if real_bd == "HOME":
                     stats['bd'] += scoring.SCORING_CONFIG['DEFENSIVE_BONUS_VALUE']
                 elif real_bd is None:
                     stats['bd'] += scoring.SCORING_CONFIG['BONUS_MALUS'] # Malus si le joueur a pris un bonus défensif alors qu'il n'y en avait pas
             
-            if pr.bonus_away_pred:
+            if pred_bd == 'AWAY' :
                 if real_bd == "AWAY":
                     stats['bd'] += scoring.SCORING_CONFIG['DEFENSIVE_BONUS_VALUE']
                 elif real_bd is None:
@@ -571,7 +581,7 @@ def round_results_board(request, round_id):
         
 
             # 3. Somme, Différence et DTP (Exact score)
-            home_diff = abs(pr.home_score_pred - m.home_score)
+            
             away_diff = abs(pr.away_score_pred - m.away_score)
             
             if home_diff == 0: stats['dtp'] += scoring.SCORING_CONFIG['HALF_PERFECT_BONUS'] # Score exact une équipe
