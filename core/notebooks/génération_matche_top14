@@ -1,5 +1,10 @@
 (venv) PS C:\Users\xavie\Documents\Rugby_app\backend> python manage.py generer_matchs "Top 14" "2025/2026" 18 2026-02-28 Clermont "Racing 92" Toulon "La Rochelle" Montauban Perpignan UBB Montpellier Castres "Stade français" Pau Bayonne Lyon Toulouse
 
+bash :
+09:22 ~/App_prono_rugby (main)$ python manage.py generer_matchs "Top 14" "2025/2026" 1 2025-09-06 "Stade français" Perpignan Castres Lyon Montpellier UBB Clermont Mon
+tauban Bayonne Pau "Racing 92" Toulon "La Rochelle" Toulouse 
+
+
 python manage.py generer_matchs "Top 14" "2025/2026" 19 2026-03-21 Clermont "Racing 92" Toulon "La Rochelle" Montauban Perpignan UBB Montpellier Castres "Stade français" Pau Bayonne Lyon Toulouse
 
 python manage.py generer_matchs "Top 14" "2025/2026" 20 2026-03-28 Bayonne Castres Lyon Pau "Stade français" Toulouse Perpignan "La Rochelle" Montauban UBB "Racing 92" Clermont Montpellier Toulon
@@ -15,3 +20,39 @@ python manage.py generer_matchs "Top 14" "2025/2026" 24 2026-05-16 Castres Lyon 
 python manage.py generer_matchs "Top 14" "2025/2026" 25 2026-05-30 Clermont Montpellier Toulon "Stade français" Toulouse Montauban Perpignan "Racing 92" Pau UBB Bayonne Lyon "La Rochelle" Castres
 
 python manage.py generer_matchs "Top 14" "2025/2026" 26 2026-06-06 Bayonne Castres Lyon "Racing 92" Pau "La Rochelle" UBB Perpignan Toulon Montpellier Toulouse Montauban  "Stade français" Clermont 
+
+python manage.py generer_matchs "Top 14" "2025/2026" 1 2025-09-06 "Stade français" Perpignan Castres Lyon Montpellier UBB Clermont Montauban Bayonne Pau "Racing 92" Toulon "La Rochelle" Toulouse 
+
+python manage.py generer_matchs "Top 14" "2025/2026" 2 2025-09-13 Montauban Bayonne Pau "La Rochelle" Toulouse Toulon "Racing 92" Lyon Montpellier "Stade français" Clermont Perpignan Castres UBB  
+
+python manage.py generer_matchs "Top 14" "2025/2026" 3 2025-09-20 Clermont Castres Lyon Perpignan UBB Montpellier Toulon Pau Bayonne "Stade français" "Racing 92" Montauban Toulouse "La Rochelle"  
+
+python manage.py generer_matchs "Top 14" "2025/2026" 4 2025-09-27 "Stade français" "La Rochelle" "Racing 92" Pau Montauban Toulouse Bayonne UBB Perpignan Clermont  Lyon Montpellier Castres Toulon   
+
+python manage.py generer_matchs "Top 14" "2025/2026" 5 2025-10-04 Montpellier Toulon Clermont Castres Perpignan UBB Bayonne "La Rochelle" Pau Montauban "Racing 92" "Stade français" Lyon Toulouse  
+
+python manage.py generer_matchs "Top 14" "2025/2026" 6 2025-10-11 Pau "Stade français" Lyon "Racing 92" Montauban Clermont Toulouse Bayonne "La Rochelle" Perpignan    Montpellier Castres Toulon UBB 
+
+python manage.py generer_matchs "Top 14" "2025/2026" 7 2025-10-18 Bayonne Castres Montpellier "La Rochelle" Perpignan Pau Toulon Clermont "Stade français" Lyon Montauban UBB Toulouse "Racing 92"  
+
+python manage.py generer_matchs "Top 14" "2025/2026" 8 2025-10-25 Lyon "Racing 92" "Stade français" Clermont Montauban UBB Toulouse "La Rochelle" Pau Montpellier Castres Perpignan Bayonne Toulon 
+
+python manage.py generer_matchs "Top 14" "2025/2026" 9 2025-11-01 Toulon Pau Bayonne Castres Montpellier Toulouse "La Rochelle" Lyon Perpignan Montauban UBB Clermont "Stade français" "Racing 92"  
+
+python manage.py generer_matchs "Top 14" "2025/2026" 10 2025-11-21 UBB Lyon "Racing 92" "La Rochelle" Montauban Perpignan "Stade français" Pau Clermont Bayonne Castres Toulouse  Montpellier Toulon 
+
+python manage.py generer_matchs "Top 14" "2025/2026" 11 2025-11-29 Montpellier Toulon Clermont Bayonne Castres Toulouse Pau UBB  Montauban "Stade français"  Lyon Perpignan    "Racing 92"  "La Rochelle" 
+
+python manage.py generer_matchs "Top 14" "2025/2026" 12 2025-12-20   "Stade français"  "La Rochelle" Montpellier Montauban Perpignan Lyon  UBB "Racing 92"   Bayonne Castres Pau Clermont Toulouse   Toulon 
+
+python manage.py generer_matchs "Top 14" "2025/2026" 13 2025-12-27 "Racing 92" Castres Bayonne   Clermont Pau Toulon Toulouse    Montauban Lyon "Stade français" UBB  Montpellier Perpignan     "La Rochelle" 
+
+python manage.py generer_matchs "Top 14" "2025/2026" 14 2026-01-03  Perpignan Montauban  Lyon Montpellier "Stade français" UBB "La Rochelle" Toulouse Clermont Pau  Bayonne Castres    "Racing 92"    Toulon 
+
+python manage.py generer_matchs "Champions Cup" "2025/2026" 1 2026-12-06 Sale Saracens Toulouse Bath Gloucester Edinburgh Bayonne "La Rochelle" Leinster "Blue Bulls" Scarlets Pau Glasgow Clermont Sharks Munster Castres Toulon Stormers Leicester Harlequins UBB Bristol Northampton
+
+python manage.py generer_matchs "Champions Cup" "2025/2026" 2 2026-12-13  Sharks Clermont Glasgow Munster Castres Toulon Leicester Stormers Harlequins UBB Northampton Bristol Saracens Sale Toulouse  Gloucester Edinburgh Bath Leinster "La Rochelle" Bayonne Scarlets "Blue Bulls"  Pau 
+
+python manage.py generer_matchs "Champions Cup" "2025/2026" 3 2026-01-10 Clermont Sale Saracens Castres Edinburgh Toulon Leinster Leicester Harlequins  "Blue Bulls" Scarlets UBB  Glasgow  Sharks Toulouse Bath Gloucester Munster  "La Rochelle" Bayonne Stormers    Bristol Pau Northampton
+
+python manage.py generer_matchs "Champions Cup" "2025/2026" 4 2026-01-17     Sharks Toulouse Glasgow Bath Munster Gloucester   Bayonne Stormers "La Rochelle" Pau Bristol Northampton Clermont Sale Saracens  Edinburgh Castres Toulon Leinster Leicester 

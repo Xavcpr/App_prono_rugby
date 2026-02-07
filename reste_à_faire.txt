@@ -1,13 +1,4 @@
 To do list ! :
-
-- ajout des différents boutons pour naviguer
-- mettre all-pronos responsive
-- harmoniser la charte graphique de pronos/ et de classement/
-- afficher les meilleurs scoreurs / kickers
-- cacher les meilleurs s / k pour toutes compétitions sauf top14
-- all-pronos : ajouter gras pour DTP
-- all pronos : ajouter souligné pour bons BO
-- boutons admin sur la page pronos
 - ajouter sur l'onglet classement qqch qui interdit de modifier une fois la compétition commencée
 
 *Scoring
