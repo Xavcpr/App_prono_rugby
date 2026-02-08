@@ -1,14 +1,20 @@
 To do list ! :
+- RDD :
+    - classement top14
+    - classement cc 
+    - best kicker/scorer
+    - j15
+    - mettre dates pour matches de j1 à j15
+    - mettre dates pour matches de cc1 à cc 4
 - ajouter sur l'onglet classement qqch qui interdit de modifier une fois la compétition commencée
 
-*Scoring
-- * check si ok
-
----- FIN DE LA V1 ----
 - * système d'alerte_mail
     - créer adresse mail pour alerte
     - créer alerte mail vers users à H-6h puis H-1h + copie admin
     - rédiger texte
+
+---- FIN DE LA V1 ----
+
 
 - * compétition
        - filtre par joueur ou non
