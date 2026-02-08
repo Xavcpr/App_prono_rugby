@@ -3,7 +3,7 @@ import django
 import pandas as pd
 
 # Configuration de l'environnement Django
-os.environ.setdefault('FORCED_SETTINGS_MODULE', 'Rugby_app.settings') # Vérifie le nom de ton dossier settings
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings') # Vérifie le nom de ton dossier settings
 django.setup()
 
 from core.models import Player, Competition, Team, CompetitionTeamPrediction, CompetitionBonusPrediction
