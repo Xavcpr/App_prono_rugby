@@ -67,5 +67,5 @@ def import_excel_to_db(file_path, competition_name):
 if __name__ == "__main__":
     # Remplace par les vrais noms de tes fichiers
     import_excel_to_db("import_class_cc.xlsx", "Champions Cup")
-    import_excel_to_db("import_class_top14.xlsx", "Top 14")
+    # import_excel_to_db("import_class_top14.xlsx", "Top 14")
     pass
