@@ -3,7 +3,7 @@ import django
 import pandas as pd
 
 # Configuration de l'environnement Django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings') # Vérifie le nom de ton dossier settings
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
 from core.models import Player, Competition, Team, CompetitionTeamPrediction, CompetitionBonusPrediction
@@ -21,31 +21,34 @@ def import_excel_to_db(file_path, competition_name):
 
     for index, row in df.iterrows():
         # Trouver le joueur
-        player = Player.objects.filter(name__icontains=row['player_name']).first()
+        player = Player.objects.filter(name__icontains=str(row['player_name']).strip()).first()
         if not player:
             print(f"Joueur non trouvé : {row['player_name']}")
             continue
 
         # Trouver l'équipe
-        team = Team.objects.filter(name__icontains=row['team_name']).first()
+        team = Team.objects.filter(name__icontains=str(row['team_name']).strip()).first()
         if not team:
             print(f"Équipe non trouvée : {row['team_name']}")
             continue
 
         # --- PARTIE 1 : CLASSEMENT ---
-        # On utilise update_or_create pour éviter les doublons si on relance le script
+        # On utilise team dans les critères de recherche pour respecter l'unique_together
+        # et on met à jour la position et le bloc.
         CompetitionTeamPrediction.objects.update_or_create(
             competition=comp,
             player=player,
-            block_key=str(row['block_key']),
-            position=int(row['position']),
-            defaults={'team': team}
+            team=team, # Critique pour éviter l'IntegrityError
+            defaults={
+                'block_key': str(row['block_key']),
+                'position': int(row['position']),
+            }
         )
 
-        # --- PARTIE 2 : BONUS (Vainqueur, Buteurs) ---
+        # --- PARTIE 2 : BONUS ---
         winner_team = None
         if pd.notna(row.get('winner_final')):
-            winner_team = Team.objects.filter(name__icontains=row['winner_final']).first()
+            winner_team = Team.objects.filter(name__icontains=str(row['winner_final']).strip()).first()
 
         bonus_defaults = {}
         if winner_team:
@@ -62,10 +65,8 @@ def import_excel_to_db(file_path, competition_name):
                 defaults=bonus_defaults
             )
 
-    print(f"Importation terminée pour {competition_name} !")
+    print(f"Importation terminée avec succès pour {competition_name} !")
 
 if __name__ == "__main__":
-    # Remplace par les vrais noms de tes fichiers
     import_excel_to_db("import_class_cc.xlsx", "Champions Cup")
-    # import_excel_to_db("import_class_top14.xlsx", "Top 14")
-    pass
+    import_excel_to_db("import_class_top14.xlsx", "Top 14")
