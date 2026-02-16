@@ -1,5 +1,5 @@
 from django.urls import path 
-from .views import all_pronos_view, compute_round_view, pronos_view, logout_view, round_results_board, settings_view, competition_ranking_view, classement_prediction
+from .views import statistiques_view, all_pronos_view, compute_round_view, pronos_view, logout_view, round_results_board, settings_view, competition_ranking_view, classement_prediction
 
 urlpatterns = [
     # Page principale des pronos
@@ -24,6 +24,9 @@ urlpatterns = [
     
     # Optionnel : Route pour lancer le calcul des points
     path('calculer-points/<int:round_id>/', compute_round_view, name='compute_points'),
+    
+     # Statistiques générales sur les paris   
+    path("statistiques/", statistiques_view, name="statistiques"),
 ]
 
 

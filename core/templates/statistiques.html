@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+
+  <h2 class="mb-4">Statistiques</h2>
+
+<form method="get" class="mb-3">
+  <div class="d-flex gap-3 flex-wrap align-items-center">
+    <div>
+      <label class="form-label mb-1">Compétition</label><br>
+      <select name="competition" onchange="this.form.submit()" class="form-select">
+        <option value="">Total (toutes compétitions)</option>
+        {% for comp in competitions %}
+          <option value="{{ comp.id }}" {% if competition and comp.id == competition.id %}selected{% endif %}>
+            {{ comp.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+</form>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <h5>Classement détaillé</h5>
+    <table class="table table-sm table-bordered align-middle">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Pronostiqueur</th>
+          <th class="text-end">Points</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in detailed_ranking %}
+        <tr>
+          <td>{{ r.rank }}</td>
+          <td>{{ r.username }}</td>
+          <td class="text-end fw-bold">{{ r.points }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-6">
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5>Choppes d’or 🏆 (tout-pile)</h5>
+        <table class="table table-sm table-bordered">
+          <thead><tr><th>#</th><th>Pronostiqueur</th><th class="text-end">Total</th></tr></thead>
+          <tbody>
+            {% for r in choppes_or %}
+              <tr>
+                <td>{{ r.rank }}</td>
+                <td>{{ r.username }}</td>
+                <td class="text-end fw-bold">{{ r.value }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5>Choppes de bois 🪵 (issues fausses)</h5>
+        <table class="table table-sm table-bordered">
+          <thead><tr><th>#</th><th>Pronostiqueur</th><th class="text-end">Total</th></tr></thead>
+          <tbody>
+            {% for r in choppes_bois %}
+              <tr>
+                <td>{{ r.rank }}</td>
+                <td>{{ r.username }}</td>
+                <td class="text-end fw-bold">{{ r.value }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card"><div class="card-body text-center">
+        <div class="fs-2">🎯</div>
+        <div class="fw-bold">Tout-pile</div>
+        <div class="fs-4">{{ kpi.tout_pile }}</div>
+      </div></div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card"><div class="card-body text-center">
+        <div class="fs-2">🌓</div>
+        <div class="fw-bold">Demi tout-pile</div>
+        <div class="fs-4">{{ kpi.demi_tout_pile }}</div>
+        <div class="small">Dom {{ kpi.demi_dom }} • Ext {{ kpi.demi_ext }}</div>
+      </div></div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card"><div class="card-body text-center">
+        <div class="fs-2">⚡</div>
+        <div class="fw-bold">Bonus off</div>
+        <div>Bons {{ kpi.bon_bonus_off }}</div>
+        <div>Mauvais {{ kpi.mauvais_bonus_off }}</div>
+      </div></div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card"><div class="card-body text-center">
+        <div class="fs-2">🛡️</div>
+        <div class="fw-bold">Bonus def</div>
+        <div>Bons {{ kpi.bon_bonus_def }}</div>
+        <div>Mauvais {{ kpi.mauvais_bonus_def }}</div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5>Évolution des scores</h5>
+      <canvas id="scoreChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5>Évolution du classement</h5>
+      <canvas id="rankChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5>Écart au leader</h5>
+      <canvas id="gapChart"></canvas>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6">
+      <div class="card"><div class="card-body">
+        <h5>Répartition ({{ pie_denominator }})</h5>
+        <canvas id="pieChart"></canvas>
+      </div></div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card"><div class="card-body">
+        <h5>Bons pronostics de victoire</h5>
+        <table class="table table-sm">
+          <thead>
+            <tr><th>Joueur</th><th class="text-end">Bons</th></tr>
+          </thead>
+          <tbody>
+            {% for r in victory_table %}
+              <tr><td>{{ r.username }}</td><td class="text-end">{{ r.bons }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+{{ labels|json_script:"labels-data" }}
+{{ score_series|json_script:"score-series-data" }}
+{{ rank_series|json_script:"rank-series-data" }}
+{{ gap_series|json_script:"gap-series-data" }}
+{{ pie_labels|json_script:"pie-labels-data" }}
+{{ pie_values|json_script:"pie-values-data" }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  const labels = JSON.parse(document.getElementById("labels-data").textContent);
+  const scoreSeries = JSON.parse(document.getElementById("score-series-data").textContent);
+  const rankSeries  = JSON.parse(document.getElementById("rank-series-data").textContent);
+  const gapSeries   = JSON.parse(document.getElementById("gap-series-data").textContent);
+  const pieLabels   = JSON.parse(document.getElementById("pie-labels-data").textContent);
+  const pieValues   = JSON.parse(document.getElementById("pie-values-data").textContent);
+
+  function makeDatasets(obj) {
+    return Object.keys(obj).map(k => ({
+      label: k,
+      data: obj[k],
+      tension: 0.25
+    }));
+  }
+
+  new Chart(scoreChart, {
+    type: "line",
+    data: { labels, datasets: makeDatasets(scoreSeries) }
+  });
+
+  new Chart(rankChart, {
+    type: "line",
+    data: { labels, datasets: makeDatasets(rankSeries) },
+    options: { scales: { y: { reverse: true } } }
+  });
+
+  new Chart(gapChart, {
+    type: "line",
+    data: { labels, datasets: makeDatasets(gapSeries) }
+  });
+
+  new Chart(pieChart, {
+    type: "pie",
+    data: { labels: pieLabels, datasets: [{ data: pieValues }] }
+  });
+</script>
+
+{% endblock %}

@@ -15,6 +15,7 @@ from .services import scoring
 from .models import CompetitionTeam, Match, Prediction, Competition, Round, Player, Season, Team, CompetitionTeamPrediction, CompetitionRankingPrediction, TeamRankingPrediction, CompetitionBonusPrediction
 from .services.scoring import calculate_match_points
 from django.db.models import Prefetch
+from .services.statistics import compute_statistics
 
 
 
@@ -668,3 +669,49 @@ def compute_round_view(request, round_id):
     process_round_scores(round_obj)
     # Une fois fini, on revient sur la page des résultats
     return redirect('round_board', round_id=round_id)
+
+# ------------------
+# STATISTIQUES VIEW
+# ------------------
+@login_required
+def statistiques_view(request):
+   # Convention projet : GET vide = Total
+    competition_id = request.GET.get("competition", "").strip()
+
+    competitions = Competition.objects.all().order_by("name")
+
+    competition = None
+    if competition_id.isdigit():
+        competition = get_object_or_404(Competition, id=int(competition_id))
+
+    # On calcule toutes les stats de la compétition (ou total)
+    stats = compute_statistics(competition)
+
+    context = {
+        "competitions": competitions,
+        "competition": competition,
+        "competition_id": competition_id,
+
+        # Charts
+        "labels": stats.labels,
+        "score_series": stats.score_series,
+        "rank_series": stats.rank_series,
+        "gap_series": stats.gap_series,
+        "pie_labels": stats.pie_labels,
+        "pie_values": stats.pie_values,
+
+        # Tables + KPIs
+        "victory_table": stats.victory_table,
+        "kpi": stats.kpi,
+        "pie_denominator": stats.pie_denominator,
+
+        # NOUVEAU : Classement détaillé (style résultats)
+        "detailed_ranking": stats.detailed_ranking,
+
+        # NOUVEAU : choppes
+        "choppes_or": stats.choppes_or,
+        "choppes_bois": stats.choppes_bois,
+    }
+
+
+    return render(request, "statistiques.html", context)
