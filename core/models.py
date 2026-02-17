@@ -56,7 +56,7 @@ class Season(models.Model):
     
     @property
     def has_started(self):
-        first_match = Match.objects.filter(round__season=self).order_by('kickoff_at').first()
+        first_match = Match.objects.filter(round__season=self).exclude(kickoff_at__isnull=True).order_by('kickoff_at').first()
         if first_match and first_match.kickoff_at:
             now = timezone.now()
             started = now > first_match.kickoff_at
