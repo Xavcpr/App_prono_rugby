@@ -53,6 +53,16 @@ class Season(models.Model):
 
     def __str__(self):
         return f"{self.competition.name} {self.year}"
+    
+    @property
+    def has_started(self):
+        first_match = Match.objects.filter(round__season=self).order_by('kickoff_at').first()
+        if first_match and first_match.kickoff_at:
+            now = timezone.now()
+            started = now > first_match.kickoff_at
+            print(f"DEBUG: Now={now} | Kickoff={first_match.kickoff_at} | Started={started}")
+            return started
+        return False
 
 # ----- Journées / Rounds -----
 class Round(models.Model):

@@ -187,59 +187,17 @@ def competition_ranking_view(request):
     })
 
 
-    # Form pour les champs libres (vainqueur, meilleurs marqueurs)
-    CompetitionRankingForm = modelform_factory(
-        CompetitionRankingPrediction,
-        fields=["winner_team", "best_try_scorer", "best_kicker"]
-    )
-
-    # Formset pour les équipes
-    TeamRankingFormSet = modelformset_factory(
-        TeamRankingPrediction,
-        fields=["team", "position", "pool"],
-        extra=0,
-        can_delete=False
-    )
-
-    # Initialisation du formset avec les équipes de cette compétition
-    team_rankings = TeamRankingPrediction.objects.filter(ranking=ranking)
-    if not team_rankings.exists():
-        # Génère les objets TeamRankingPrediction vierges pour chaque équipe
-        teams = list(competition.teams.all())
-        for idx, team in enumerate(teams):
-            TeamRankingPrediction.objects.create(ranking=ranking, team=team, position=idx+1)
-        team_rankings = TeamRankingPrediction.objects.filter(ranking=ranking)
-
-    form = CompetitionRankingForm(request.POST or None, instance=ranking)
-    formset = TeamRankingFormSet(request.POST or None, queryset=team_rankings)
-
-    if request.method == "POST":
-        if form.is_valid() and formset.is_valid():
-            form.save()
-            formset.save()
-            messages.success(request, "Classement enregistré !")
-            return redirect("pronostics")
-
-    return render(request, "classement_par_competition.html", {
-        "competitions": competitions,
-        "competition": competition,
-        "season": season,
-        "form": form,
-        "formset": formset,
-        "player": player
-    })
-
-def _ensure_lines(qs, count, ranking, pool=None):
-    existing = qs.count()
-    if existing < count:
-        TeamRankingPrediction.objects.bulk_create([
-            TeamRankingPrediction(
-                ranking=ranking,
-                position=i + 1,
-                pool=pool
-            )
-            for i in range(existing, count)
-        ])
+# def _ensure_lines(qs, count, ranking, pool=None):
+#     existing = qs.count()
+#     if existing < count:
+#         TeamRankingPrediction.objects.bulk_create([
+#             TeamRankingPrediction(
+#                 ranking=ranking,
+#                 position=i + 1,
+#                 pool=pool
+#             )
+#             for i in range(existing, count)
+#         ])
 
 
 # ------------------
@@ -248,28 +206,30 @@ def _ensure_lines(qs, count, ranking, pool=None):
 @login_required
 def classement_prediction(request):
     competitions = Competition.objects.all()
-    competition_id = request.GET.get("competition")
+    # On unifie la récupération de l'ID de compétition (POST ou GET)
+    competition_id = request.POST.get("competition_id") or request.GET.get("competition")
 
     selected_competition = None
     blocks = []
     bonus = None
     winner_teams = []
+    season = None
 
     if competition_id:
         selected_competition = get_object_or_404(Competition, id=competition_id)
+        # On définit la saison immédiatement
+        season = Season.objects.filter(competition=selected_competition).order_by("-year").first()
         
-        # Récupération des bonus (Structure Simple)
+        # Récupération des bonus
         bonus, _ = CompetitionBonusPrediction.objects.get_or_create(
             player=request.user.player,
             competition=selected_competition
         )
         
-        # Liste des équipes pour le menu "Vainqueur"
         winner_teams = selected_competition.teams.all().order_by("name")
 
-        # Configuration des blocs (Poule ou Général)
+        # --- On prépare les BLOCKS ici pour qu'ils existent en GET ET en POST ---
         if selected_competition.name.lower() == "champions cup":
-            season = Season.objects.filter(competition=selected_competition).order_by("-year").first()
             for pool in range(1, 5):
                 comp_teams = CompetitionTeam.objects.filter(
                     competition=selected_competition, season=season, pool=pool
@@ -291,45 +251,42 @@ def classement_prediction(request):
 
     # --- SAUVEGARDE (POST) ---
     if request.method == "POST" and selected_competition:
+        
+        # VERROU : On vérifie si la compétition a commencé
+        if season and season.has_started:
+            messages.error(request, "La compétition a déjà commencé ! Modification impossible.")
+            return redirect(f"{request.path}?competition={selected_competition.id}")
+        
         # 1. Sauvegarde des Bonus
         bonus.best_try_scorer = request.POST.get("best_try_scorer", "").strip()
         bonus.best_point_scorer = request.POST.get("best_point_scorer", "").strip()
-        
         winner_id = request.POST.get("winner")
         bonus.winner_id = int(winner_id) if winner_id and winner_id.isdigit() else None
         bonus.save()
 
-        # 2. Nettoyage du classement existant
+        # 2. Nettoyage et 3. Enregistrement
         CompetitionTeamPrediction.objects.filter(
-            competition=selected_competition, 
-            player=request.user.player
+            competition=selected_competition, player=request.user.player
         ).delete()
 
-        # 3. Enregistrement des nouvelles positions avec SECURITÉ DOUBLONS
-        recorded_teams = set()  # Pour suivre les équipes déjà sauvées
-        
-        for block in blocks:
+        recorded_teams = set()
+        for block in blocks: # Maintenant 'blocks' n'est plus vide !
             for pos in block["positions"]:
                 field_name = f"team_{block['key']}_{pos}"
                 team_id_raw = request.POST.get(field_name)
-                
                 if team_id_raw and team_id_raw.isdigit():
                     t_id = int(team_id_raw)
-                    
-                    # SI L'ÉQUIPE EST DÉJÀ CHOISIE DANS CETTE COMPÉTITION, ON PASSE
-                    if t_id in recorded_teams:
-                        continue
-                    
-                    CompetitionTeamPrediction.objects.create(
-                        competition=selected_competition,
-                        player=request.user.player,
-                        team_id=t_id,
-                        position=pos,
-                        block_key=block["key"]
-                    )
-                    recorded_teams.add(t_id) # On marque l'équipe comme enregistrée
+                    if t_id not in recorded_teams:
+                        CompetitionTeamPrediction.objects.create(
+                            competition=selected_competition,
+                            player=request.user.player,
+                            team_id=t_id,
+                            position=pos,
+                            block_key=block["key"]
+                        )
+                        recorded_teams.add(t_id)
         
-        messages.success(request, "Vos pronostics ont été enregistrés ! (Les équipes en doublon ont été ignorées)")
+        messages.success(request, "Vos pronostics ont été enregistrés !")
         return redirect(f"{request.path}?competition={selected_competition.id}")
 
     # --- RÉCUPÉRATION POUR AFFICHAGE (GET) ---
@@ -353,6 +310,7 @@ def classement_prediction(request):
         ).select_related('team').order_by('block_key', 'position')
 
     return render(request, "pronos/classement.html", {
+        "season": season,
         "competitions": competitions,
         "selected_competition": selected_competition,
         "blocks": blocks,
