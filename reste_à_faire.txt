@@ -1,6 +1,4 @@
 To do list ! :
-- X : ajouter sur l'onglet classement qqch qui interdit de modifier une fois la compétition commencée
-permettre à l'admin de voir les pronos de tous
 
 - X : * système d'alerte_mail
     - créer adresse mail pour alerte
