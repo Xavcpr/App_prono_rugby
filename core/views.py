@@ -318,9 +318,12 @@ def classement_prediction(request):
         "winner_teams": winner_teams,
         "last_saved_ranking": last_saved_ranking,
     })
- 
+
+
 def all_pronos_view(request):
     now = timezone.now()
+    # Vérification du statut admin
+    is_admin = request.user.is_staff or request.user.is_superuser
     
     round_id_raw = request.GET.get("round")
     all_rounds = Round.objects.select_related('season__competition').order_by('season__competition', 'number')
@@ -345,7 +348,6 @@ def all_pronos_view(request):
         is_locked = now > m.kickoff_at if m.kickoff_at else False
         player_pronos = []
         
-        # On définit si le résultat réel est déjà connu
         has_result = m.home_score is not None and m.away_score is not None
         
         for p in players:
@@ -366,37 +368,31 @@ def all_pronos_view(request):
                 'display_locked': False
             }
 
-            if not is_locked:
+            # --- LOGIQUE DE VISIBILITÉ ---
+            # Si le match n'est pas commencé ET que l'utilisateur n'est pas admin -> on cache
+            if not is_locked and not is_admin:
                 p_dict['display_locked'] = True
+            
+            # Si le match est commencé OU que l'utilisateur est admin -> on traite les données
             elif prono:
                 p_dict['score_home'] = prono.home_score_pred
                 p_dict['score_away'] = prono.away_score_pred
                 p_dict['bonus_home'] = prono.bonus_home_pred
                 p_dict['bonus_away'] = prono.bonus_away_pred
                 
-                # --- Logique des Bonus (Vert / Rouge / Orange) ---
-                if prono.bonus_home_pred:
-                    if has_result:
-                        if m.bonus_offense_home:
-                            p_dict['bonus_home_success'] = True # Vert
-                        else:
-                            p_dict['bonus_home_fail'] = True    # Rouge
-                    # Si pas de résultat, bonus_home reste True -> Orange dans le HTML
+                if prono.bonus_home_pred and has_result:
+                    p_dict['bonus_home_success'] = m.bonus_offense_home
+                    p_dict['bonus_home_fail'] = not m.bonus_offense_home
 
-                if prono.bonus_away_pred:
-                    if has_result:
-                        if m.bonus_offense_away:
-                            p_dict['bonus_away_success'] = True # Vert
-                        else:
-                            p_dict['bonus_away_fail'] = True    # Rouge
+                if prono.bonus_away_pred and has_result:
+                    p_dict['bonus_away_success'] = m.bonus_offense_away
+                    p_dict['bonus_away_fail'] = not m.bonus_offense_away
                 
-                # --- Test Score Exact ---
                 if m.home_score is not None:
                     p_dict['is_perfect_home'] = (prono.home_score_pred == m.home_score)
                 if m.away_score is not None:
                     p_dict['is_perfect_away'] = (prono.away_score_pred == m.away_score)
 
-                # --- Classes de couleurs de fond (Gagnant/Perdant) ---
                 if prono.home_score_pred > prono.away_score_pred:
                     p_dict['class'] = "bg-home-win"
                 elif prono.away_score_pred > prono.home_score_pred:
@@ -412,7 +408,8 @@ def all_pronos_view(request):
             'reel_away': m.away_score,
             'bonus_home_reel': m.bonus_offense_home,
             'bonus_away_reel': m.bonus_offense_away,
-            'player_pronos': player_pronos
+            'player_pronos': player_pronos,
+            'is_locked': is_locked # Utile pour l'icône admin dans le template
         })
 
     return render(request, "pronos/all_pronos.html", {
@@ -422,7 +419,6 @@ def all_pronos_view(request):
         "selected_round": selected_round_id,
         "current_round_obj": current_round_obj,
     })
-
 
 def round_results_board(request, round_id):
     round_obj = get_object_or_404(Round, id=round_id)
