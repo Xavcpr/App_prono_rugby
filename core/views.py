@@ -12,7 +12,7 @@ from .constants import COMPETITION_RULES
 from .services.scoring import process_round_scores, get_winner_side
 from .services import scoring
 
-from .models import CompetitionTeam, Match, Prediction, Competition, Round, Player, Season, Team, CompetitionTeamPrediction, CompetitionRankingPrediction, TeamRankingPrediction, CompetitionBonusPrediction
+from .models import CompetitionTeam, DailyScore, Match, Prediction, Competition, Round, Player, Season, Team, CompetitionTeamPrediction, CompetitionRankingPrediction, TeamRankingPrediction, CompetitionBonusPrediction
 from .services.scoring import calculate_match_points
 from django.db.models import Prefetch
 from .services.statistics import compute_statistics
@@ -669,3 +669,56 @@ def statistiques_view(request):
 
 
     return render(request, "statistiques.html", context)
+
+
+@login_required
+def debug_scores_view(request):
+    # 1. Récupérer la compétition sélectionnée (ou la dernière par défaut)
+    competition_id = request.GET.get('competition')
+    if competition_id:
+        selected_competition = get_object_or_404(Competition, id=competition_id)
+    else:
+        selected_competition = Competition.objects.first()
+
+    if not selected_competition:
+        return render(request, "pronos/debug_scores.html", {"error": "Aucune compétition trouvée"})
+
+    # 2. Récupérer les rounds et les joueurs
+    rounds = Round.objects.filter(season__competition=selected_competition).order_by('number')
+    players = Player.objects.all().select_related('user').order_by('name')
+    
+    # 3. Récupérer tous les scores de cette compétition
+    # On utilise DailyScore qui semble être ton modèle de stockage par round
+    daily_scores = DailyScore.objects.filter(round__in=rounds).select_related('user', 'round')
+
+    # 4. Construire la matrice de données
+    # Structure : { user_id: { round_id: points } }
+    score_matrix = {}
+    for score in daily_scores:
+        if score.user_id not in score_matrix:
+            score_matrix[score.user_id] = {}
+        score_matrix[score.user_id][score.round_id] = score.points
+
+    # 5. Calculer le total par joueur pour vérification
+    player_data = []
+    for p in players:
+        row = {
+            'player': p,
+            'scores': [],
+            'total_calc': 0
+        }
+        for r in rounds:
+            # On récupère le score stocké en base
+            pts = score_matrix.get(p.user_id, {}).get(r.id, 0)
+            row['scores'].append(pts)
+            row['total_calc'] += pts
+        player_data.append(row)
+
+    competitions = Competition.objects.all()
+
+    return render(request, "debug_scores.html", {
+        "selected_competition": selected_competition,
+        "competitions": competitions,
+        "rounds": rounds,
+        "player_data": player_data,
+    })

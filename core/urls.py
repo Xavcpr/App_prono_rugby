@@ -1,5 +1,5 @@
 from django.urls import path 
-from .views import statistiques_view, all_pronos_view, compute_round_view, pronos_view, logout_view, round_results_board, settings_view, competition_ranking_view, classement_prediction
+from .views import debug_scores_view, statistiques_view, all_pronos_view, compute_round_view, pronos_view, logout_view, round_results_board, settings_view, competition_ranking_view, classement_prediction
 
 urlpatterns = [
     # Page principale des pronos
@@ -27,6 +27,8 @@ urlpatterns = [
     
      # Statistiques générales sur les paris   
     path("statistiques/", statistiques_view, name="statistiques"),
+    
+    path('debug-scores/', debug_scores_view, name='debug_scores'),
 ]
 
 

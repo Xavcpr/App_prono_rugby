@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+    <style>
+  .debug-header { margin: 20px 0; background: #c0392b; color: white; padding: 20px; border-radius: 8px; }
+  .table-container { overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+  .rugby-board { width: 100%; border-collapse: collapse; }
+  .rugby-board th, .rugby-board td { border: 1px solid #bdc3c7; padding: 10px; text-align: center; }
+  .header-dark { background: #2c3e50; color: white; }
+  .player-col { text-align: left !important; font-weight: bold; background: #f9f9f9; position: sticky; left: 0; }
+  .total-col { background: #ecf0f1; font-weight: bold; color: #27ae60; }
+  .zero-score { color: #bdc3c7; }
+    </style>
+    <div class="container-fluid">
+        <div class="debug-header">
+            <h1 style="margin: 0">Vérification des Scores Totaux</h1>
+            <p style="margin: 5px 0 0 0; opacity: 0.9">Détail par joueur et par journée pour {{ selected_competition.name }}</p>
+        </div>
+        <div class="mb-4">
+            <form method="get" class="d-flex align-items-center gap-2">
+                <label>Choisir une compétition :</label>
+                <select name="competition"
+                        onchange="this.form.submit()"
+                        class="form-select w-auto">
+                    {% for comp in competitions %}
+                        <option value="{{ comp.id }}"
+                                {% if comp.id == selected_competition.id %}selected{% endif %}>{{ comp.name }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+        <div class="table-container">
+            <table class="rugby-board">
+                <thead>
+                    <tr class="header-dark">
+                        <th class="player-col">Joueur</th>
+                        {% for r in rounds %}<th title="{{ r.season.year }}">J.{{ r.number }}</th>{% endfor %}
+                        <th class="total-col">TOTAL DB</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in player_data %}
+                        <tr>
+                            <td class="player-col">{{ row.player.name }}</td>
+                            {% for score in row.scores %}
+                                <td class="{% if score == 0 %}zero-score{% endif %}">{{ score }}</td>
+                            {% endfor %}
+                            <td class="total-col">{{ row.total_calc }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p class="mt-3 text-muted small">
+            * Ce tableau affiche les points enregistrés dans la table <strong>DailyScore</strong>.
+            Si un total est faux, vérifiez la journée correspondante avec le bouton "Recalculer" dans le Round Board.
+        </p>
+    </div>
+{% endblock %}
