@@ -435,6 +435,10 @@ def round_results_board(request, round_id):
     }
     comp_name = round_obj.season.competition.name
     current_scale = BONUS_SCALES.get(comp_name, {})
+    # AJOUT DU MULTIPLICATEUR DE COMPÉTITION
+    comp_multiplier = 1
+    if "6 Nations" in comp_name or "Six Nations" in comp_name:
+        comp_multiplier = 2
 
     # 0. On pré-calcule le nombre de gagnants par match pour le partage du pool
     match_winners_counts = {}
@@ -579,6 +583,13 @@ def round_results_board(request, round_id):
                 daily_bonus = current_scale[threshold]
                 break
 
+        # Calcul du score brut (tout inclus)
+        raw_score = (
+            stats['pm'] + stats['tp'] + stats['dtp'] + stats['bo'] + 
+            stats['bd'] + stats['diff'] + stats['somme'] + 
+            stats['ext'] + stats['draw'] + daily_bonus
+        )
+
         totals_display.append({
             'player': p,
             'pm': stats['pm'],
@@ -590,7 +601,7 @@ def round_results_board(request, round_id):
             'somme': stats['somme'],
             'ext': stats['ext'],
             'bonus': daily_bonus,
-            'score': stats['pm'] + stats['tp'] + stats['dtp'] + stats['bo'] + stats['bd'] + stats['diff'] + stats['somme'] + stats['ext'] + stats['draw'] + daily_bonus,
+            'score': raw_score * comp_multiplier, # Application du multiplicateur de compétition    
             'rank_class': ''
         })
 
