@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% load custom_tags %}
+{% load custom_filters %}
+{% block content %}
+    <style>
+  /* --- Rappel de ta Charte Graphique --- */
+  .board-header {
+    margin: 20px 0;
+    background: #2c3e50;
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+  }
+  .navigation-zone {
+    background: #ecf0f1;
+    padding: 15px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+  .rugby-board {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    margin-bottom: 30px;
+  }
+  .rugby-board th,
+  .rugby-board td {
+    border: 1px solid #bdc3c7;
+    padding: 12px;
+    text-align: center;
+  }
+  .team-cell {
+    text-align: left !important;
+    background: #f9f9f9;
+    font-weight: bold;
+    min-width: 200px;
+  }
+  .section-title {
+    color: #2c3e50;
+    border-bottom: 2px solid #2c3e50;
+    padding-bottom: 5px;
+    margin-top: 30px;
+    font-weight: bold;
+  }
+  .rank-badge {
+    background: #34495e;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+  }
+
+  /* Styles des boutons conformes à tes autres pages */
+  .btn-custom {
+    padding: 8px 15px;
+    text-decoration: none !important;
+    border-radius: 4px;
+    font-weight: bold;
+    transition: opacity 0.3s;
+    color: white !important;
+  }
+  .btn-custom:hover { opacity: 0.85; }
+  .btn-edit { background: #f39c12; }    /* Orange */
+  .btn-view { background: #34495e; }    /* Bleu Nuit */
+    </style>
+    <div class="board-header">
+        <h1 style="margin: 0">📊 Comparatif des Pronostics</h1>
+        <h3 style="margin: 5px 0 0 0; opacity: 0.9">
+            {% if selected_competition %}
+                {{ selected_competition.name }}
+            {% else %}
+                Classements globaux
+            {% endif %}
+        </h3>
+    </div>
+    <div class="navigation-zone">
+        <form method="get" style="display: flex; align-items: center; gap: 10px;">
+            <label style="font-weight: bold;">Compétition :</label>
+            <select name="competition"
+                    onchange="this.form.submit()"
+                    style="padding: 5px;
+                           border-radius: 4px">
+                <option value="">-- Choisir --</option>
+                {% for comp in competitions %}
+                    <option value="{{ comp.id }}"
+                            {% if selected_competition.id == comp.id %}selected{% endif %}>{{ comp.name }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        {% if user.is_staff and selected_competition %}
+            {% with season=selected_competition.seasons.first %}
+                <a href="{% url 'admin_saisie_resultats' %}?competition={{ selected_competition.id }}"
+                   class="btn-custom btn-edit">⚙️ Saisir Résultats Réels</a>
+                <a href="{% url 'calcul_points_classement' season.id %}"
+                   class="btn-custom btn-compute"
+                   onclick="return confirm('Recalculer les points pour tous les joueurs ?')">🔄 Calculer les Points</a>
+            {% endwith %}
+        {% endif %}
+        <div style="margin-left: auto; display: flex; gap: 10px;">
+            <a href="{% url 'classement_prediction' %}{% if selected_competition %}?competition={{ selected_competition.id }}{% endif %}"
+               class="btn-custom btn-edit">✏️ Modifier mes pronos</a>
+            <a href="{% url 'pronos' %}" class="btn-custom btn-view">🏠 Accueil Pronos</a>
+        </div>
+    </div>
+    {% if selected_competition %}
+        {% for block_key, teams in teams_by_block.items %}
+            <h4 class="section-title">🏆 Groupe : {{ block_key|upper }}</h4>
+            <table class="rugby-board">
+                <thead>
+                    <tr style="background: #2c3e50; color: white;">
+                        <th class="team-cell">Équipes</th>
+                        {% for player in players %}<th title="{{ player.name }}">{{ player.name|truncatechars:8 }}</th>{% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for team in teams %}
+                        <tr>
+                            <td class="team-cell">{{ team.name }}</td>
+                            {% for player in players %}
+                                <td>
+                                    {% with block_dict=matrix|get_item:block_key %}
+                                        {% with team_dict=block_dict|get_item:team.id %}
+                                            {% with pos=team_dict|get_item:player.id %}
+                                                {% if pos %}
+                                                    <span class="rank-badge">{{ pos }}</span>
+                                                {% else %}
+                                                    <span style="color: #bdc3c7;">-</span>
+                                                {% endif %}
+                                            {% endwith %}
+                                        {% endwith %}
+                                    {% endwith %}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endfor %}
+        <h4 class="section-title">✨ Pronostics Bonus & Vainqueur</h4>
+        <table class="rugby-board">
+            <thead>
+                <tr style="background: #34495e; color: white">
+                    <th class="team-cell">Joueur</th>
+                    <th>Vainqueur 🏆</th>
+                    {% if "Top 14" in selected_competition.name %}
+                        <th>Essais 🏉</th>
+                        <th>Points 🎯</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for bp in bonus_preds %}
+                    <tr>
+                        <td class="team-cell">{{ bp.player.name }}</td>
+                        <td>
+                            <strong>{{ bp.winner.name|default:"-" }}</strong>
+                        </td>
+                        {% if "Top 14" in selected_competition.name %}
+                            <td>{{ bp.best_try_scorer|default:"-" }}</td>
+                            <td>{{ bp.best_point_scorer|default:"-" }}</td>
+                        {% endif %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div style="text-align: center;
+                    padding: 50px;
+                    background: #f8f9fa;
+                    border-radius: 8px;
+                    border: 2px dashed #bdc3c7">
+            <p style="color: #7f8c8d; font-size: 1.2em;">
+                Veuillez sélectionner une compétition pour voir les pronostics des joueurs.
+            </p>
+        </div>
+    {% endif %}
+{% endblock %}

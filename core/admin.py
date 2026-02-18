@@ -193,9 +193,16 @@ class DailyScoreAdmin(admin.ModelAdmin):
 
 @admin.register(SeasonScore)
 class SeasonScoreAdmin(admin.ModelAdmin):
-    list_display = ("user", "competition", "points")
-    list_filter = ("competition",)
-    ordering = ("-points",)
+    # On remplace 'points' par nos nouveaux champs dans l'affichage
+    list_display = ('user', 'competition', 'match_points', 'ranking_points', 'get_total')
+    
+    # On trie par match_points par défaut (puisqu'on ne peut pas trier directement sur une @property)
+    ordering = ('-match_points',) 
+    
+    # Ajoute cette méthode pour afficher le total dans la liste
+    def get_total(self, obj):
+        return obj.total_points
+    get_total.short_description = 'Total (Matchs + Classement)'
 
 
 @admin.register(Prediction)

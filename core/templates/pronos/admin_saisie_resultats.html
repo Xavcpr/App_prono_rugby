@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block content %}
+    <style>
+  .admin-header { margin: 20px 0; background: #34495e; color: white; padding: 20px; border-radius: 8px; border-left: 8px solid #e74c3c; }
+  .section-title { color: #2c3e50; border-bottom: 2px solid #e74c3c; padding-bottom: 8px; margin-top: 30px; font-weight: bold; }
+  .admin-card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+  .rugby-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+  .rugby-table th { background: #2c3e50; color: white; padding: 10px; }
+  .rugby-table td { padding: 8px; border-bottom: 1px solid #eee; }
+  .btn-save-admin { background: #e74c3c; color: white; font-weight: bold; padding: 15px; border: none; border-radius: 8px; width: 100%; transition: 0.3s; cursor: pointer; }
+  .btn-save-admin:hover { background: #c0392b; transform: translateY(-2px); }
+    </style>
+    <div class="container">
+        <div class="admin-header">
+            <h1 style="margin: 0">🛠️ Administration : Résultats Officiels</h1>
+            <p style="margin: 5px 0 0 0; opacity: 0.8">Saisie des résultats réels pour le calcul des points</p>
+        </div>
+        <div class="admin-card">
+            <form method="get" style="display: flex; align-items: center; gap: 15px;">
+                <label>
+                    <strong>Choisir la compétition à clôturer :</strong>
+                </label>
+                <select name="competition"
+                        class="form-select w-auto"
+                        onchange="this.form.submit()">
+                    <option value="">-- Sélectionner --</option>
+                    {% for comp in competitions %}
+                        <option value="{{ comp.id }}"
+                                {% if selected_competition.id == comp.id %}selected{% endif %}>{{ comp.name }}</option>
+                    {% endfor %}
+                </select>
+                <a href="{% url 'recap_classement' %}"
+                   class="btn btn-outline-secondary btn-sm"
+                   style="margin-left: auto">← Retour Récap</a>
+            </form>
+        </div>
+        {% if selected_competition %}
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden"
+                       name="competition_id"
+                       value="{{ selected_competition.id }}">
+                <h4 class="section-title">🏆 VAINQUEUR ET RÉCOMPENSES</h4>
+                <div class="admin-card">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label small fw-bold">VAINQUEUR FINAL RÉEL</label>
+                            <select name="real_winner" class="form-select border-primary">
+                                <option value="">-- Équipe --</option>
+                                {% for team in selected_competition.teams.all|dictsort:"name" %}
+                                    <option value="{{ team.id }}">{{ team.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% if "Top 14" in selected_competition.name %}
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label small fw-bold">MEILLEUR MARQUEUR (NOM EXACT)</label>
+                                <input type="text"
+                                       name="real_best_try_scorer"
+                                       class="form-control"
+                                       placeholder="Ex: Penaud">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label small fw-bold">MEILLEUR SCOREUR (NOM EXACT)</label>
+                                <input type="text"
+                                       name="real_best_point_scorer"
+                                       class="form-control"
+                                       placeholder="Ex: Ramos">
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <h4 class="section-title">📊 CLASSEMENT FINAL OFFICIEL</h4>
+                <div class="row">
+                    {% for block in blocks %}
+                        <div class="col-lg-6 mb-4">
+                            <div class="admin-card">
+                                <h5 class="text-danger fw-bold">Groupe : {{ block.key }}</h5>
+                                <table class="rugby-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 70px">Pos.</th>
+                                            <th>Équipe Réelle</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for pos in block.positions %}
+                                            <tr>
+                                                <td class="text-center">
+                                                    <strong>{{ pos }}</strong>
+                                                </td>
+                                                <td>
+                                                    <select name="team_{{ block.key }}_{{ pos }}" class="form-select">
+                                                        <option value="">-- Sélectionner l'équipe --</option>
+                                                        {% for team in block.teams %}<option value="{{ team.id }}">{{ team.name }}</option>{% endfor %}
+                                                    </select>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                <button type="submit" class="btn-save-admin mb-5">💾 ENREGISTRER LES RÉSULTATS OFFICIELS</button>
+            </form>
+        {% endif %}
+    </div>
+{% endblock %}

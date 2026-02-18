@@ -244,16 +244,17 @@ def process_round_scores(round_obj):
             # Application du Multiplicateur de Phase
             multiplier = scoring.PHASE_MULTIPLIERS.get(m.phase, 1.0)
             # 2AJOUT : Multiplicateur spécifique au 6 Nations
-            # On vérifie si le nom de la compétition contient "6 Nations" ou "Six Nations"
+            # On vérifie si le nom de la compétition contient "6 Nations" 
             competition_name = m.round.season.competition.name
-            if "6 Nations" in competition_name or "Six Nations" in competition_name:
+            if "6 Nations" in competition_name :
                 multiplier *= 2.0  # On double les points
-            final_m_pts = int(m_pts * multiplier)
+            # final_m_pts = int(m_pts * multiplier)
             
             # On sauve les points du match dans la prédiction
-            pr.points = final_m_pts
+            # pr.points = final_m_pts
+            pr.points = m_pts
             pr.save()
-            total_points += final_m_pts
+            # total_points += final_m_pts
 
         # Ajout du Bonus de Palier
         day_bonus = 0
@@ -261,9 +262,12 @@ def process_round_scores(round_obj):
             if correct_winners_count >= thresh:
                 day_bonus = current_scale[thresh]
                 break
+        day_total_raw = m_pts + day_bonus
+        final_score_saved = day_total_raw * multiplier    
+        
         
         # Enregistrement final
         if p.user:
             ds, _ = DailyScore.objects.get_or_create(user=p.user, round=round_obj)
-            ds.points = total_points + day_bonus
+            ds.points = final_score_saved
             ds.save()

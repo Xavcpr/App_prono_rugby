@@ -12,13 +12,37 @@ from .constants import COMPETITION_RULES
 from .services.scoring import process_round_scores, get_winner_side
 from .services import scoring
 
-from .models import CompetitionTeam, DailyScore, Match, Prediction, Competition, Round, Player, Season, Team, CompetitionTeamPrediction, CompetitionRankingPrediction, TeamRankingPrediction, CompetitionBonusPrediction
+from .models import CompetitionResult, CompetitionTeam, DailyScore, Match, Prediction, Competition, Round, Player, Season, SeasonScore, Team, CompetitionTeamPrediction, CompetitionRankingPrediction, TeamRankingPrediction, CompetitionBonusPrediction
 from .services.scoring import calculate_match_points
 from django.db.models import Prefetch
 from .services.statistics import compute_statistics
+from django.contrib.admin.views.decorators import staff_member_required
 
 
-
+# CONFIGURATION DU BAREME DES POINTS
+RUGBY_SCORING = {
+    "Top 14": {
+        "bonus": 200,      # Marqueur / Scoreur
+        "winner": 200,
+        "exact_rank": 80,
+        "gap_1": 40,
+        "gap_2": 20,
+    },
+    "Champions Cup": {
+        "bonus": 0,        # Pas de bonus marqueur sur cette compète
+        "winner": 200,
+        "exact_rank": 50,
+        "gap_1": 20,
+        "gap_2": 0,
+    },
+    "6 Nations": {
+        "bonus": 0,
+        "winner": 150,
+        "exact_rank": 50,
+        "gap_1": 0,
+        "gap_2": 0,
+    }
+}
 
 # ------------------
 # PRONOS VIEW
@@ -733,3 +757,180 @@ def debug_scores_view(request):
         "rounds": rounds,
         "player_data": player_data,
     })
+    
+    
+@login_required
+def recap_pronos_classement(request):
+    competitions = Competition.objects.all()
+    competition_id = request.GET.get("competition")
+    
+    selected_competition = None
+    players = Player.objects.all().order_by('name')
+    matrix = {} # { block_key: { team_id: { player_id: position } } }
+    teams_by_block = {} # { block_key: [Team objects] }
+
+    if competition_id:
+        season = Season.objects.filter(competition=selected_competition).order_by("-year").first()
+        if season and not season.has_started:
+            messages.warning(request, "Les pronostics des autres joueurs seront visibles dès le coup d'envoi !")
+            return redirect('pronos') # Ou une autre page
+        selected_competition = get_object_or_404(Competition, id=competition_id)
+        preds = CompetitionTeamPrediction.objects.filter(competition=selected_competition).select_related('player', 'team')
+        
+        # On organise les données pour le tableau
+        for p in preds:
+            if p.block_key not in matrix:
+                matrix[p.block_key] = {}
+                teams_by_block[p.block_key] = []
+            
+            if p.team not in teams_by_block[p.block_key]:
+                teams_by_block[p.block_key].append(p.team)
+                
+            if p.team.id not in matrix[p.block_key]:
+                matrix[p.block_key][p.team.id] = {}
+            
+            matrix[p.block_key][p.team.id][p.player.id] = p.position
+
+        # Récupération des bonus (Vainqueur, Buteurs)
+        bonus_preds = CompetitionBonusPrediction.objects.filter(competition=selected_competition).select_related('player', 'winner')
+    else:
+        bonus_preds = []
+
+    return render(request, "pronos/recap_classement.html", {
+        "competitions": competitions,
+        "selected_competition": selected_competition,
+        "players": players,
+        "matrix": matrix,
+        "teams_by_block": teams_by_block,
+        "bonus_preds": bonus_preds,
+    })
+    
+    
+def compute_competition_points(season):
+    # 1. Récupérer le résultat réel
+    result = CompetitionResult.objects.filter(season=season).first()
+    if not result:
+        return "Pas de résultats réels saisis pour cette saison."
+
+    comp_name = season.competition.name
+    # On récupère le barème spécifique ou un barème par défaut
+    rules = RUGBY_SCORING.get(comp_name, RUGBY_SCORING["Top 14"])
+    
+    players = Player.objects.all()
+    
+    for player in players:
+        pts_player = 0
+        
+        # --- 1 & 2. Vainqueur et Bonus (Marqueur/Scoreur) ---
+        bonus_pred = CompetitionBonusPrediction.objects.filter(player=player, competition=season.competition).first()
+        if bonus_pred:
+            # Vainqueur
+            if bonus_pred.winner == result.real_winner:
+                pts_player += rules["winner"]
+            
+            # Bonus Top 14 (Marqueurs)
+            if "Top 14" in comp_name:
+                if bonus_pred.best_try_scorer.lower().strip() == result.real_best_try_scorer.lower().strip():
+                    pts_player += rules["bonus"]
+                if bonus_pred.best_point_scorer.lower().strip() == result.real_best_point_scorer.lower().strip():
+                    pts_player += rules["bonus"]
+
+        # --- 3, 4 & 5. Classements des équipes ---
+        user_preds = CompetitionTeamPrediction.objects.filter(player=player, competition=season.competition)
+        
+        for p in user_preds:
+            # On cherche la position réelle de cette équipe dans le JSON des résultats
+            # Structure du JSON attendue : { "block_key": { "team_id": position_reelle } }
+            real_block = result.rankings_json.get(p.block_key, {})
+            real_pos = real_block.get(str(p.team.id)) # JSON transforme les clés en string
+            
+            if real_pos:
+                diff = abs(p.position - int(real_pos))
+                
+                if diff == 0:
+                    pts_player += rules["exact_rank"]
+                elif diff == 1:
+                    pts_player += rules["gap_1"]
+                elif diff == 2:
+                    pts_player += rules["gap_2"]
+
+        # Sauvegarde dans SeasonScore
+        s_score, _ = SeasonScore.objects.get_or_create(user=player.user, competition=season.competition)
+        s_score.ranking_points = pts_player 
+        s_score.save()
+        
+        
+@staff_member_required
+def admin_saisie_resultats(request):
+    competitions = Competition.objects.all()
+    competition_id = request.GET.get("competition")
+    selected_competition = None
+    blocks = []
+    season = None
+
+    if competition_id:
+        selected_competition = get_object_or_404(Competition, id=competition_id)
+        season = Season.objects.filter(competition=selected_competition).order_by("-year").first()
+        
+        # Préparation des blocs (Même logique que ta vue classement_prediction)
+        if selected_competition.name.lower() == "champions cup":
+            for pool in range(1, 5):
+                comp_teams = CompetitionTeam.objects.filter(competition=selected_competition, season=season, pool=pool)
+                blocks.append({
+                    "key": f"pool{pool}",
+                    "teams": [ct.team for ct in comp_teams],
+                    "positions": list(range(1, 7))
+                })
+        else:
+            teams = selected_competition.teams.all().order_by("name")
+            blocks.append({
+                "key": "all",
+                "teams": teams,
+                "positions": list(range(1, teams.count() + 1))
+            })
+
+    if request.method == "POST":
+        res_obj, _ = CompetitionResult.objects.get_or_create(season=season, competition=selected_competition)
+        
+        # 1. Sauvegarde des bonus réels
+        res_obj.real_best_try_scorer = request.POST.get("real_best_try_scorer", "").strip()
+        res_obj.real_best_point_scorer = request.POST.get("real_best_point_scorer", "").strip()
+        winner_id = request.POST.get("real_winner")
+        res_obj.real_winner_id = int(winner_id) if winner_id else None
+
+        # 2. Construction du JSON des classements
+        rank_data = {}
+        for block in blocks:
+            rank_data[block["key"]] = {}
+            for pos in block["positions"]:
+                team_id = request.POST.get(f"team_{block['key']}_{pos}")
+                if team_id:
+                    rank_data[block["key"]][str(team_id)] = pos
+        
+        res_obj.rankings_json = rank_data
+        res_obj.save()
+        messages.success(request, "Résultats officiels enregistrés !")
+        return redirect(f"{request.path}?competition={selected_competition.id}")
+
+    return render(request, "pronos/admin_saisie_resultats.html", {
+        "competitions": competitions,
+        "selected_competition": selected_competition,
+        "blocks": blocks,
+        "season": season,
+    })
+    
+    
+@staff_member_required
+def declencher_calcul_points(request, season_id):
+    season = get_object_or_404(Season, id=season_id)
+    # On appelle la fonction de calcul définie précédemment
+    message_resultat = compute_competition_points(season)
+    
+    if isinstance(message_resultat, str):
+        messages.error(request, message_resultat)
+    else:
+        messages.success(request, "Les points de classement ont été mis à jour pour tous les joueurs !")
+        
+    return redirect('recap_classement')
+
+

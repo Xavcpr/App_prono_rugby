@@ -19,7 +19,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
+from core import views
+
 urlpatterns = [
+    path('admin/saisie-resultats/', views.admin_saisie_resultats, name='admin_saisie_resultats'),
+    path('admin/calcul-points/<int:season_id>/', views.declencher_calcul_points, name='calcul_points_classement'),
     path("admin/", admin.site.urls),
     path("", include("core.urls")),
     path("accounts/", include("django.contrib.auth.urls")),

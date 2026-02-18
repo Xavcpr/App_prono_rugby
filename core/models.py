@@ -217,7 +217,10 @@ class DailyScore(models.Model):
 class SeasonScore(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     competition = models.ForeignKey(Competition, on_delete=models.CASCADE)
-    points = models.IntegerField(default=0)
+    
+    # On sépare pour plus de clarté
+    match_points = models.IntegerField(default=0, verbose_name="Points Matchs")
+    ranking_points = models.IntegerField(default=0, verbose_name="Points Classement")
 
     class Meta:
         unique_together = ("user", "competition")
@@ -225,7 +228,12 @@ class SeasonScore(models.Model):
         verbose_name_plural = "Scores saisons"
 
     def __str__(self):
-        return f"{self.user} - {self.competition} : {self.points} pts"
+        return f"{self.user} - {self.competition} : {self.total_points} pts"
+
+    @property
+    def total_points(self):
+        """Calcule le total à la volée"""
+        return self.match_points + self.ranking_points
     
     
 # ----- Classement par compétition -----
@@ -330,3 +338,16 @@ class CompetitionTeam(models.Model):
     def __str__(self):
         return f"{self.team} – {self.competition} ({self.season}) poule {self.pool}"
 
+
+class CompetitionResult(models.Model):
+    season = models.ForeignKey(Season, on_delete=models.CASCADE)
+    # Résultats Bonus
+    real_winner = models.ForeignKey(Team, on_delete=models.SET_NULL, null=True, related_name="real_winner")
+    real_best_try_scorer = models.CharField(max_length=100, blank=True)
+    real_best_point_scorer = models.CharField(max_length=100, blank=True)
+    
+    # Résultats Classement (JSON pour aller vite : { "pool1": {team_id: position}, "all": {team_id: position} })
+    rankings_json = models.JSONField(default=dict) 
+
+    def __str__(self):
+        return f"Résultats réels {self.season}"
