@@ -243,6 +243,11 @@ def process_round_scores(round_obj):
 
             # Application du Multiplicateur de Phase
             multiplier = scoring.PHASE_MULTIPLIERS.get(m.phase, 1.0)
+            # 2AJOUT : Multiplicateur spécifique au 6 Nations
+            # On vérifie si le nom de la compétition contient "6 Nations" ou "Six Nations"
+            competition_name = m.round.season.competition.name
+            if "6 Nations" in competition_name or "Six Nations" in competition_name:
+                multiplier *= 2.0  # On double les points
             final_m_pts = int(m_pts * multiplier)
             
             # On sauve les points du match dans la prédiction
