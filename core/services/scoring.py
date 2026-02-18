@@ -147,12 +147,14 @@ def calculate_match_points(prediction, match, winners_count):
 #                 ds.points = total_day
 #                 ds.save()
 
-
 def process_round_scores(round_obj):
+    from core.models import Prediction, DailyScore, Player
+    import core.services.scoring as scoring
+    
     matches = round_obj.matches.all()
     players = Player.objects.all()
     
-    # Configuration des paliers (copiée de ta vue)
+    # 1. Barème des Bonus (Identique à ta vue)
     BONUS_SCALES = {
         "Top 14": {7: 150, 6: 60, 5: 20},
         "Champions Cup": {12: 300, 11: 150, 10: 100, 9: 40}
@@ -160,59 +162,103 @@ def process_round_scores(round_obj):
     comp_name = round_obj.season.competition.name
     current_scale = BONUS_SCALES.get(comp_name, {})
 
-    with transaction.atomic():
-        # 1. Calcul des gagnants par match (pour le pool)
-        match_winners_data = {}
-        for match in matches:
-            if match.home_score is not None and match.away_score is not None:
-                real_side = get_winner_side(match.home_score, match.away_score)
-                winners_count = Prediction.objects.filter(match=match).extra(
-                    where=["(home_score_pred > away_score_pred AND %s = 'HOME') OR "
-                           "(away_score_pred > home_score_pred AND %s = 'AWAY') OR "
-                           "(home_score_pred = away_score_pred AND %s = 'DRAW')"],
-                    params=[real_side, real_side, real_side]
-                ).count()
-                match_winners_data[match.id] = winners_count
-
-        # 2. Mise à jour des points par prédiction
-        for match in matches:
-            if match.id in match_winners_data:
-                predictions = Prediction.objects.filter(match=match)
-                winners_cnt = match_winners_data[match.id]
-                for pred in predictions:
-                    pred.points = calculate_match_points(pred, match, winners_cnt)
-                    pred.save()
-
-        # 3. Calcul du DailyScore (Total Matchs + Bonus de Palier)
-        for player in players:
-            total_match_points = 0
-            correct_winners = 0
+    # 2. Pré-calcul des gagnants par match
+    match_winners_counts = {}
+    for m in matches:
+        if m.home_score is not None and m.away_score is not None:
+            real_side = "HOME" if m.home_score > m.away_score else "AWAY" if m.away_score > m.home_score else "DRAW"
             
-            player_preds = Prediction.objects.filter(player=player, match__round=round_obj)
-            
-            for p in player_preds:
-                total_match_points += (p.points or 0)
-                
-                # On compte les victoires pour le palier
-                m = p.match
-                if m.home_score is not None and m.away_score is not None:
-                    real_side = get_winner_side(m.home_score, m.away_score)
-                    pred_side = get_winner_side(p.home_score_pred, p.away_score_pred)
-                    if p.home_score_pred + p.away_score_pred == 0:
-                        pred_side = "NO SHOW"
-                    
-                    if real_side == pred_side:
-                        correct_winners += 1
+            winners_count = Prediction.objects.filter(match=m).extra(
+                where=["(home_score_pred > away_score_pred AND %s = 'HOME') OR "
+                       "(away_score_pred > home_score_pred AND %s = 'AWAY') OR "
+                       "(home_score_pred = away_score_pred AND %s = 'DRAW')"],
+                params=[real_side, real_side, real_side]
+            ).count()
+            match_winners_counts[m.id] = winners_count
 
-            # Calcul du bonus de palier
-            daily_bonus = 0
-            for threshold in sorted(current_scale.keys(), reverse=True):
-                if correct_winners >= threshold:
-                    daily_bonus = current_scale[threshold]
-                    break
+    # 3. Calcul pour chaque joueur
+    for p in players:
+        total_points = 0
+        correct_winners_count = 0
+        player_preds = Prediction.objects.filter(match__round=round_obj, player=p)
+
+        for pr in player_preds:
+            m = pr.match
+            if m.home_score is None or m.away_score is None: continue
             
-            # Enregistrement du total réel
-            if player.user:
-                ds, created = DailyScore.objects.get_or_create(user=player.user, round=round_obj)
-                ds.points = total_match_points + daily_bonus
-                ds.save()
+            # --- REPRODUCTION EXACTE DE LA LOGIQUE VIEW ---
+            m_pts = 0
+            winners_count = match_winners_counts.get(m.id, 0)
+            real_side = "HOME" if m.home_score > m.away_score else "AWAY" if m.away_score > m.home_score else "DRAW"
+            pred_side = "HOME" if pr.home_score_pred > pr.away_score_pred else "AWAY" if pr.away_score_pred > pr.home_score_pred else "DRAW"
+            if pr.home_score_pred + pr.away_score_pred == 0: pred_side = "NO SHOW"
+
+            # Pool
+            if real_side == pred_side:
+                correct_winners_count += 1
+                if winners_count > 0:
+                    m_pts += (m.weight // winners_count)
+
+            # Bonus (identique à ton Scoring_Config)
+            cfg = scoring.SCORING_CONFIG
+            
+            # Offensif
+            if pr.bonus_home_pred: m_pts += cfg['OFFENSIVE_BONUS_VALUE'] if m.bonus_offense_home else cfg['BONUS_MALUS']
+            if pr.bonus_away_pred: m_pts += cfg['OFFENSIVE_BONUS_VALUE'] if m.bonus_offense_away else cfg['BONUS_MALUS']
+
+            # Défensif
+            real_bd = m.get_defense_bonus()
+            threshold = m.round.season.competition.bonus_defense_threshold
+            pred_diff = abs(pr.home_score_pred - pr.away_score_pred)
+            pred_bd = None
+            if pred_diff <= threshold and pred_side != "NO SHOW":
+                if pr.home_score_pred < pr.away_score_pred: pred_bd = 'HOME'
+                elif pr.away_score_pred < pr.home_score_pred: pred_bd = 'AWAY'
+                else: pred_bd = 'DRAW'
+            
+            if pred_bd in ['HOME', 'AWAY']:
+                if pred_bd == real_bd or m.home_score == m.away_score: m_pts += cfg['DEFENSIVE_BONUS_VALUE']
+                elif real_bd is None: m_pts += cfg['BONUS_MALUS']
+            elif pred_bd == 'DRAW':
+                if real_bd in ['HOME', 'AWAY']: m_pts += cfg['DEFENSIVE_BONUS_VALUE']
+                else: m_pts += cfg['BONUS_MALUS']
+
+            # Tout-pile & DTP
+            home_err = abs(pr.home_score_pred - m.home_score)
+            away_err = abs(pr.away_score_pred - m.away_score)
+            if home_err == 0 and pred_side != "NO SHOW": m_pts += cfg['HALF_PERFECT_BONUS']
+            if away_err == 0 and pred_side != "NO SHOW": m_pts += cfg['HALF_PERFECT_BONUS']
+            if home_err == 0 and away_err == 0: m_pts += cfg['PERFECT_SCORE_BONUS']
+
+            # Ecarts
+            diff_err = abs((pr.home_score_pred - pr.away_score_pred) - (m.home_score - m.away_score))
+            sum_err = abs((pr.home_score_pred + pr.away_score_pred) - (m.home_score + m.away_score))
+            if pred_side != "NO SHOW":
+                m_pts += cfg['DIFF_TABLE'].get(diff_err, 0)
+                m_pts += cfg['SUM_TABLE'].get(sum_err, 0)
+
+            # Extérieur & Nul
+            if real_side == "AWAY" and pred_side == "AWAY": m_pts += cfg['AWAY_WIN_BONUS']
+            if real_side == "DRAW" and pred_side == "DRAW" and pred_side != "NO SHOW": m_pts += cfg['DRAW_BONUS']
+
+            # Application du Multiplicateur de Phase
+            multiplier = scoring.PHASE_MULTIPLIERS.get(m.phase, 1.0)
+            final_m_pts = int(m_pts * multiplier)
+            
+            # On sauve les points du match dans la prédiction
+            pr.points = final_m_pts
+            pr.save()
+            total_points += final_m_pts
+
+        # Ajout du Bonus de Palier
+        day_bonus = 0
+        for thresh in sorted(current_scale.keys(), reverse=True):
+            if correct_winners_count >= thresh:
+                day_bonus = current_scale[thresh]
+                break
+        
+        # Enregistrement final
+        if p.user:
+            ds, _ = DailyScore.objects.get_or_create(user=p.user, round=round_obj)
+            ds.points = total_points + day_bonus
+            ds.save()
