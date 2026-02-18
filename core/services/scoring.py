@@ -55,9 +55,9 @@ def calculate_match_points(prediction, match, winners_count):
         if real_winner_side == "DRAW": pts += cfg["DRAW_BONUS"]
 
     # 2. TOUT-PILE OU DEMI-TOUT-PILE
-    if prediction.home_score_pred == match.home_score and prediction.away_score_pred == match.away_score and pred_winner_side != "NO SHOW":
+    if (prediction.home_score_pred == match.home_score and prediction.away_score_pred == match.away_score) and pred_winner_side != "NO SHOW":
         pts += cfg["PERFECT_SCORE_BONUS"]
-    elif prediction.home_score_pred == match.home_score or prediction.away_score_pred == match.away_score and pred_winner_side != "NO SHOW":
+    elif (prediction.home_score_pred == match.home_score or prediction.away_score_pred == match.away_score) and pred_winner_side != "NO SHOW":
         pts += cfg["HALF_PERFECT_BONUS"]
 
     # 3. BONUS OFFENSIF

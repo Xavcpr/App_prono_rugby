@@ -75,15 +75,15 @@ class StatsResult:
 
 
 def compute_statistics(competition: Optional[Competition]) -> StatsResult:
-    # ---- Rounds scope (toutes les journées de la compète, ou toutes)
+    # 1. ---- Définition du périmètre des Rounds ----
     rounds_qs = Round.objects.all()
     if competition is not None:
-        # adapte si nécessaire
         try:
             rounds_qs = rounds_qs.filter(season__competition=competition)
         except Exception:
             pass
 
+    # Tri pour la chronologie des graphiques
     if hasattr(Round, "date"):
         rounds_qs = rounds_qs.order_by("date")
     elif hasattr(Round, "number"):
@@ -95,197 +95,122 @@ def compute_statistics(competition: Optional[Competition]) -> StatsResult:
     labels = [getattr(r, "name", f"J{r.id}") for r in rounds]
     round_ids = [r.id for r in rounds]
 
-    # ---- Players
+    # 2. ---- Chargement des Joueurs ----
     players = list(Player.objects.select_related("user").all().order_by("user__username"))
-    player_keys = [getattr(p.user, "username", str(p.id)) for p in players]
+    # On ne garde que les joueurs ayant un utilisateur lié
+    player_keys = [p.user.username for p in players if p.user]
 
-    # ---- Matches count for pie denominator
-    matches_qs = Match.objects.all()
-    if competition is not None:
-        try:
-            matches_qs = matches_qs.filter(round__season__competition=competition)
-        except Exception:
-            pass
-    matches_count = matches_qs.count()
-    pie_den = _denominator_for_pie(competition, matches_count)
+    # 3. ---- Récupération des scores (Source Unique de Vérité) ----
+    # On récupère tous les scores enregistrés pour ces rounds en une seule requête
+    all_daily_scores = DailyScore.objects.filter(round_id__in=round_ids).select_related("user")
+    
+    # On crée une map pour un accès rapide : { round_id: { username: points } }
+    scores_map = {}
+    for ds in all_daily_scores:
+        rid = ds.round_id
+        uname = ds.user.username
+        if rid not in scores_map:
+            scores_map[rid] = {}
+        scores_map[rid][uname] = int(ds.points or 0)
 
-    # ---- Points source
-    use_daily_score = DailyScore.objects.exists()
-
-    def points_for_round(rid: int) -> Dict[str, int]:
-        # 1. On cherche d'abord dans DailyScore pour ce round précis
-        ds = DailyScore.objects.filter(round_id=rid).select_related("user")
-        
-        if ds.exists():
-            # Si on a des scores enregistrés pour cette journée, on les prend
-            return {getattr(x.user, "username", str(x.user.id)): int(x.points or 0) for x in ds}
-        
-        # 2. S'il n'y a pas de DailyScore (ex: journée pas encore terminée ou recalculée), 
-        # on fait la somme des points des prédictions
-        pr = Prediction.objects.filter(match__round_id=rid).select_related("player__user")
-        agg = pr.values("player__user__username").annotate(pts=Sum("points"))
-        
-        return {a["player__user__username"]: int(a["pts"] or 0) for a in agg}
-
-    # ---- Series
+    # 4. ---- Construction des Séries Temporelles ----
     score_series = {k: [] for k in player_keys}
     rank_series  = {k: [] for k in player_keys}
     gap_series   = {k: [] for k in player_keys}
     cumulative   = {k: 0 for k in player_keys}
 
     for rid in round_ids:
-        per = points_for_round(rid)
+        day_data = scores_map.get(rid, {})
         for k in player_keys:
-            cumulative[k] += per.get(k, 0)
+            pts_jour = day_data.get(k, 0)
+            cumulative[k] += pts_jour
             score_series[k].append(cumulative[k])
 
+        # Calcul du classement et de l'écart au leader à l'instant T
         ordered = sorted(cumulative.items(), key=lambda x: x[1], reverse=True)
         leader_points = ordered[0][1] if ordered else 0
         ranks = {name: idx + 1 for idx, (name, _) in enumerate(ordered)}
 
         for k in player_keys:
-            rank_series[k].append(int(ranks.get(k, 0) or 0))
+            rank_series[k].append(int(ranks.get(k, 1)))
             gap_series[k].append(int(leader_points - cumulative[k]))
 
-    # ---- Predictions scope for victory stats / KPIs / choppes
-    preds = Prediction.objects.select_related("player__user", "match").all()
-    if competition is not None:
-        try:
-            preds = preds.filter(match__round__season__competition=competition)
-        except Exception:
-            pass
-
+    # 5. ---- Analyse des Prédictions (KPIs & Choppes) ----
+    # Ici on utilise les Predictions uniquement pour les stats de "type" de prono
+    preds = Prediction.objects.select_related("player__user", "match").filter(match__round_id__in=round_ids)
+    
     correct_outcomes = {k: 0 for k in player_keys}
-
-    # KPIs “globaux” (sur la période filtrée)
+    tout_pile_by_player = {k: 0 for k in player_keys}
+    bois_by_player = {k: 0 for k in player_keys}
+    
     kpi = {
-        "tout_pile": 0,
-        "demi_tout_pile": 0,
-        "demi_dom": 0,
-        "demi_ext": 0,
-        "bon_bonus_off": 0,
-        "mauvais_bonus_off": 0,
-        "bon_bonus_def": 0,
-        "mauvais_bonus_def": 0,
+        "tout_pile": 0, "demi_tout_pile": 0, "demi_dom": 0, "demi_ext": 0,
+        "bon_bonus_off": 0, "mauvais_bonus_off": 0, "bon_bonus_def": 0, "mauvais_bonus_def": 0,
     }
 
-    # Choppes : on calcule par joueur
-    tout_pile_by_player = {k: 0 for k in player_keys}
-    bois_by_player = {k: 0 for k in player_keys}  # définition : “mauvais résultat” (= issue fausse)
-
     for pr in preds:
+        if not pr.player.user: continue
+        key = pr.player.user.username
         m = pr.match
-        key = getattr(pr.player.user, "username", str(pr.player.id))
-
-        mh = _get(m, MATCH_HOME_SCORE_FIELD)
-        ma = _get(m, MATCH_AWAY_SCORE_FIELD)
-        ph = _get(pr, PRED_HOME_SCORE_FIELD)
-        pa = _get(pr, PRED_AWAY_SCORE_FIELD)
+        
+        mh, ma = m.home_score, m.away_score
+        ph, pa = pr.home_score_pred, pr.away_score_pred
+        
         if mh is None or ma is None or ph is None or pa is None:
             continue
 
-        mh, ma, ph, pa = int(mh), int(ma), int(ph), int(pa)
-
-        # bons pronos victoire (issue)
+        # Victoires (Issues)
         if _outcome(ph, pa) == _outcome(mh, ma):
             correct_outcomes[key] += 1
         else:
             bois_by_player[key] += 1
 
-        # tout-pile / demi
+        # Tout-pile
         if ph == mh and pa == ma:
             kpi["tout_pile"] += 1
             tout_pile_by_player[key] += 1
         elif ph == mh or pa == ma:
             kpi["demi_tout_pile"] += 1
-            if ph == mh:
-                kpi["demi_dom"] += 1
-            if pa == ma:
-                kpi["demi_ext"] += 1
+            if ph == mh: kpi["demi_dom"] += 1
+            if pa == ma: kpi["demi_ext"] += 1
 
-        # bonus (si champs présents)
-        mbo = _get(m, MATCH_BONUS_OFF_FIELD, None)
-        mbd = _get(m, MATCH_BONUS_DEF_FIELD, None)
-        pbo = _get(pr, PRED_BONUS_OFF_FIELD, None)
-        pbd = _get(pr, PRED_BONUS_DEF_FIELD, None)
+    # 6. ---- Finalisation des Tableaux ----
+    # Dénominateur pour le camembert
+    matches_count = Match.objects.filter(round_id__in=round_ids).count()
+    pie_den = _denominator_for_pie(competition, matches_count)
 
-        if mbo is not None and pbo is not None:
-            if pbo == mbo:
-                kpi["bon_bonus_off"] += 1
-            else:
-                kpi["mauvais_bonus_off"] += 1
-
-        if mbd is not None and pbd is not None:
-            if pbd == mbd:
-                kpi["bon_bonus_def"] += 1
-            else:
-                kpi["mauvais_bonus_def"] += 1
-
-    # ---- Pie distribution X/den
-    pie_labels = [f"{i}/{pie_den}" for i in range(pie_den, -1, -1)]
-    pie_counts = {lab: 0 for lab in pie_labels}
-    for k, nb in correct_outcomes.items():
-        nb = max(0, min(pie_den, int(nb)))
-        pie_counts[f"{nb}/{pie_den}"] += 1
-    pie_values = [pie_counts[lab] for lab in pie_labels]
-
-    # ---- Table victory
-    victory_table = sorted(
-        [{"username": k, "bons": int(correct_outcomes.get(k, 0))} for k in player_keys],
-        key=lambda x: x["bons"],
-        reverse=True,
-    )
-
-    # ---- “Classement détaillé” (proche de résultats)
-    # On prend le total points (dernier point de la série)
-    totals = []
-    for k in player_keys:
-        total_pts = score_series[k][-1] if score_series[k] else 0
-        totals.append((k, total_pts))
-    totals.sort(key=lambda x: x[1], reverse=True)
-
-    leader_pts = totals[0][1] if totals else 0
+    # Classement détaillé
     detailed_ranking = []
-    for idx, (k, pts) in enumerate(totals, start=1):
+    totals = sorted(cumulative.items(), key=lambda x: x[1], reverse=True)
+    max_pts = totals[0][1] if totals else 0
+    
+    for idx, (uname, pts) in enumerate(totals, start=1):
         detailed_ranking.append({
             "rank": idx,
-            "username": k,
-            "points": int(pts),
-            "gap": int(leader_pts - pts),
-            "bons_victoires": int(correct_outcomes.get(k, 0)),
-            "tout_pile": int(tout_pile_by_player.get(k, 0)),
-            "bois": int(bois_by_player.get(k, 0)),
+            "username": uname,
+            "points": pts,
+            "gap": max_pts - pts,
+            "bons_victoires": correct_outcomes.get(uname, 0),
+            "tout_pile": tout_pile_by_player.get(uname, 0),
+            "bois": bois_by_player.get(uname, 0),
         })
 
-    # ---- Choppes d’or (desc) = nombre de tout-pile
-    choppes_or = sorted(
-        [{"rank": None, "username": k, "value": int(v)} for k, v in tout_pile_by_player.items()],
-        key=lambda x: x["value"],
-        reverse=True,
-    )
-    for i, row in enumerate(choppes_or, start=1):
-        row["rank"] = i
-
-    # ---- Choppes de bois (desc) = nombre d’issues fausses (ou autre “mauvais”)
-    choppes_bois = sorted(
-        [{"rank": None, "username": k, "value": int(v)} for k, v in bois_by_player.items()],
-        key=lambda x: x["value"],
-        reverse=True,
-    )
-    for i, row in enumerate(choppes_bois, start=1):
-        row["rank"] = i
+    # Choppes
+    def format_choppe(data_dict, reverse=True):
+        sorted_data = sorted(data_dict.items(), key=lambda x: x[1], reverse=reverse)
+        return [{"rank": i, "username": k, "value": v} for i, (k, v) in enumerate(sorted_data, 1)]
 
     return StatsResult(
         labels=labels,
         score_series=score_series,
         rank_series=rank_series,
         gap_series=gap_series,
-        pie_labels=pie_labels,
-        pie_values=pie_values,
+        pie_labels=[f"{i}/{pie_den}" for i in range(pie_den, -1, -1)],
+        pie_values=[list(correct_outcomes.values()).count(i) for i in range(pie_den, -1, -1)],
         pie_denominator=pie_den,
-        victory_table=victory_table,
+        victory_table=sorted([{"username": k, "bons": v} for k, v in correct_outcomes.items()], key=lambda x: x["bons"], reverse=True),
         kpi=kpi,
         detailed_ranking=detailed_ranking,
-        choppes_or=choppes_or,
-        choppes_bois=choppes_bois,
+        choppes_or=format_choppe(tout_pile_by_player),
+        choppes_bois=format_choppe(bois_by_player)
     )
