@@ -113,11 +113,18 @@ def compute_statistics(competition: Optional[Competition]) -> StatsResult:
     use_daily_score = DailyScore.objects.exists()
 
     def points_for_round(rid: int) -> Dict[str, int]:
-        if use_daily_score:
-            ds = DailyScore.objects.filter(round_id=rid).select_related("user")
-            return {getattr(x.user, "username", str(x.user.id)): int(_get(x, "points", 0) or 0) for x in ds}
+        # 1. On cherche d'abord dans DailyScore pour ce round précis
+        ds = DailyScore.objects.filter(round_id=rid).select_related("user")
+        
+        if ds.exists():
+            # Si on a des scores enregistrés pour cette journée, on les prend
+            return {getattr(x.user, "username", str(x.user.id)): int(x.points or 0) for x in ds}
+        
+        # 2. S'il n'y a pas de DailyScore (ex: journée pas encore terminée ou recalculée), 
+        # on fait la somme des points des prédictions
         pr = Prediction.objects.filter(match__round_id=rid).select_related("player__user")
-        agg = pr.values("player__user__username").annotate(pts=Sum(PRED_POINTS_FIELD))
+        agg = pr.values("player__user__username").annotate(pts=Sum("points"))
+        
         return {a["player__user__username"]: int(a["pts"] or 0) for a in agg}
 
     # ---- Series
