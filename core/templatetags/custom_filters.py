@@ -3,7 +3,9 @@ register = template.Library()
 
 @register.filter
 def get_item(dictionary, key):
-    return dictionary.get(key)
+    if dictionary is None: # Sécurité si l'élément précédent a renvoyé None
+        return None
+    return dictionary.get(str(key)) # On force str(key) car les clés JSON sont des strings
 
 
 @register.filter
