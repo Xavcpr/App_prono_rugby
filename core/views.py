@@ -764,23 +764,37 @@ def recap_pronos_classement(request):
     competitions = Competition.objects.all()
     competition_id = request.GET.get("competition")
     
+    # Initialisation systématique pour éviter les erreurs dans le template
     selected_competition = None
     real_rankings = {}
     real_winner = None
     result_obj = None
     players = Player.objects.all().order_by('name')
-    matrix = {} # { block_key: { team_id: { player_id: position } } }
-    teams_by_block = {} # { block_key: [Team objects] }
+    matrix = {} 
+    teams_by_block = {}
+    bonus_preds = []
 
     if competition_id:
-        season = Season.objects.filter(competition=selected_competition).order_by("-year").first()
-        if season and not season.has_started:
-            messages.warning(request, "Les pronostics des autres joueurs seront visibles dès le coup d'envoi !")
-            return redirect('pronos') # Ou une autre page
         selected_competition = get_object_or_404(Competition, id=competition_id)
+        
+        # On récupère la saison MAINTENANT que selected_competition est défini
+        season = Season.objects.filter(competition=selected_competition).order_by("-year").first()
+        
+        if season:
+            # Vérification du verrouillage
+            if not season.has_started:
+                messages.warning(request, "Les pronostics des autres joueurs seront visibles dès le coup d'envoi !")
+                return redirect('pronos')
+            
+            # Récupération des résultats réels (SORTI DU ELSE, il doit être ici !)
+            result_obj = CompetitionResult.objects.filter(season=season).first()
+            if result_obj:
+                real_rankings = result_obj.rankings_json
+                real_winner = result_obj.real_winner
+
+        # Récupération des pronostics des joueurs
         preds = CompetitionTeamPrediction.objects.filter(competition=selected_competition).select_related('player', 'team')
         
-        # On organise les données pour le tableau
         for p in preds:
             if p.block_key not in matrix:
                 matrix[p.block_key] = {}
@@ -794,16 +808,7 @@ def recap_pronos_classement(request):
             
             matrix[p.block_key][p.team.id][p.player.id] = p.position
 
-        # Récupération des bonus (Vainqueur, Buteurs)
         bonus_preds = CompetitionBonusPrediction.objects.filter(competition=selected_competition).select_related('player', 'winner')
-    else:
-        bonus_preds = []
-        
-        if season:
-            result_obj = CompetitionResult.objects.filter(season=season).first()
-            if result_obj:
-                real_rankings = result_obj.rankings_json
-                real_winner = result_obj.real_winner
 
     return render(request, "pronos/recap_classement.html", {
         "competitions": competitions,
@@ -812,9 +817,9 @@ def recap_pronos_classement(request):
         "matrix": matrix,
         "teams_by_block": teams_by_block,
         "bonus_preds": bonus_preds,
-        'real_rankings': real_rankings,
-        'real_winner': result_obj.real_winner if result_obj else None,
-        'real_results': result_obj,
+        "real_rankings": real_rankings,
+        "real_winner": real_winner,
+        "real_results": result_obj,
     })
     
     
