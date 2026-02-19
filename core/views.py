@@ -807,56 +807,46 @@ def recap_pronos_classement(request):
     
     
 def compute_competition_points(season):
-    # 1. Récupérer le résultat réel
     result = CompetitionResult.objects.filter(season=season).first()
     if not result:
-        return "Pas de résultats réels saisis pour cette saison."
+        return "Aucun résultat saisi."
 
-    comp_name = season.competition.name
-    # On récupère le barème spécifique ou un barème par défaut
-    rules = RUGBY_SCORING.get(comp_name, RUGBY_SCORING["Top 14"])
-    
+    rules = RUGBY_SCORING.get(season.competition.name, RUGBY_SCORING["Top 14"])
     players = Player.objects.all()
     
     for player in players:
-        pts_player = 0
+        pts_classement = 0
+        pts_bonus_finaux = 0
         
-        # --- 1 & 2. Vainqueur et Bonus (Marqueur/Scoreur) ---
-        bonus_pred = CompetitionBonusPrediction.objects.filter(player=player, competition=season.competition).first()
-        if bonus_pred:
-            # Vainqueur
-            if bonus_pred.winner == result.real_winner:
-                pts_player += rules["winner"]
-            
-            # Bonus Top 14 (Marqueurs)
-            if "Top 14" in comp_name:
-                if bonus_pred.best_try_scorer.lower().strip() == result.real_best_try_scorer.lower().strip():
-                    pts_player += rules["bonus"]
-                if bonus_pred.best_point_scorer.lower().strip() == result.real_best_point_scorer.lower().strip():
-                    pts_player += rules["bonus"]
-
-        # --- 3, 4 & 5. Classements des équipes ---
+        # 1. CALCUL CLASSEMENT (Peut être fait après les poules)
         user_preds = CompetitionTeamPrediction.objects.filter(player=player, competition=season.competition)
-        
         for p in user_preds:
-            # On cherche la position réelle de cette équipe dans le JSON des résultats
-            # Structure du JSON attendue : { "block_key": { "team_id": position_reelle } }
             real_block = result.rankings_json.get(p.block_key, {})
-            real_pos = real_block.get(str(p.team.id)) # JSON transforme les clés en string
-            
+            real_pos = real_block.get(str(p.team.id))
             if real_pos:
                 diff = abs(p.position - int(real_pos))
-                
-                if diff == 0:
-                    pts_player += rules["exact_rank"]
-                elif diff == 1:
-                    pts_player += rules["gap_1"]
-                elif diff == 2:
-                    pts_player += rules["gap_2"]
+                if diff == 0: pts_classement += rules["exact_rank"]
+                elif diff == 1: pts_classement += rules["gap_1"]
+                elif diff == 2: pts_classement += rules["gap_2"]
 
-        # Sauvegarde dans SeasonScore
+        # 2. CALCUL VAINQUEUR & BONUS (Seulement si result.real_winner est renseigné)
+        bonus_pred = CompetitionBonusPrediction.objects.filter(player=player, competition=season.competition).first()
+        if bonus_pred and result.real_winner:
+            # Vainqueur
+            if bonus_pred.winner == result.real_winner:
+                pts_bonus_finaux += rules["winner"]
+            
+            # Marqueurs/Scoreurs (si renseignés dans result)
+            if result.real_best_try_scorer:
+                if bonus_pred.best_try_scorer.lower().strip() == result.real_best_try_scorer.lower().strip():
+                    pts_bonus_finaux += rules["bonus"]
+            if result.real_best_point_scorer:
+                if bonus_pred.best_point_scorer.lower().strip() == result.real_best_point_scorer.lower().strip():
+                    pts_bonus_finaux += rules["bonus"]
+
+        # 3. SAUVEGARDE
         s_score, _ = SeasonScore.objects.get_or_create(user=player.user, competition=season.competition)
-        s_score.ranking_points = pts_player 
+        s_score.ranking_points = pts_classement + pts_bonus_finaux
         s_score.save()
         
         
@@ -890,7 +880,7 @@ def admin_saisie_resultats(request):
             })
 
     if request.method == "POST":
-        res_obj, _ = CompetitionResult.objects.get_or_create(season=season, competition=selected_competition)
+        res_obj, _ = CompetitionResult.objects.get_or_create(season=season)
         
         # 1. Sauvegarde des bonus réels
         res_obj.real_best_try_scorer = request.POST.get("real_best_try_scorer", "").strip()
