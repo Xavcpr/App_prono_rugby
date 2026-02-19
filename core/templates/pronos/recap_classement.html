@@ -164,6 +164,20 @@
                     </tr>
                 {% endfor %}
             </tbody>
+            <tfoot style="background: #f8f9fa;
+                          font-weight: bold;
+                          border-top: 2px solid #2c3e50">
+                <tr>
+                    <td class="team-cell">Points récoltés (classement)</td>
+                    {% for player in players %}
+                        <td>
+                            {# On pourrait calculer ici, mais le plus propre est de l'afficher via SeasonScore plus tard #}
+                            {# Pour l'instant on laisse vide ou on met un indicateur #}
+                            <small>Calculé</small>
+                        </td>
+                    {% endfor %}
+                </tr>
+            </tfoot>
         </table>
     {% else %}
         <div style="text-align: center;
