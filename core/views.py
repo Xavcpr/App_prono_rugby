@@ -795,6 +795,9 @@ def recap_pronos_classement(request):
         bonus_preds = CompetitionBonusPrediction.objects.filter(competition=selected_competition).select_related('player', 'winner')
     else:
         bonus_preds = []
+        
+        result_obj = CompetitionResult.objects.filter(season=season).first()
+        real_rankings = result_obj.rankings_json if result_obj else {}
 
     return render(request, "pronos/recap_classement.html", {
         "competitions": competitions,
@@ -803,6 +806,8 @@ def recap_pronos_classement(request):
         "matrix": matrix,
         "teams_by_block": teams_by_block,
         "bonus_preds": bonus_preds,
+        'real_rankings': real_rankings,
+        'real_winner': result_obj.real_winner if result_obj else None,
     })
     
     

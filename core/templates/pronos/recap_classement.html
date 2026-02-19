@@ -3,68 +3,29 @@
 {% load custom_filters %}
 {% block content %}
     <style>
-  /* --- Rappel de ta Charte Graphique --- */
-  .board-header {
-    margin: 20px 0;
-    background: #2c3e50;
-    color: white;
-    padding: 20px;
-    border-radius: 8px;
-  }
-  .navigation-zone {
-    background: #ecf0f1;
-    padding: 15px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    margin-bottom: 20px;
-  }
-  .rugby-board {
-    width: 100%;
-    border-collapse: collapse;
-    background: white;
-    margin-bottom: 30px;
-  }
-  .rugby-board th,
-  .rugby-board td {
-    border: 1px solid #bdc3c7;
-    padding: 12px;
-    text-align: center;
-  }
-  .team-cell {
-    text-align: left !important;
-    background: #f9f9f9;
-    font-weight: bold;
-    min-width: 200px;
-  }
-  .section-title {
-    color: #2c3e50;
-    border-bottom: 2px solid #2c3e50;
-    padding-bottom: 5px;
-    margin-top: 30px;
-    font-weight: bold;
-  }
-  .rank-badge {
-    background: #34495e;
-    color: white;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-weight: bold;
-  }
+  /* --- Charte Graphique --- */
+  .board-header { margin: 20px 0; background: #2c3e50; color: white; padding: 20px; border-radius: 8px; }
+  .navigation-zone { background: #ecf0f1; padding: 15px; border-radius: 8px; display: flex; align-items: center; gap: 20px; margin-bottom: 20px; }
+  .rugby-board { width: 100%; border-collapse: collapse; background: white; margin-bottom: 30px; }
+  .rugby-board th, .rugby-board td { border: 1px solid #bdc3c7; padding: 12px; text-align: center; }
+  .team-cell { text-align: left !important; background: #f9f9f9; font-weight: bold; min-width: 200px; }
+  .section-title { color: #2c3e50; border-bottom: 2px solid #2c3e50; padding-bottom: 5px; margin-top: 30px; font-weight: bold; }
+  
+  .rank-badge { color: white; padding: 2px 8px; border-radius: 4px; font-weight: bold; background: #34495e; }
+  .real-pos-label { font-size: 0.75em; background: #2c3e50; color: #fff; padding: 2px 5px; border-radius: 3px; margin-left: 5px; vertical-align: middle; }
 
-  /* Styles des boutons conformes à tes autres pages */
-  .btn-custom {
-    padding: 8px 15px;
-    text-decoration: none !important;
-    border-radius: 4px;
-    font-weight: bold;
-    transition: opacity 0.3s;
-    color: white !important;
-  }
-  .btn-custom:hover { opacity: 0.85; }
-  .btn-edit { background: #f39c12; }    /* Orange */
-  .btn-view { background: #34495e; }    /* Bleu Nuit */
+  /* Couleurs de réussite */
+  .bg-exact { background-color: #27ae60 !important; }  /* Vert */
+  .bg-gap1 { background-color: #f39c12 !important; }   /* Orange */
+  .bg-gap2 { background-color: #e67e22 !important; }   /* Orange foncé */
+  .bg-fail { background-color: #95a5a6 !important; }   /* Gris */
+
+  .btn-custom { padding: 8px 15px; text-decoration: none !important; border-radius: 4px; font-weight: bold; transition: opacity 0.3s; color: white !important; border: none; cursor: pointer; }
+  .btn-edit { background: #f39c12; }
+  .btn-view { background: #34495e; }
+  .btn-compute { background: #27ae60; }
+  
+  .results-summary { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
     </style>
     <div class="board-header">
         <h1 style="margin: 0">📊 Comparatif des Pronostics</h1>
@@ -93,10 +54,10 @@
         {% if user.is_staff and selected_competition %}
             {% with season=selected_competition.seasons.first %}
                 <a href="{% url 'admin_saisie_resultats' %}?competition={{ selected_competition.id }}"
-                   class="btn-custom btn-edit">⚙️ Saisir Résultats Réels</a>
+                   class="btn-custom btn-edit">⚙️ Saisir Résultats</a>
                 <a href="{% url 'calcul_points_classement' season.id %}"
                    class="btn-custom btn-compute"
-                   onclick="return confirm('Recalculer les points pour tous les joueurs ?')">🔄 Calculer les Points</a>
+                   onclick="return confirm('Recalculer les points ?')">🔄 Calculer les Points</a>
             {% endwith %}
         {% endif %}
         <div style="margin-left: auto; display: flex; gap: 10px;">
@@ -106,6 +67,15 @@
         </div>
     </div>
     {% if selected_competition %}
+        {# Bandeau des résultats officiels si disponibles #}
+        {% if real_winner or real_rankings %}
+            <div class="results-summary">
+                <strong>🏆 Résultats Officiels enregistrés :</strong>
+                {% if real_winner %}Vainqueur : {{ real_winner.name }}{% endif %}
+                {% if real_results.real_best_try_scorer %}| Marqueur : {{ real_results.real_best_try_scorer }}{% endif %}
+                <span class="small float-end">Les couleurs indiquent la proximité avec le résultat réel.</span>
+            </div>
+        {% endif %}
         {% for block_key, teams in teams_by_block.items %}
             <h4 class="section-title">🏆 Groupe : {{ block_key|upper }}</h4>
             <table class="rugby-board">
@@ -118,14 +88,39 @@
                 <tbody>
                     {% for team in teams %}
                         <tr>
-                            <td class="team-cell">{{ team.name }}</td>
+                            <td class="team-cell">
+                                {{ team.name }}
+                                {# Affichage de la position réelle extraite du JSON #}
+                                {% with block_results=real_rankings|get_item:block_key %}
+                                    {% with real_pos=block_results|get_item:team.id %}
+                                        {% if real_pos %}<span class="real-pos-label">RÉEL: {{ real_pos }}</span>{% endif %}
+                                    {% endwith %}
+                                {% endwith %}
+                            </td>
                             {% for player in players %}
                                 <td>
                                     {% with block_dict=matrix|get_item:block_key %}
                                         {% with team_dict=block_dict|get_item:team.id %}
                                             {% with pos=team_dict|get_item:player.id %}
                                                 {% if pos %}
-                                                    <span class="rank-badge">{{ pos }}</span>
+                                                    {% with block_results=real_rankings|get_item:block_key %}
+                                                        {% with real_pos=block_results|get_item:team.id %}
+                                                            {% if real_pos %}
+                                                                {# Comparaison dynamique pour la couleur #}
+                                                                {% if pos == real_pos %}
+                                                                    <span class="rank-badge bg-exact">{{ pos }}</span>
+                                                                {% elif pos == real_pos|add:1 or pos == real_pos|add:-1 %}
+                                                                    <span class="rank-badge bg-gap1">{{ pos }}</span>
+                                                                {% elif pos == real_pos|add:2 or pos == real_pos|add:-2 %}
+                                                                    <span class="rank-badge bg-gap2">{{ pos }}</span>
+                                                                {% else %}
+                                                                    <span class="rank-badge bg-fail">{{ pos }}</span>
+                                                                {% endif %}
+                                                            {% else %}
+                                                                <span class="rank-badge">{{ pos }}</span>
+                                                            {% endif %}
+                                                        {% endwith %}
+                                                    {% endwith %}
                                                 {% else %}
                                                     <span style="color: #bdc3c7;">-</span>
                                                 {% endif %}
@@ -155,12 +150,16 @@
                 {% for bp in bonus_preds %}
                     <tr>
                         <td class="team-cell">{{ bp.player.name }}</td>
-                        <td>
+                        <td {% if real_winner and bp.winner == real_winner %}class="table-success" style="background:#d4edda"{% endif %}>
                             <strong>{{ bp.winner.name|default:"-" }}</strong>
                         </td>
                         {% if "Top 14" in selected_competition.name %}
-                            <td>{{ bp.best_try_scorer|default:"-" }}</td>
-                            <td>{{ bp.best_point_scorer|default:"-" }}</td>
+                            <td {% if real_results.real_best_try_scorer and bp.best_try_scorer|lower == real_results.real_best_try_scorer|lower %}style="background:#d4edda"{% endif %}>
+                                {{ bp.best_try_scorer|default:"-" }}
+                            </td>
+                            <td {% if real_results.real_best_point_scorer and bp.best_point_scorer|lower == real_results.real_best_point_scorer|lower %}style="background:#d4edda"{% endif %}>
+                                {{ bp.best_point_scorer|default:"-" }}
+                            </td>
                         {% endif %}
                     </tr>
                 {% endfor %}
@@ -172,9 +171,7 @@
                     background: #f8f9fa;
                     border-radius: 8px;
                     border: 2px dashed #bdc3c7">
-            <p style="color: #7f8c8d; font-size: 1.2em;">
-                Veuillez sélectionner une compétition pour voir les pronostics des joueurs.
-            </p>
+            <p style="color: #7f8c8d; font-size: 1.2em;">Veuillez sélectionner une compétition.</p>
         </div>
     {% endif %}
 {% endblock %}
