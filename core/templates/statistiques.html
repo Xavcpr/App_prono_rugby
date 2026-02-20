@@ -18,9 +18,9 @@
       <h1 style="margin: 0">Tableau de Bord & Statistiques</h1>
       <p style="margin: 5px 0 0 0; opacity: 0.8">Analyse globale des performances</p>
     </div>
-    <div class="navigation-zone">
+    <div class="navigation-zone d-flex justify-content-between align-items-center flex-wrap gap-3">
       <form method="get" class="d-flex align-items-center gap-3">
-        <label style="font-weight: bold;">Filtrer par compétition :</label>
+        <label style="font-weight: bold; white-space: nowrap;" class="mb-0">Filtrer par compétition :</label>
         <select name="competition"
                 onchange="this.form.submit()"
                 class="form-select-custom">
@@ -31,6 +31,16 @@
           {% endfor %}
         </select>
       </form>
+      <div class="d-flex gap-2">
+        <a href="/pronos/{% if competition %}?competition={{ competition.id }}{% endif %}"
+           class="btn btn-warning fw-bold text-dark">✏️ Faire mes pronos</a>
+        {% if last_round_id %}
+          <a href="{% url 'round_board' last_round_id %}"
+             class="btn btn-primary fw-bold">📊 Résultats par journée</a>
+        {% else %}
+          <a href="/resultats/" class="btn btn-primary fw-bold">📊 Résultats par journée</a>
+        {% endif %}
+      </div>
     </div>
     <div class="row g-3 mb-4">
       <div class="col-md-3">

@@ -706,6 +706,16 @@ def statistiques_view(request):
     # Note: Vérifie que compute_statistics renvoie bien 'victory_table'
     victory_table = getattr(stats, 'victory_table', [])
     
+    # On cherche la dernière journée pour le bouton "Résultats"
+    last_round_id = None
+    if competition:
+        # On récupère la dernière journée de la compétition sélectionnée
+        # On part de la saison la plus récente et de la journée la plus haute
+        from .models import Round # Assure-toi que l'import est là
+        lr = Round.objects.filter(season__competition=competition).order_by('-number').first()
+        if lr:
+            last_round_id = lr.id
+    
     # ... reste du context identique ...
     context = {
         "competitions": competitions,
@@ -719,6 +729,7 @@ def statistiques_view(request):
         "cuilleres_bois": stats.cuilleres_bois,
         "flair_ranking": flair_ranking,
         "victory_table": victory_table,
+        "last_round_id": last_round_id,
     }
 
     return render(request, "statistiques.html", context)

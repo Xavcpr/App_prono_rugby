@@ -72,7 +72,11 @@
       </div>
       <div class="col-12 col-md-5 d-flex align-items-end gap-2">
         <a href="{% if selected_round %}{% url 'round_board' selected_round %}{% else %}#{% endif %}"
-           class="btn btn-primary flex-grow-1 {% if not selected_round %}disabled{% endif %}">📊 Résultats</a>
+           class="btn btn-primary flex-grow-1 {% if not selected_round %}disabled{% endif %}">📊 Résultats de la journée</a>
+        <a href="/statistiques/{% if selected_competition %}?competition={{ selected_competition }}{% endif %}"
+           class="btn btn-indigo flex-grow-1 text-white"
+           style="background-color: #6610f2;
+                  border-color: #6610f2">📈 Classement général</a>
         <a href="{% url 'all_pronos' %}" class="btn btn-dark flex-grow-1">👁️ Pronos des autres</a>
       </div>
     </form>
