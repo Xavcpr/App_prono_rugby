@@ -281,33 +281,61 @@ class TeamRankingPrediction(models.Model):
 # ----- Pronostics de bonus compétition (marqueur)-----
 class CompetitionBonusPrediction(models.Model):
     player = models.ForeignKey(
-        Player,
+        Player, 
         on_delete=models.CASCADE
     )
+    # Ajout de la saison en null=True
+    season = models.ForeignKey(
+        Season, 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True
+    )
     competition = models.ForeignKey(
-        Competition,
+        Competition, 
         on_delete=models.CASCADE
     )
     best_try_scorer = models.CharField(max_length=100, blank=True, default="")
     best_point_scorer = models.CharField(max_length=100, blank=True, default="")
-    winner = models.ForeignKey(Team, null=True, blank=True, on_delete=models.SET_NULL, related_name="bonus_winner")
+    winner = models.ForeignKey(
+        Team, 
+        null=True, 
+        blank=True, 
+        on_delete=models.SET_NULL, 
+        related_name="bonus_winner"
+    )
 
     class Meta:
-        unique_together = ("player", "competition")
+        # On met à jour l'unicité pour inclure la saison
+        unique_together = ("player", "season", "competition")
 
     def __str__(self):
-        return f"{self.player} – {self.competition}"
+        s_name = self.season.year if self.season else "Inconnue"
+        return f"{self.player} – {self.competition} ({s_name})"
 
 class CompetitionTeamPrediction(models.Model):
     player = models.ForeignKey(Player, on_delete=models.CASCADE)
+    # On autorise null=True temporairement pour la migration
+    season = models.ForeignKey(
+        Season, 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True
+    )
     competition = models.ForeignKey(Competition, on_delete=models.CASCADE)
     team = models.ForeignKey(Team, on_delete=models.CASCADE)
     position = models.PositiveIntegerField()
-    block_key = models.CharField(max_length=50, blank=True, null=True)  # Champ ajouté
+    block_key = models.CharField(max_length=50, blank=True, null=True)
 
     class Meta:
-        unique_together = ("player", "competition", "team")
+        # On garde l'unicité sur (joueur, saison, équipe)
+        # Attention : si tu as déjà des données, l'unique_together 
+        # peut échouer si plusieurs lignes ont season=None.
+        unique_together = ("player", "season", "team")
         ordering = ["position"]
+
+    def __str__(self):
+        return f"{self.player} - {self.team} ({self.season})"
         
 class CompetitionTeam(models.Model):
     competition = models.ForeignKey(
