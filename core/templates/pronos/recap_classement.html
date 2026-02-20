@@ -47,7 +47,9 @@
                 <option value="">-- Choisir --</option>
                 {% for comp in competitions %}
                     <option value="{{ comp.id }}"
-                            {% if selected_competition.id == comp.id %}selected{% endif %}>{{ comp.name }}</option>
+                            {% if selected_competition.id|slugify == comp.id|slugify %}selected{% endif %}>
+                        {{ comp.name }}
+                    </option>
                 {% endfor %}
             </select>
         </form>
@@ -62,7 +64,7 @@
         {% endif %}
         <div style="margin-left: auto; display: flex; gap: 10px;">
             <a href="{% url 'classement_prediction' %}{% if selected_competition %}?competition={{ selected_competition.id }}{% endif %}"
-               class="btn-custom btn-edit">✏️ Modifier mes pronos</a>
+               class="btn-custom btn-edit">✏️ Modifier mes pronos de classement</a>
             <a href="{% url 'pronos' %}" class="btn-custom btn-view">🏠 Accueil Pronos</a>
         </div>
     </div>

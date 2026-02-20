@@ -1,67 +1,57 @@
-{% extends "base.html" %} {% block content %}
-<h2>Classement par compétition</h2>
-
-<!-- Lien retour -->
-<a href="{% url 'pronostics' %}" class="btn btn-secondary btn-sm mb-3"
-  >← Retour aux pronostics</a
->
-
-<!-- Choix de compétition -->
-<form method="get" class="mb-3">
-  <select name="competition" onchange="this.form.submit()">
-    <option value="">-- Choisissez une compétition --</option>
-    {% for comp in competitions %}
-    <option
-      value="{{ comp.id }}"
-      {%
-      if
-      competition
-      and
-      comp.id=""
-      ="competition.id"
-      %}selected{%
-      endif
-      %}
-    >
-      {{ comp.name }}
-    </option>
-    {% endfor %}
-  </select>
-</form>
-
-{% if competition %}
-<h3>{{ competition.name }} - Saison {{ season.year }}</h3>
-
-<form method="post">
-  {% csrf_token %}
-
-  <!-- Champs libres : vainqueur, meilleurs marqueurs -->
-  <div class="mb-3">{{ form.as_p }}</div>
-
-  <!-- Classement équipes -->
-  <table class="table table-bordered">
-    <thead>
-      <tr>
-        <th>Position</th>
-        <th>Équipe</th>
-        {% if competition.name == "Champions Cup" %}
-        <th>Poule</th>
-        {% endif %}
-      </tr>
-    </thead>
-    <tbody>
-      {% for f in formset %}
-      <tr>
-        <td>{{ f.position }}</td>
-        <td>{{ f.team }}</td>
-        {% if competition.name == "Champions Cup" %}
-        <td>{{ f.pool }}</td>
-        {% endif %}
-      </tr>
+{% extends "base.html" %}
+{% block content %}
+  <h2>Classement par compétition</h2>
+  <div class="d-flex gap-2 mb-3">
+    <a href="{% url 'pronostics' %}" class="btn btn-secondary btn-sm">← Retour aux pronostics</a>
+    <a href="{% url 'recap_classement' %}" class="btn btn-success btn-sm">👁️ Voir les class. des autres</a>
+  </div>
+  >
+  <!-- Choix de compétition -->
+  <form method="get" class="mb-3">
+    <select name="competition" onchange="this.form.submit()">
+      <option value="">-- Choisissez une compétition --</option>
+      {% for comp in competitions %}
+        <option
+          value="{{ comp.id }}"
+          {%
+          if
+          competition
+          and
+          comp.id=""
+          ="competition.id"
+          %}selected{%
+          endif
+          %}
+          >{{ comp.name }}</option>
       {% endfor %}
-    </tbody>
-  </table>
-
-  <button type="submit" class="btn btn-primary">Enregistrer</button>
-</form>
-{% endif %} {% endblock %}
+    </select>
+  </form>
+  {% if competition %}
+    <h3>{{ competition.name }} - Saison {{ season.year }}</h3>
+    <form method="post">
+      {% csrf_token %}
+      <!-- Champs libres : vainqueur, meilleurs marqueurs -->
+      <div class="mb-3">{{ form.as_p }}</div>
+      <!-- Classement équipes -->
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>Position</th>
+            <th>Équipe</th>
+            {% if competition.name == "Champions Cup" %}<th>Poule</th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in formset %}
+            <tr>
+              <td>{{ f.position }}</td>
+              <td>{{ f.team }}</td>
+              {% if competition.name == "Champions Cup" %}<td>{{ f.pool }}</td>{% endif %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <button type="submit" class="btn btn-primary">Enregistrer</button>
+    </form>
+  {% endif %}
+{% endblock %}

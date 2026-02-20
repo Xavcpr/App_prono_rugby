@@ -811,7 +811,7 @@ def recap_pronos_classement(request):
         
         if season:
             # Vérification du verrouillage
-            if not season.has_started:
+            if not season.has_started and not request.user.is_staff:
                 messages.warning(request, "Les pronostics des autres joueurs seront visibles dès le coup d'envoi !")
                 return redirect('pronos')
             
