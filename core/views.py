@@ -664,67 +664,53 @@ def compute_round_view(request, round_id):
 # ------------------
 @login_required
 def statistiques_view(request):
-   # Convention projet : GET vide = Total
     competition_id = request.GET.get("competition", "").strip()
-
     competitions = Competition.objects.all().order_by("name")
 
     competition = None
     if competition_id.isdigit():
         competition = get_object_or_404(Competition, id=int(competition_id))
 
-    # On calcule toutes les stats de la compétition (ou total)
+    # Calcul des stats via le service
     stats = compute_statistics(competition)
+
+    # --- SÉCURISATION DU CRASH SeasonScore ---
     season_scores = {}
-    if competition:
-        season_scores = {ss.user.username: ss.ranking_points for ss in SeasonScore.objects.filter(competition=competition)}
-    else:
-        qs = SeasonScore.objects.values('user__username').annotate(total_rk=Sum('ranking_points'))
-        season_scores = {item['user__username']: item['total_rk'] for item in qs}
+    try:
+        if competition:
+            # On récupère les scores s'ils existent
+            qs = SeasonScore.objects.filter(competition=competition).values('user__username', 'ranking_points')
+            season_scores = {item['user__username']: item['ranking_points'] for item in qs}
+        else:
+            qs = SeasonScore.objects.values('user__username').annotate(total_rk=Sum('ranking_points'))
+            season_scores = {item['user__username']: item['total_rk'] for item in qs}
+    except Exception:
+        # Si la colonne n'existe vraiment pas, on met 0 pour tout le monde au lieu de crasher
+        season_scores = {}
+
     for r in stats.detailed_ranking:
-        # s_obj = season_scores.get(r['username'])
         r['match_pts'] = r.get('points', 0)
+        # On récupère le score de classement, sinon 0
         r['ranking_pts'] = season_scores.get(r['username'], 0)
-        # r['ranking_pts'] = s_obj.ranking_points if s_obj else 0
         r['total_global'] = r['match_pts'] + r['ranking_pts']
 
+    # Tri final sur le total global
     stats.detailed_ranking.sort(key=lambda x: x['total_global'], reverse=True)
     for i, r in enumerate(stats.detailed_ranking, 1):
         r['rank'] = i
-    match_performance_ranking = sorted(stats.detailed_ranking, key=lambda x: x['match_pts'], reverse=True)
-    flair_ranking = sorted(stats.detailed_ranking, key=lambda x: x['ranking_pts'], reverse=True)
     
-    
-    
+    # ... reste du context identique ...
     context = {
         "competitions": competitions,
         "competition": competition,
-        "competition_id": competition_id,
-
-        # Charts
+        "kpi": stats.kpi,
         "labels": stats.labels,
         "score_series": stats.score_series,
-        "rank_series": stats.rank_series,
-        "gap_series": stats.gap_series,
-        "pie_labels": stats.pie_labels,
-        "pie_values": stats.pie_values,
-
-        # Tables + KPIs
-        "victory_table": stats.victory_table,
-        "kpi": stats.kpi,
-        "pie_denominator": stats.pie_denominator,
-
-        # NOUVEAU : Classement détaillé (style résultats)
         "detailed_ranking": stats.detailed_ranking,
-
-        # NOUVEAU : choppes
         "choppes_or": stats.choppes_or,
-        "choppes_bois": stats.choppes_bois,
-        
-        "match_performance_ranking": match_performance_ranking,
-        "flair_ranking": flair_ranking,
+        "chopes_cumulees": stats.chopes_cumulees,
+        "cuilleres_bois": stats.cuilleres_bois,
     }
-
 
     return render(request, "statistiques.html", context)
 

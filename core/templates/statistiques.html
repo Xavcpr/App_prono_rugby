@@ -1,92 +1,30 @@
 {% extends "base.html" %}
 {% block content %}
   <style>
-    /* --- Rappel de ta Charte Graphique --- */
-    .stats-header { 
-      margin: 20px 0; 
-      background: #2c3e50; 
-      color: white; 
-      padding: 20px; 
-      border-radius: 8px; 
-    }
-
-    .navigation-zone { 
-      background: #ecf0f1; 
-      padding: 15px; 
-      border-radius: 8px; 
-      margin-bottom: 20px; 
-    }
-
-    /* Style des Cartes (KPI) */
-    .card {
-      border: none;
-      border-radius: 8px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-      transition: transform 0.2s;
-    }
+    .stats-header { margin: 20px 0; background: #2c3e50; color: white; padding: 20px; border-radius: 8px; }
+    .navigation-zone { background: #ecf0f1; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    .card { border: none; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: transform 0.2s; }
     .card:hover { transform: translateY(-5px); }
-    .card-body h5 { 
-      color: #2c3e50; 
-      border-bottom: 2px solid #3498db; 
-      padding-bottom: 10px; 
-      margin-bottom: 15px;
-      font-weight: bold;
-    }
-
-    /* --- Tableaux Style Rugby App --- */
-    .table-container {
-      overflow-x: auto;
-      background: white;
-      border-radius: 8px;
-      margin-bottom: 20px;
-    }
-
-    .rugby-board {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-      font-size: 0.9em;
-    }
-
-    .rugby-board th {
-      background: #34495e;
-      color: white;
-      padding: 10px;
-      text-align: center;
-    }
-
-    .rugby-board td {
-      border: 1px solid #bdc3c7;
-      padding: 8px;
-      text-align: center;
-      vertical-align: middle;
-    }
-
+    .card-body h5 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 15px; font-weight: bold; }
+    .table-container { overflow-x: auto; background: white; border-radius: 8px; margin-bottom: 20px; }
+    .rugby-board { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.9em; }
+    .rugby-board th { background: #34495e; color: white; padding: 10px; text-align: center; }
+    .rugby-board td { border: 1px solid #bdc3c7; padding: 8px; text-align: center; vertical-align: middle; }
     .rank-col { width: 50px; font-weight: bold; background: #f9f9f9; }
-    .points-col { font-weight: bold; color: #27ae60; }
-
-    /* --- Sélecteur de compétition --- */
-    .form-select-custom {
-      padding: 8px;
-      border-radius: 4px;
-      border: 1px solid #bdc3c7;
-      background-color: white;
-      color: #2c3e50;
-      font-weight: 500;
-    }
+    .form-select-custom { padding: 8px; border-radius: 4px; border: 1px solid #bdc3c7; background-color: white; color: #2c3e50; font-weight: 500; }
   </style>
   <div class="container-fluid py-4">
     <div class="stats-header">
       <h1 style="margin: 0">Tableau de Bord & Statistiques</h1>
-      <p style="margin: 5px 0 0 0; opacity: 0.8">Analyse des performances des pronostiqueurs</p>
+      <p style="margin: 5px 0 0 0; opacity: 0.8">Analyse globale des performances</p>
     </div>
     <div class="navigation-zone">
-      <form method="get" id="filterForm" class="d-flex align-items-center gap-3">
-        <label style="font-weight: bold; color: #2c3e50;">Filtrer par compétition :</label>
+      <form method="get" class="d-flex align-items-center gap-3">
+        <label style="font-weight: bold;">Filtrer par compétition :</label>
         <select name="competition"
                 onchange="this.form.submit()"
                 class="form-select-custom">
-          <option value="">Total (toutes compétitions)</option>
+          <option value="">Toutes compétitions</option>
           {% for comp in competitions %}
             <option value="{{ comp.id }}"
                     {% if competition and comp.id == competition.id %}selected{% endif %}>{{ comp.name }}</option>
@@ -96,39 +34,38 @@
     </div>
     <div class="row g-3 mb-4">
       <div class="col-md-3">
-        <div class="card h-100">
-          <div class="card-body text-center">
+        <div class="card h-100 text-center">
+          <div class="card-body">
             <div style="font-size: 2rem;">🎯</div>
-            <div class="fw-bold text-muted uppercase small">Tout-pile</div>
+            <div class="fw-bold text-muted small">TOUT-PILE</div>
             <div class="display-6 fw-bold text-primary">{{ kpi.tout_pile }}</div>
           </div>
         </div>
       </div>
       <div class="col-md-3">
-        <div class="card h-100">
-          <div class="card-body text-center">
+        <div class="card h-100 text-center">
+          <div class="card-body">
             <div style="font-size: 2rem;">🌓</div>
-            <div class="fw-bold text-muted uppercase small">Demi tout-pile</div>
+            <div class="fw-bold text-muted small">DEMI TOUT-PILE</div>
             <div class="display-6 fw-bold text-info">{{ kpi.demi_tout_pile }}</div>
-            <div class="small text-muted">Dom {{ kpi.demi_dom }} • Ext {{ kpi.demi_ext }}</div>
           </div>
         </div>
       </div>
       <div class="col-md-3">
-        <div class="card h-100">
-          <div class="card-body text-center">
+        <div class="card h-100 text-center">
+          <div class="card-body">
             <div style="font-size: 2rem;">⚡</div>
-            <div class="fw-bold text-muted uppercase small">Bonus Offensifs</div>
+            <div class="fw-bold text-muted small">BONUS OFF.</div>
             <div class="text-success">Réussis : {{ kpi.bon_bonus_off }}</div>
             <div class="text-danger">Ratés : {{ kpi.mauvais_bonus_off }}</div>
           </div>
         </div>
       </div>
       <div class="col-md-3">
-        <div class="card h-100">
-          <div class="card-body text-center">
+        <div class="card h-100 text-center">
+          <div class="card-body">
             <div style="font-size: 2rem;">🛡️</div>
-            <div class="fw-bold text-muted uppercase small">Bonus Défensifs</div>
+            <div class="fw-bold text-muted small">BONUS DEF.</div>
             <div class="text-success">Réussis : {{ kpi.bon_bonus_def }}</div>
             <div class="text-danger">Ratés : {{ kpi.mauvais_bonus_def }}</div>
           </div>
@@ -141,10 +78,10 @@
         <div class="table-container">
           <table class="rugby-board">
             <thead>
-              <tr style="background: #2c3e50; color: white;">
+              <tr>
                 <th class="rank-col">#</th>
                 <th class="text-start ps-3">Pronostiqueur</th>
-                <th class="text-end pe-3" style="background: #e74c3c;">TOTAL GLOBAL (Matchs + Classement) ✨</th>
+                <th class="text-end pe-3">TOTAL GLOBAL</th>
               </tr>
             </thead>
             <tbody>
@@ -153,9 +90,8 @@
                   <td class="rank-col">{{ r.rank }}</td>
                   <td class="text-start ps-3">
                     <strong>{{ r.username }}</strong>
-                    {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-2">Moi</span>{% endif %}
                   </td>
-                  <td class="text-end pe-3 points-col" style="background: #fdf2f2;">{{ r.total_global }} pts</td>
+                  <td class="text-end pe-3 fw-bold">{{ r.total_global }} pts</td>
                 </tr>
               {% endfor %}
             </tbody>
@@ -164,86 +100,23 @@
       </div>
     </div>
     <div class="row">
-      <div class="col-md-6">
+      <div class="col-md-4">
         <div class="card mb-4">
           <div class="card-body">
-            <h5>Performance Matchs 🏉</h5>
+            <h5>🎯 Tout-pile</h5>
             <table class="rugby-board">
               <thead>
                 <tr>
                   <th class="rank-col">#</th>
                   <th>Joueur</th>
-                  <th>Points</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for r in match_performance_ranking %}
-                  <tr>
-                    <td class="rank-col">{{ r.rank }}</td>
-                    <td class="text-start ps-3">
-                      <strong>{{ r.username }}</strong>
-                      {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-2">Moi</span>{% endif %}
-                    </td>
-                    <td>{{ r.match_pts }}</td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="card mb-4">
-          <div class="card-body">
-            <h5>Flair Classement 📊</h5>
-            <table class="rugby-board">
-              <thead>
-                <tr>
-                  <th class="rank-col">#</th>
-                  <th>Joueur</th>
-                  <th>Points</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for r in flair_ranking %}
-                  <tr>
-                    <td class="rank-col">{{ r.rank }}</td>
-                    <td class="text-start ps-3">
-                      <strong>{{ r.username }}</strong>
-                      {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-2">Moi</span>{% endif %}
-                    </td>
-                    <td>{{ r.ranking_pts }}</td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="row">
-      <div class="col-md-6">
-        <div class="card mb-4">
-          <div class="card-body">
-            <h5>
-              Choppes d’or 🏆 <small>(Scores exacts)</small>
-            </h5>
-            <table class="rugby-board">
-              <thead>
-                <tr>
-                  <th class="rank-col">#</th>
-                  <th>Pronostiqueur</th>
                   <th>Total</th>
                 </tr>
               </thead>
               <tbody>
                 {% for r in choppes_or %}
                   <tr>
-                    <td class="rank-col">{{ r.rank }}</td>
-                    <td class="text-start ps-3">
-                      {{ r.username }}
-                      {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
-                    </td>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ r.username }}</td>
                     <td class="fw-bold">{{ r.value }}</td>
                   </tr>
                 {% endfor %}
@@ -252,29 +125,26 @@
           </div>
         </div>
       </div>
-      <div class="col-md-6">
+      <div class="col-md-4">
         <div class="card mb-4">
           <div class="card-body">
             <h5>
-              Choppes de bois 🪵 <small>(Issues fausses)</small>
+              🍺 Chopes <small>(Podiums)</small>
             </h5>
             <table class="rugby-board">
               <thead>
                 <tr>
                   <th class="rank-col">#</th>
-                  <th>Pronostiqueur</th>
-                  <th>Total</th>
+                  <th>Joueur</th>
+                  <th>🍺</th>
                 </tr>
               </thead>
               <tbody>
-                {% for r in choppes_bois %}
+                {% for r in chopes_cumulees %}
                   <tr>
-                    <td class="rank-col">{{ r.rank }}</td>
-                    <td class="text-start ps-3">
-                      {{ r.username }}
-                      {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
-                    </td>
-                    <td class="fw-bold">{{ r.value }}</td>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ r.username }}</td>
+                    <td class="fw-bold" style="color:#f39c12">{{ r.total_chopes }}</td>
                   </tr>
                 {% endfor %}
               </tbody>
@@ -282,69 +152,24 @@
           </div>
         </div>
       </div>
-    </div>
-    <div class="row">
-      <div class="col-md-12 mb-4">
-        <div class="card">
+      <div class="col-md-4">
+        <div class="card mb-4">
           <div class="card-body">
-            <h5>Évolution des scores</h5>
-            <div style="height: 300px;">
-              <canvas id="scoreChart"></canvas>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-6 mb-4">
-        <div class="card">
-          <div class="card-body">
-            <h5>Évolution du classement</h5>
-            <div style="height: 250px;">
-              <canvas id="rankChart"></canvas>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-6 mb-4">
-        <div class="card">
-          <div class="card-body">
-            <h5>Écart au leader</h5>
-            <div style="height: 250px;">
-              <canvas id="gapChart"></canvas>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="row">
-      <div class="col-md-6 mb-4">
-        <div class="card h-100">
-          <div class="card-body">
-            <h5>Répartition des points ({{ pie_denominator }})</h5>
-            <canvas id="pieChart"></canvas>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-6 mb-4">
-        <div class="card h-100">
-          <div class="card-body">
-            <h5>Bons pronostics de victoire</h5>
+            <h5>🥄 Cuillères de bois</h5>
             <table class="rugby-board">
               <thead>
                 <tr>
                   <th class="rank-col">#</th>
                   <th>Joueur</th>
-                  <th>Bons pronos</th>
+                  <th>🥄</th>
                 </tr>
               </thead>
               <tbody>
-                {% for r in victory_table %}
+                {% for r in cuilleres_bois %}
                   <tr>
-                    <td class="rank-col">{{ r.rank }}</td>
-                    <td class="text-start ps-3">
-                      {{ r.username }}
-                      {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
-                    </td>
-                    <td class="fw-bold">{{ r.bons }}</td>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ r.username }}</td>
+                    <td class="fw-bold" style="color:#8b4513">{{ r.count }}</td>
                   </tr>
                 {% endfor %}
               </tbody>
@@ -354,64 +179,4 @@
       </div>
     </div>
   </div>
-  {{ labels|json_script:"labels-data" }}
-  {{ score_series|json_script:"score-series-data" }}
-  {{ rank_series|json_script:"rank-series-data" }}
-  {{ gap_series|json_script:"gap-series-data" }}
-  {{ pie_labels|json_script:"pie-labels-data" }}
-  {{ pie_values|json_script:"pie-values-data" }}
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script>
-    const labels = JSON.parse(document.getElementById("labels-data").textContent);
-    const scoreSeries = JSON.parse(document.getElementById("score-series-data").textContent);
-    const rankSeries  = JSON.parse(document.getElementById("rank-series-data").textContent);
-    const gapSeries   = JSON.parse(document.getElementById("gap-series-data").textContent);
-    const pieLabels   = JSON.parse(document.getElementById("pie-labels-data").textContent);
-    const pieValues   = JSON.parse(document.getElementById("pie-values-data").textContent);
-
-    const colors = ['#3498db', '#e74c3c', '#27ae60', '#f39c12', '#9b59b6', '#34495e'];
-
-    function makeDatasets(obj) {
-      return Object.keys(obj).map((k, index) => ({
-        label: k,
-        data: obj[k],
-        tension: 0.3,
-        borderColor: colors[index % colors.length],
-        backgroundColor: colors[index % colors.length]
-      }));
-    }
-
-    const commonOptions = { 
-      responsive: true, 
-      maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom' } }
-    };
-
-    new Chart(document.getElementById('scoreChart'), {
-      type: "line",
-      data: { labels, datasets: makeDatasets(scoreSeries) },
-      options: commonOptions
-    });
-
-    new Chart(document.getElementById('rankChart'), {
-      type: "line",
-      data: { labels, datasets: makeDatasets(rankSeries) },
-      options: { ...commonOptions, scales: { y: { reverse: true, ticks: { stepSize: 1 } } } }
-    });
-
-    new Chart(document.getElementById('gapChart'), {
-      type: "line",
-      data: { labels, datasets: makeDatasets(gapSeries) },
-      options: commonOptions
-    });
-
-    new Chart(document.getElementById('pieChart'), {
-      type: "pie",
-      data: { 
-        labels: pieLabels, 
-        datasets: [{ data: pieValues, backgroundColor: colors }] 
-      },
-      options: { responsive: true, plugins: { legend: { position: 'right' } } }
-    });
-  </script>
 {% endblock %}
