@@ -677,7 +677,7 @@ def statistiques_view(request):
     stats = compute_statistics(competition)
     season_scores = {}
     if competition:
-        season_scores = {ss.user.username: ss for ss in SeasonScore.objects.filter(competition=competition)}
+        season_scores = {ss.user.username: ss.ranking_points for ss in SeasonScore.objects.filter(competition=competition)}
     else:
         qs = SeasonScore.objects.values('user__username').annotate(total_rk=Sum('ranking_points'))
         season_scores = {item['user__username']: item['total_rk'] for item in qs}
