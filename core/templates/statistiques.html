@@ -87,12 +87,24 @@
             <tbody>
               {% for r in detailed_ranking %}
                 <tr>
-                  <td class="rank-col">{{ r.rank }}</td>
+                  <td class="rank-col">
+                    {% if forloop.first %}
+                      {{ forloop.counter }}
+                    {% else %}
+                      {% with prev=detailed_ranking|slice:forloop.counter0|last %}
+                        {% if r.total_global == prev.total_global %}
+                          -
+                        {% else %}
+                          {{ forloop.counter }}
+                        {% endif %}
+                      {% endwith %}
+                    {% endif %}
+                  </td>
                   <td class="text-start ps-3">
                     <strong>{{ r.username }}</strong>
                     {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-2">Moi</span>{% endif %}
                   </td>
-                  <td class="text-end pe-3 fw-bold">{{ r.total_global }} pts</td>
+                  <td class="text-end pe-3 fw-bold">{{ r.total_global }} pt</td>
                 </tr>
               {% endfor %}
             </tbody>
@@ -116,7 +128,19 @@
               <tbody>
                 {% for r in choppes_or %}
                   <tr>
-                    <td>{{ forloop.counter }}</td>
+                    <td>
+                      {% if forloop.first %}
+                        {{ forloop.counter }}
+                      {% else %}
+                        {% with prev=choppes_or|slice:forloop.counter0|last %}
+                          {% if r.value == prev.value %}
+                            -
+                          {% else %}
+                            {{ forloop.counter }}
+                          {% endif %}
+                        {% endwith %}
+                      {% endif %}
+                    </td>
                     <td>
                       {{ r.username }}
                       {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
@@ -146,7 +170,19 @@
               <tbody>
                 {% for r in chopes_cumulees %}
                   <tr>
-                    <td>{{ forloop.counter }}</td>
+                    <td>
+                      {% if forloop.first %}
+                        {{ forloop.counter }}
+                      {% else %}
+                        {% with prev=chopes_cumulees|slice:forloop.counter0|last %}
+                          {% if r.value == prev.value %}
+                            -
+                          {% else %}
+                            {{ forloop.counter }}
+                          {% endif %}
+                        {% endwith %}
+                      {% endif %}
+                    </td>
                     <td>
                       {{ r.username }}
                       {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
@@ -174,7 +210,19 @@
               <tbody>
                 {% for r in cuilleres_bois %}
                   <tr>
-                    <td>{{ forloop.counter }}</td>
+                    <td>
+                      {% if forloop.first %}
+                        {{ forloop.counter }}
+                      {% else %}
+                        {% with prev=cuilleres_bois|slice:forloop.counter0|last %}
+                          {% if r.value == prev.value %}
+                            -
+                          {% else %}
+                            {{ forloop.counter }}
+                          {% endif %}
+                        {% endwith %}
+                      {% endif %}
+                    </td>
                     <td>
                       {{ r.username }}
                       {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
@@ -204,7 +252,19 @@
               <tbody>
                 {% for r in flair_ranking %}
                   <tr>
-                    <td class="rank-col">{{ forloop.counter }}</td>
+                    <td class="rank-col">
+                      {% if forloop.first %}
+                        {{ forloop.counter }}
+                      {% else %}
+                        {% with prev=flair_ranking|slice:forloop.counter0|last %}
+                          {% if r.ranking_pts == prev.ranking_pts %}
+                            -
+                          {% else %}
+                            {{ forloop.counter }}
+                          {% endif %}
+                        {% endwith %}
+                      {% endif %}
+                    </td>
                     <td class="text-start ps-3">
                       <strong>{{ r.username }}</strong>
                       {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-2">Moi</span>{% endif %}
@@ -232,7 +292,19 @@
               <tbody>
                 {% for r in victory_table %}
                   <tr>
-                    <td class="rank-col">{{ forloop.counter }}</td>
+                    <td class="rank-col">
+                      {% if forloop.first %}
+                        {{ forloop.counter }}
+                      {% else %}
+                        {% with prev=victory_table|slice:forloop.counter0|last %}
+                          {% if r.bons == prev.bons %}
+                            -
+                          {% else %}
+                            {{ forloop.counter }}
+                          {% endif %}
+                        {% endwith %}
+                      {% endif %}
+                    </td>
                     <td class="text-start ps-3">
                       {{ r.username }}
                       {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
