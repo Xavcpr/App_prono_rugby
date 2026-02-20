@@ -216,23 +216,30 @@ class DailyScore(models.Model):
 # ----- Scores saison -----
 class SeasonScore(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    # Ajout de la saison en null=True pour la migration
+    season = models.ForeignKey(
+        Season, 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True
+    )
     competition = models.ForeignKey(Competition, on_delete=models.CASCADE)
     
-    # On sépare pour plus de clarté
     match_points = models.IntegerField(default=0, verbose_name="Points Matchs")
     ranking_points = models.IntegerField(default=0, verbose_name="Points Classement")
 
     class Meta:
-        unique_together = ("user", "competition")
+        # On met à jour l'unicité : un score par utilisateur par saison par compétition
+        unique_together = ("user", "season", "competition")
         verbose_name = "Score saison"
         verbose_name_plural = "Scores saisons"
 
     def __str__(self):
-        return f"{self.user} - {self.competition} : {self.total_points} pts"
+        s_year = self.season.year if self.season else "???"
+        return f"{self.user} - {self.competition} {s_year} : {self.total_points} pts"
 
     @property
     def total_points(self):
-        """Calcule le total à la volée"""
         return self.match_points + self.ranking_points
     
     
