@@ -244,6 +244,10 @@ def compute_statistics(competition: Optional[Competition]) -> StatsResult:
         sorted_data = sorted(data_dict.items(), key=lambda x: x[1], reverse=reverse)
         return [{"rank": i, "username": k, "value": v} for i, (k, v) in enumerate(sorted_data, 1)]
 
+    def format_trophy(data_dict):
+        sorted_data = sorted(data_dict.items(), key=lambda x: x[1], reverse=True)
+        return [{"username": k, "value": v} for k, v in sorted_data]
+
     return StatsResult(
         labels=labels,
         score_series=score_series,
@@ -255,8 +259,8 @@ def compute_statistics(competition: Optional[Competition]) -> StatsResult:
         victory_table=sorted([{"username": k, "bons": v} for k, v in correct_outcomes.items()], key=lambda x: x["bons"], reverse=True),
         kpi=kpi,
         detailed_ranking=detailed_ranking,
-        choppes_or=format_choppe(tout_pile_by_player),
-        choppes_bois=format_choppe(bois_by_player), # Assure-toi que bois_by_player existe au dessus
-        chopes_cumulees=format_choppe(chopes_points_by_player),
-        cuilleres_bois=format_choppe(cuilleres_by_player)
+        choppes_or=format_trophy(tout_pile_by_player),
+        choppes_bois=format_trophy(bois_by_player),
+        chopes_cumulees=format_trophy(chopes_points_by_player),
+        cuilleres_bois=format_trophy(cuilleres_by_player)
     )

@@ -698,6 +698,13 @@ def statistiques_view(request):
     stats.detailed_ranking.sort(key=lambda x: x['total_global'], reverse=True)
     for i, r in enumerate(stats.detailed_ranking, 1):
         r['rank'] = i
+        
+    # 1. On crée le classement Flair (trié par ranking_pts)
+    flair_ranking = sorted(stats.detailed_ranking, key=lambda x: x.get('ranking_pts', 0), reverse=True)
+    
+    # 2. On récupère le tableau des victoires depuis l'objet stats (calculé par compute_statistics)
+    # Note: Vérifie que compute_statistics renvoie bien 'victory_table'
+    victory_table = getattr(stats, 'victory_table', [])
     
     # ... reste du context identique ...
     context = {
@@ -710,6 +717,8 @@ def statistiques_view(request):
         "choppes_or": stats.choppes_or,
         "chopes_cumulees": stats.chopes_cumulees,
         "cuilleres_bois": stats.cuilleres_bois,
+        "flair_ranking": flair_ranking,
+        "victory_table": victory_table,
     }
 
     return render(request, "statistiques.html", context)

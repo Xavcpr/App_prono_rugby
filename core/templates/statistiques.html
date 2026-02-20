@@ -90,6 +90,7 @@
                   <td class="rank-col">{{ r.rank }}</td>
                   <td class="text-start ps-3">
                     <strong>{{ r.username }}</strong>
+                    {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-2">Moi</span>{% endif %}
                   </td>
                   <td class="text-end pe-3 fw-bold">{{ r.total_global }} pts</td>
                 </tr>
@@ -116,7 +117,10 @@
                 {% for r in choppes_or %}
                   <tr>
                     <td>{{ forloop.counter }}</td>
-                    <td>{{ r.username }}</td>
+                    <td>
+                      {{ r.username }}
+                      {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
+                    </td>
                     <td class="fw-bold">{{ r.value }}</td>
                   </tr>
                 {% endfor %}
@@ -143,8 +147,11 @@
                 {% for r in chopes_cumulees %}
                   <tr>
                     <td>{{ forloop.counter }}</td>
-                    <td>{{ r.username }}</td>
-                    <td class="fw-bold" style="color:#f39c12">{{ r.total_chopes }}</td>
+                    <td>
+                      {{ r.username }}
+                      {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
+                    </td>
+                    <td class="fw-bold" style="color:#f39c12">{{ r.value }}</td>
                   </tr>
                 {% endfor %}
               </tbody>
@@ -168,8 +175,11 @@
                 {% for r in cuilleres_bois %}
                   <tr>
                     <td>{{ forloop.counter }}</td>
-                    <td>{{ r.username }}</td>
-                    <td class="fw-bold" style="color:#8b4513">{{ r.count }}</td>
+                    <td>
+                      {{ r.username }}
+                      {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
+                    </td>
+                    <td class="fw-bold" style="color:#8b4513">{{ r.value }}</td>
                   </tr>
                 {% endfor %}
               </tbody>
@@ -178,5 +188,135 @@
         </div>
       </div>
     </div>
+    <div class="row">
+      <div class="col-md-6">
+        <div class="card mb-4">
+          <div class="card-body">
+            <h5>Flair Classement 📊</h5>
+            <table class="rugby-board">
+              <thead>
+                <tr>
+                  <th class="rank-col">#</th>
+                  <th>Joueur</th>
+                  <th>Points</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in flair_ranking %}
+                  <tr>
+                    <td class="rank-col">{{ forloop.counter }}</td>
+                    <td class="text-start ps-3">
+                      <strong>{{ r.username }}</strong>
+                      {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-2">Moi</span>{% endif %}
+                    </td>
+                    <td class="fw-bold text-primary">{{ r.ranking_pts }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card mb-4">
+          <div class="card-body">
+            <h5>Bons pronostics de victoire ✅</h5>
+            <table class="rugby-board">
+              <thead>
+                <tr>
+                  <th class="rank-col">#</th>
+                  <th>Joueur</th>
+                  <th>Bons</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in victory_table %}
+                  <tr>
+                    <td class="rank-col">{{ forloop.counter }}</td>
+                    <td class="text-start ps-3">
+                      {{ r.username }}
+                      {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
+                    </td>
+                    <td class="fw-bold text-success">{{ r.bons }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-12 mb-4">
+        <div class="card">
+          <div class="card-body">
+            <h5>Évolution des scores</h5>
+            <div style="height: 300px;">
+              <canvas id="scoreChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 mb-4">
+        <div class="card">
+          <div class="card-body">
+            <h5>Évolution du classement</h5>
+            <div style="height: 250px;">
+              <canvas id="rankChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 mb-4">
+        <div class="card">
+          <div class="card-body">
+            <h5>Répartition des points</h5>
+            <canvas id="pieChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
+  {{ labels|json_script:"labels-data" }}
+  {{ score_series|json_script:"score-series-data" }}
+  {{ rank_series|json_script:"rank-series-data" }}
+  {{ pie_labels|json_script:"pie-labels-data" }}
+  {{ pie_values|json_script:"pie-values-data" }}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    const labels = JSON.parse(document.getElementById("labels-data").textContent || '[]');
+    const scoreSeries = JSON.parse(document.getElementById("score-series-data").textContent || '{}');
+    const rankSeries  = JSON.parse(document.getElementById("rank-series-data").textContent || '{}');
+    const pieLabels   = JSON.parse(document.getElementById("pie-labels-data").textContent || '[]');
+    const pieValues   = JSON.parse(document.getElementById("pie-values-data").textContent || '[]');
+
+    const colors = ['#3498db', '#e74c3c', '#27ae60', '#f39c12', '#9b59b6', '#34495e'];
+
+    function makeDatasets(obj) {
+      return Object.keys(obj).map((k, index) => ({
+        label: k,
+        data: obj[k],
+        tension: 0.3,
+        borderColor: colors[index % colors.length],
+        backgroundColor: colors[index % colors.length]
+      }));
+    }
+
+    const opt = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } };
+
+    if (document.getElementById('scoreChart')) {
+      new Chart(document.getElementById('scoreChart'), { type: "line", data: { labels, datasets: makeDatasets(scoreSeries) }, options: opt });
+    }
+    if (document.getElementById('rankChart')) {
+      new Chart(document.getElementById('rankChart'), { 
+        type: "line", data: { labels, datasets: makeDatasets(rankSeries) }, 
+        options: { ...opt, scales: { y: { reverse: true, ticks: { stepSize: 1 } } } } 
+      });
+    }
+    if (document.getElementById('pieChart')) {
+      new Chart(document.getElementById('pieChart'), { 
+        type: "pie", data: { labels: pieLabels, datasets: [{ data: pieValues, backgroundColor: colors }] } 
+      });
+    }
+  </script>
 {% endblock %}
