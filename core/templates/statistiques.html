@@ -180,7 +180,7 @@
                   <tr>
                     <td class="text-start ps-3">
                       {{ r.username }}
-                      {% if r.username == user.username %}<small class="text-warning font-weight-bold">(Moi)</small>{% endif %}
+                      {% if r.username == user.username %}(Moi){% endif %}
                     </td>
                     <td>{{ r.match_pts }}</td>
                   </tr>
@@ -206,7 +206,7 @@
                   <tr>
                     <td class="text-start ps-3">
                       {{ r.username }}
-                      {% if r.username == user.username %}<small class="text-warning font-weight-bold">(Moi)</small>{% endif %}
+                      {% if r.username == user.username %}(Moi){% endif %}
                     </td>
                     <td>{{ r.ranking_pts }}</td>
                   </tr>
