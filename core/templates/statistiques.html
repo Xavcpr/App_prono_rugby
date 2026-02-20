@@ -171,6 +171,7 @@
             <table class="rugby-board">
               <thead>
                 <tr>
+                  <th class="rank-col">#</th>
                   <th>Joueur</th>
                   <th>Points</th>
                 </tr>
@@ -178,6 +179,7 @@
               <tbody>
                 {% for r in match_performance_ranking %}
                   <tr>
+                    <td class="rank-col">{{ r.rank }}</td>
                     <td class="text-start ps-3">
                       <strong>{{ r.username }}</strong>
                       {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-2">Moi</span>{% endif %}
@@ -197,6 +199,7 @@
             <table class="rugby-board">
               <thead>
                 <tr>
+                  <th class="rank-col">#</th>
                   <th>Joueur</th>
                   <th>Points</th>
                 </tr>
@@ -204,6 +207,7 @@
               <tbody>
                 {% for r in flair_ranking %}
                   <tr>
+                    <td class="rank-col">{{ r.rank }}</td>
                     <td class="text-start ps-3">
                       <strong>{{ r.username }}</strong>
                       {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-2">Moi</span>{% endif %}
@@ -327,6 +331,7 @@
             <table class="rugby-board">
               <thead>
                 <tr>
+                  <th class="rank-col">#</th>
                   <th>Joueur</th>
                   <th>Bons pronos</th>
                 </tr>
@@ -334,6 +339,7 @@
               <tbody>
                 {% for r in victory_table %}
                   <tr>
+                    <td class="rank-col">{{ r.rank }}</td>
                     <td class="text-start ps-3">
                       {{ r.username }}
                       {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
