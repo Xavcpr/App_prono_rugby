@@ -864,8 +864,12 @@ def compute_competition_points(season):
         pts_classement = 0
         pts_bonus_finaux = 0
         
-        # 1. CALCUL CLASSEMENT (Peut être fait après les poules)
-        user_preds = CompetitionTeamPrediction.objects.filter(player=player, competition=season.competition)
+        # 1. CALCUL CLASSEMENT : On filtre par season !
+        user_preds = CompetitionTeamPrediction.objects.filter(
+            player=player, 
+            competition=season.competition,
+            season=season  # Crucial
+        )
         for p in user_preds:
             real_block = result.rankings_json.get(p.block_key, {})
             real_pos = real_block.get(str(p.team.id))
@@ -875,14 +879,17 @@ def compute_competition_points(season):
                 elif diff == 1: pts_classement += rules["gap_1"]
                 elif diff == 2: pts_classement += rules["gap_2"]
 
-        # 2. CALCUL VAINQUEUR & BONUS (Seulement si result.real_winner est renseigné)
-        bonus_pred = CompetitionBonusPrediction.objects.filter(player=player, competition=season.competition).first()
+        # 2. CALCUL VAINQUEUR & BONUS : On filtre par season !
+        bonus_pred = CompetitionBonusPrediction.objects.filter(
+            player=player, 
+            competition=season.competition,
+            season=season  # Crucial
+        ).first()
+        
         if bonus_pred and result.real_winner:
-            # Vainqueur
             if bonus_pred.winner == result.real_winner:
                 pts_bonus_finaux += rules["winner"]
             
-            # Marqueurs/Scoreurs (si renseignés dans result)
             if result.real_best_try_scorer:
                 if bonus_pred.best_try_scorer.lower().strip() == result.real_best_try_scorer.lower().strip():
                     pts_bonus_finaux += rules["bonus"]
@@ -890,11 +897,15 @@ def compute_competition_points(season):
                 if bonus_pred.best_point_scorer.lower().strip() == result.real_best_point_scorer.lower().strip():
                     pts_bonus_finaux += rules["bonus"]
 
-        # 3. SAUVEGARDE
-        s_score, _ = SeasonScore.objects.get_or_create(user=player.user, competition=season.competition)
-        s_score.ranking_points = pts_classement + pts_bonus_finaux
-        s_score.save()
-        
+        # 3. SAUVEGARDE : On utilise la saison pour identifier la bonne ligne
+        if player.user:
+            s_score, _ = SeasonScore.objects.get_or_create(
+                user=player.user, 
+                competition=season.competition,
+                season=season  # Crucial pour ne pas écraser 2025
+            )
+            s_score.ranking_points = pts_classement + pts_bonus_finaux
+            s_score.save()       
         
 @staff_member_required
 def admin_saisie_resultats(request):
