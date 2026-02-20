@@ -681,6 +681,7 @@ def statistiques_view(request):
             s_obj = mapping.get(r['username'])
             r['match_pts'] = s_obj.match_points if s_obj else r['points']
             r['ranking_pts'] = s_obj.ranking_points if s_obj else 0
+            r['total_global'] = r['match_pts'] + r['ranking_pts']
 
     context = {
         "competitions": competitions,

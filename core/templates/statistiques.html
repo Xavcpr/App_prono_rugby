@@ -144,9 +144,7 @@
               <tr style="background: #2c3e50; color: white;">
                 <th class="rank-col">#</th>
                 <th class="text-start ps-3">Pronostiqueur</th>
-                <th>Points Matchs 🏉</th>
-                <th>Points Classement 📊</th>
-                <th class="text-end pe-3" style="background: #e74c3c;">TOTAL ✨</th>
+                <th class="text-end pe-3" style="background: #e74c3c;">TOTAL GLOBAL (Matchs + Classement) ✨</th>
               </tr>
             </thead>
             <tbody>
@@ -157,15 +155,65 @@
                     <strong>{{ r.username }}</strong>
                     {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-2">Moi</span>{% endif %}
                   </td>
-                  <td>{{ r.match_pts|default:0 }} pts</td>
-                  <td>{{ r.ranking_pts|default:0 }} pts</td>
-                  <td class="text-end pe-3 points-col"
-                      style="background: #fdf2f2;
-                             font-weight: bold">{{ r.points }} pts</td>
+                  <td class="text-end pe-3 points-col" style="background: #fdf2f2;">{{ r.total_global }} pts</td>
                 </tr>
               {% endfor %}
             </tbody>
           </table>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-6">
+        <div class="card mb-4">
+          <div class="card-body">
+            <h5>Performance Matchs 🏉</h5>
+            <table class="rugby-board">
+              <thead>
+                <tr>
+                  <th>Joueur</th>
+                  <th>Points</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in detailed_ranking %}
+                  <tr>
+                    <td class="text-start ps-3">
+                      {{ r.username }}
+                      {% if r.username == user.username %}<small class="text-warning font-weight-bold">(Moi)</small>{% endif %}
+                    </td>
+                    <td>{{ r.match_pts }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card mb-4">
+          <div class="card-body">
+            <h5>Flair Classement 📊</h5>
+            <table class="rugby-board">
+              <thead>
+                <tr>
+                  <th>Joueur</th>
+                  <th>Points</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in detailed_ranking %}
+                  <tr>
+                    <td class="text-start ps-3">
+                      {{ r.username }}
+                      {% if r.username == user.username %}<small class="text-warning font-weight-bold">(Moi)</small>{% endif %}
+                    </td>
+                    <td>{{ r.ranking_pts }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -188,7 +236,10 @@
                 {% for r in choppes_or %}
                   <tr>
                     <td class="rank-col">{{ r.rank }}</td>
-                    <td class="text-start ps-3">{{ r.username }}</td>
+                    <td class="text-start ps-3">
+                      {{ r.username }}
+                      {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
+                    </td>
                     <td class="fw-bold">{{ r.value }}</td>
                   </tr>
                 {% endfor %}
@@ -215,7 +266,10 @@
                 {% for r in choppes_bois %}
                   <tr>
                     <td class="rank-col">{{ r.rank }}</td>
-                    <td class="text-start ps-3">{{ r.username }}</td>
+                    <td class="text-start ps-3">
+                      {{ r.username }}
+                      {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
+                    </td>
                     <td class="fw-bold">{{ r.value }}</td>
                   </tr>
                 {% endfor %}
@@ -280,7 +334,10 @@
               <tbody>
                 {% for r in victory_table %}
                   <tr>
-                    <td class="text-start ps-3">{{ r.username }}</td>
+                    <td class="text-start ps-3">
+                      {{ r.username }}
+                      {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
+                    </td>
                     <td class="fw-bold">{{ r.bons }}</td>
                   </tr>
                 {% endfor %}
