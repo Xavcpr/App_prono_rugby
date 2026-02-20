@@ -176,11 +176,11 @@
                 </tr>
               </thead>
               <tbody>
-                {% for r in detailed_ranking %}
+                {% for r in match_performance_ranking %}
                   <tr>
                     <td class="text-start ps-3">
-                      {{ r.username }}
-                      {% if r.username == user.username %}(Moi){% endif %}
+                      <strong>{{ r.username }}</strong>
+                      {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-2">Moi</span>{% endif %}
                     </td>
                     <td>{{ r.match_pts }}</td>
                   </tr>
@@ -202,11 +202,11 @@
                 </tr>
               </thead>
               <tbody>
-                {% for r in detailed_ranking %}
+                {% for r in flair_ranking %}
                   <tr>
                     <td class="text-start ps-3">
-                      {{ r.username }}
-                      {% if r.username == user.username %}(Moi){% endif %}
+                      <strong>{{ r.username }}</strong>
+                      {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-2">Moi</span>{% endif %}
                     </td>
                     <td>{{ r.ranking_pts }}</td>
                   </tr>

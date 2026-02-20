@@ -14,7 +14,7 @@ from .services import scoring
 
 from .models import CompetitionResult, CompetitionTeam, DailyScore, Match, Prediction, Competition, Round, Player, Season, SeasonScore, Team, CompetitionTeamPrediction, CompetitionRankingPrediction, TeamRankingPrediction, CompetitionBonusPrediction
 from .services.scoring import calculate_match_points
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Sum
 from .services.statistics import compute_statistics
 from django.contrib.admin.views.decorators import staff_member_required
 
@@ -678,15 +678,24 @@ def statistiques_view(request):
     season_scores = {}
     if competition:
         season_scores = {ss.user.username: ss for ss in SeasonScore.objects.filter(competition=competition)}
-        # mapping = {ss.user.username: ss for ss in SeasonScore.objects.filter(competition=competition)}
+    else:
+        qs = SeasonScore.objects.values('user__username').annotate(total_rk=Sum('ranking_points'))
+        season_scores = {item['user__username']: item['total_rk'] for item in qs}
     for r in stats.detailed_ranking:
-        # s_obj = mapping.get(r['username'])
-        # r['match_pts'] = s_obj.match_points if s_obj else r['points']
-        s_obj = season_scores.get(r['username'])
+        # s_obj = season_scores.get(r['username'])
         r['match_pts'] = r.get('points', 0)
-        r['ranking_pts'] = s_obj.ranking_points if s_obj else 0
+        r['ranking_pts'] = season_scores.get(r['username'], 0)
+        # r['ranking_pts'] = s_obj.ranking_points if s_obj else 0
         r['total_global'] = r['match_pts'] + r['ranking_pts']
 
+    stats.detailed_ranking.sort(key=lambda x: x['total_global'], reverse=True)
+    for i, r in enumerate(stats.detailed_ranking, 1):
+        r['rank'] = i
+    match_performance_ranking = sorted(stats.detailed_ranking, key=lambda x: x['match_pts'], reverse=True)
+    flair_ranking = sorted(stats.detailed_ranking, key=lambda x: x['ranking_pts'], reverse=True)
+    
+    
+    
     context = {
         "competitions": competitions,
         "competition": competition,
@@ -711,6 +720,9 @@ def statistiques_view(request):
         # NOUVEAU : choppes
         "choppes_or": stats.choppes_or,
         "choppes_bois": stats.choppes_bois,
+        
+        "match_performance_ranking": match_performance_ranking,
+        "flair_ranking": flair_ranking,
     }
 
 
