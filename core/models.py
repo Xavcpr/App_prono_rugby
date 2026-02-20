@@ -187,17 +187,7 @@ class Prediction(models.Model):
     bonus_away_pred = models.BooleanField(default=False)
     points = models.IntegerField(default=0)
 
-# ----- Bonus journée -----
-class DailyBonus(models.Model):
-    player = models.ForeignKey(Player, on_delete=models.CASCADE)
-    round = models.ForeignKey(Round, on_delete=models.CASCADE)
-    points = models.IntegerField(default=0)
 
-# ----- Bonus compétition -----
-class CompetitionBonus(models.Model):
-    player = models.ForeignKey(Player, on_delete=models.CASCADE)
-    competition = models.ForeignKey(Competition, on_delete=models.CASCADE)
-    points = models.IntegerField(default=0)
 
 # ----- Scores journaliers -----
 class DailyScore(models.Model):
@@ -242,48 +232,6 @@ class SeasonScore(models.Model):
     def total_points(self):
         return self.match_points + self.ranking_points
     
-    
-# ----- Classement par compétition -----
-class CompetitionRankingPrediction(models.Model):
-    player = models.ForeignKey(Player, on_delete=models.CASCADE)
-    season = models.ForeignKey(Season, on_delete=models.CASCADE)
-    competition = models.ForeignKey(Competition, on_delete=models.CASCADE)
-
-    winner_team = models.ForeignKey(
-        Team,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="winner_predictions"
-    )
-
-    best_try_scorer = models.CharField(max_length=100, blank=True)
-    best_kicker = models.CharField(max_length=100, blank=True)
-
-    locked_at = models.DateTimeField(null=True, blank=True)
-
-    class Meta:
-        unique_together = ("player", "season", "competition")
-
-# ----- Classement d'équipe -----
-class TeamRankingPrediction(models.Model):
-    ranking = models.ForeignKey(
-        CompetitionRankingPrediction,
-        related_name="team_rankings",
-        on_delete=models.CASCADE
-    )
-    team = models.ForeignKey(Team, on_delete=models.CASCADE)
-    position = models.PositiveIntegerField()
-
-    pool = models.PositiveSmallIntegerField(
-        null=True,
-        blank=True,
-        help_text="Utilisé uniquement pour la Champions Cup"
-    )
-
-    class Meta:
-        unique_together = ("ranking", "team")
-        ordering = ["pool", "position"]
 
 # ----- Pronostics de bonus compétition (marqueur)-----
 class CompetitionBonusPrediction(models.Model):

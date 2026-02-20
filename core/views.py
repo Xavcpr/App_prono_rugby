@@ -1,22 +1,23 @@
-from urllib import request
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth import logout as auth_logout
+from django.contrib.auth import logout as auth_logout, update_session_auth_hash
 from django.contrib import messages
 from django.utils import timezone
 from django.contrib.auth.forms import PasswordChangeForm
-from django.contrib.auth import update_session_auth_hash
-from django.forms import modelform_factory, modelformset_factory
-from .forms import CompetitionRankingPredictionForm, TeamRankingPredictionFormSet, TeamRankingFormSet
-from .constants import COMPETITION_RULES
-from .services.scoring import process_round_scores, get_winner_side
-from .services import scoring
-
-from .models import CompetitionResult, CompetitionTeam, DailyScore, Match, Prediction, Competition, Round, Player, Season, SeasonScore, Team, CompetitionTeamPrediction, CompetitionRankingPrediction, TeamRankingPrediction, CompetitionBonusPrediction
-from .services.scoring import calculate_match_points
 from django.db.models import Prefetch, Sum
-from .services.statistics import compute_statistics
 from django.contrib.admin.views.decorators import staff_member_required
+
+# Modèles conservés
+from .models import (
+    Competition, Season, Round, Match, Team, Player, 
+    Prediction, DailyScore, SeasonScore, CompetitionResult,
+    CompetitionTeam, CompetitionTeamPrediction, CompetitionBonusPrediction
+)
+
+# Services
+from .services import scoring
+from .services.scoring import process_round_scores, get_winner_side, calculate_match_points
+from .services.statistics import compute_statistics
 
 
 # CONFIGURATION DU BAREME DES POINTS
@@ -195,33 +196,32 @@ def settings_view(request):
 def competition_ranking_view(request):
     competitions = Competition.objects.all()
     selected_competition_id = request.GET.get("competition")
+    
     selected_competition = None
+    selected_season = None
     rankings = []
 
     if selected_competition_id:
         selected_competition = get_object_or_404(Competition, id=selected_competition_id)
-        # Récupère tous les classements de cette compétition
-        rankings = TeamRankingPrediction.objects.filter(ranking__competition=selected_competition)\
-                                                .order_by("position")
+        
+        # On récupère la saison la plus récente pour cette compétition
+        selected_season = Season.objects.filter(competition=selected_competition).order_by('-year').first()
+        
+        if selected_season:
+            # On récupère les pronos de classement liés au joueur ET à la saison
+            rankings = CompetitionTeamPrediction.objects.filter(
+                player__user=request.user, # On filtre par l'utilisateur connecté
+                competition=selected_competition,
+                season=selected_season
+            ).order_by("position")
 
     return render(request, "pronos/classement.html", {
         "competitions": competitions,
         "selected_competition": selected_competition,
+        "selected_season": selected_season,
         "rankings": rankings,
     })
 
-
-# def _ensure_lines(qs, count, ranking, pool=None):
-#     existing = qs.count()
-#     if existing < count:
-#         TeamRankingPrediction.objects.bulk_create([
-#             TeamRankingPrediction(
-#                 ranking=ranking,
-#                 position=i + 1,
-#                 pool=pool
-#             )
-#             for i in range(existing, count)
-#         ])
 
 
 # ------------------
