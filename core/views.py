@@ -678,7 +678,7 @@ def statistiques_view(request):
     season_scores = {}
     if competition:
         season_scores = {ss.user.username: ss for ss in SeasonScore.objects.filter(competition=competition)}
-        mapping = {ss.user.username: ss for ss in SeasonScore.objects.filter(competition=competition)}
+        # mapping = {ss.user.username: ss for ss in SeasonScore.objects.filter(competition=competition)}
     for r in stats.detailed_ranking:
         s_obj = mapping.get(r['username'])
         # r['match_pts'] = s_obj.match_points if s_obj else r['points']
