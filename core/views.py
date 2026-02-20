@@ -675,6 +675,12 @@ def statistiques_view(request):
 
     # On calcule toutes les stats de la compétition (ou total)
     stats = compute_statistics(competition)
+    if competition:
+        mapping = {ss.user.username: ss for ss in SeasonScore.objects.filter(competition=competition)}
+        for r in stats.detailed_ranking:
+            s_obj = mapping.get(r['username'])
+            r['match_pts'] = s_obj.match_points if s_obj else r['points']
+            r['ranking_pts'] = s_obj.ranking_points if s_obj else 0
 
     context = {
         "competitions": competitions,
