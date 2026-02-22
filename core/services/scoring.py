@@ -168,7 +168,9 @@ def process_round_scores(round_obj):
                     break
             
             # 5. Multiplicateurs (Phase et Compétition)
-            multiplier = PHASE_MULTIPLIERS.get(round_obj.match_set.first().phase if round_obj.match_set.exists() else "POOL", 1.0)
+            # Utilisation de .matches au lieu de .match_set
+            first_match = round_obj.matches.first()
+            multiplier = PHASE_MULTIPLIERS.get(first_match.phase if first_match else "POOL", 1.0)
             
             if "6 Nations" in comp_name:
                 multiplier *= 2.0
