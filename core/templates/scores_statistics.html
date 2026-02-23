@@ -85,6 +85,13 @@
                         </tr>
                     {% endfor %}
                 </tbody>
+                <tfoot>
+                    <tr class="bg-light fw-bold">
+                        <th class="sticky-col col-total">TOTAL</th>
+                        {% for x in range_a %}<td class="col-total">{{ col_totals|get_dict_item:x|default:0 }}</td>{% endfor %}
+                        <td style="background: #2c3e50;"></td>
+                    </tr>
+                </tfoot>
             </table>
         </div>
     </div>

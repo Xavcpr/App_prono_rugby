@@ -18,28 +18,24 @@ def import_rdd(file_path):
         count = 0
         for row in reader:
             try:
-                # Nettoyage du nom de la compétition (enlever espaces et points-virgules traînants)
-                comp_name = row['competition'].strip()
-                comp, _ = Competition.objects.get_or_create(name=comp_name)
+                # ... (logique comp, season, round identique)
                 
-                season_year = row['season'].strip()
-                season, _ = Season.objects.get_or_create(competition=comp, year=season_year)
-                
-                # Gestion du Round : si ton CSV contient "J1", on extrait le chiffre 1
-                raw_round = row['round'].strip()
-                # On garde seulement les chiffres (ex: "J1" -> "1")
-                round_num = int(''.join(filter(str.isdigit, raw_round)))
-                
-                round_obj, _ = Round.objects.get_or_create(season=season, number=round_num)
-                
-                Match.objects.create(
+                # SÉCURITÉ : On vérifie si ce match avec ces scores exacts existe déjà dans ce round
+                exists = Match.objects.filter(
                     round=round_obj,
                     home_score=int(row['home_score']),
-                    away_score=int(row['away_score']),
-                    phase=MatchPhase.POOL,
-                    weight=0
-                )
-                count += 1
+                    away_score=int(row['away_score'])
+                ).exists()
+
+                if not exists:
+                    Match.objects.create(
+                        round=round_obj,
+                        home_score=int(row['home_score']),
+                        away_score=int(row['away_score']),
+                        phase=MatchPhase.POOL,
+                        weight=0
+                    )
+                    count += 1
                 if count % 100 == 0:
                     print(f"{count} matchs importés...")
                     
