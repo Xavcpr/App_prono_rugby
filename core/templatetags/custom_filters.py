@@ -16,3 +16,15 @@ def get_item(dictionary, key):
 def get_attr(obj, attr_name):
     """Permet de récupérer un attribut d'un objet dynamiquement"""
     return getattr(obj, attr_name, None)
+
+@register.filter
+def get_item_from_coords(dictionary, key):
+    # Comme notre clé dans la vue est un tuple (x, y), on va simplifier 
+    # en passant d'abord x puis y
+    return dictionary.get(key)
+
+@register.filter
+def get_dict_item(dictionary, key):
+    if isinstance(dictionary, dict):
+        return dictionary.get(key)
+    return None

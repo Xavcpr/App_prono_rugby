@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% load custom_filters %}
+{% block content %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+  .board-header { margin: 20px 0; background: #2c3e50; color: white; padding: 20px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
+  .navigation-zone { background: #ecf0f1; padding: 15px; border-radius: 8px; margin-bottom: 25px; }
+  .heatmap-container { background: white; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); padding: 1px; overflow: hidden; margin-bottom: 30px; }
+  .heatmap-wrapper { overflow: auto; max-height: 60vh; }
+  .heatmap-table { border-collapse: collapse; font-size: 0.75rem; width: 100%; }
+  .heatmap-table th, .heatmap-table td { border: 1px solid #dee2e6; min-width: 38px; width: 38px; height: 38px; text-align: center; vertical-align: middle; position: relative; }
+  .heatmap-table thead th { background: #34495e; color: white; position: sticky; top: 0; z-index: 20; }
+  .sticky-col { position: sticky; left: 0; z-index: 10; background: #f8f9fa !important; font-weight: 800; color: #2c3e50; border-right: 2px solid #bdc3c7 !important; }
+  .col-total { background: #f1c40f !important; color: #2c3e50; font-weight: bold; }
+  .row-total { background: #f3f4f6 !important; font-weight: bold; color: #7f8c8d; border-left: 2px solid #bdc3c7 !important; }
+  .score-cell { cursor: crosshair; transition: transform 0.1s; }
+  .score-cell:hover { transform: scale(1.15); z-index: 5; box-shadow: 0 0 10px rgba(0,0,0,0.2); outline: 1px solid #2c3e50; }
+  .chart-container { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 50px; }
+    </style>
+    <div class="board-header">
+        <div>
+            <h1 class="h3 mb-0">📈 Statistiques des Scores</h1>
+            <small class="opacity-75">Analyse fréquentielle</small>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="/" class="btn btn-light btn-sm">🏉 Accueil</a>
+        </div>
+    </div>
+    <div class="navigation-zone">
+        <form method="get" class="row g-3">
+            <div class="col-md-5">
+                <label class="form-label fw-bold small text-muted text-uppercase">Compétition</label>
+                <select name="competition" class="form-select" onchange="this.form.submit()">
+                    <option value="">Toutes</option>
+                    {% for comp in competitions %}
+                        <option value="{{ comp.id }}"
+                                {% if selected_comp == comp.id %}selected{% endif %}>{{ comp.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold small text-muted text-uppercase">Saison</label>
+                <select name="season" class="form-select" onchange="this.form.submit()">
+                    <option value="">Toutes les saisons</option>
+                    {% for s in seasons %}
+                        <option value="{{ s.id }}"
+                                {% if selected_season == s.id %}selected{% endif %}>{{ s.year }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-dark w-100">Actualiser</button>
+            </div>
+        </form>
+    </div>
+    <div class="chart-container">
+        <h5 class="mb-4 text-muted fw-bold text-uppercase"
+            style="font-size: 0.8rem">Distribution des points marqués</h5>
+        <canvas id="scoreChart" height="100"></canvas>
+    </div>
+    <div class="heatmap-container">
+        <div class="heatmap-wrapper">
+            <table class="heatmap-table">
+                <thead>
+                    <tr>
+                        <th class="sticky-col">DOM \ EXT</th>
+                        {% for x in range_a %}<th>{{ x }}</th>{% endfor %}
+                        <th class="col-total">TOTAL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for y in range_h %}
+                        <tr>
+                            <th class="sticky-col">{{ y }}</th>
+                            {% for x in range_a %}
+                                {% with h_dict=matrix|get_dict_item:y %}
+                                    {% with count=h_dict|get_dict_item:x %}
+                                        <td class="score-cell" data-count="{{ count|default:0 }}">
+                                            {% if count %}<span class="occurence-num">{{ count }}</span>{% endif %}
+                                        </td>
+                                    {% endwith %}
+                                {% endwith %}
+                            {% endfor %}
+                            <td class="row-total">{{ row_totals|get_dict_item:y|default:0 }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <script>
+document.addEventListener("DOMContentLoaded", function() {
+    // 1. Coloration de la heatmap
+    const cells = document.querySelectorAll('.score-cell');
+    const maxOccurence = {{ max_occurence|default:1 }};
+    cells.forEach(cell => {
+        const count = parseInt(cell.getAttribute('data-count'));
+        if (count > 0) {
+            const alpha = 0.1 + (count / maxOccurence) * 0.85;
+            cell.style.backgroundColor = `rgba(220, 53, 69, ${alpha})`; 
+            if (alpha > 0.5) cell.style.color = 'white';
+        }
+    });
+
+    // 2. Initialisation du graphique
+    const ctx = document.getElementById('scoreChart').getContext('2d');
+    
+    // On récupère les données envoyées par la vue
+    const labels = [{% for i in range_h %}"{{ i }}",{% endfor %}];
+    const dataHome = [{% for i in range_h %}{{ row_totals|get_dict_item:i|default:0 }},{% endfor %}];
+    const dataAway = [{% for i in range_h %}{{ col_totals|get_dict_item:i|default:0 }},{% endfor %}];
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Score Domicile',
+                    data: dataHome,
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                },
+                {
+                    label: 'Score Extérieur',
+                    data: dataAway,
+                    borderColor: '#e74c3c',
+                    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'top' } },
+            scales: {
+                y: { beginAtZero: true, title: { display: true, text: 'Nombre de matchs' } },
+                x: { title: { display: true, text: 'Points marqués' } }
+            }
+        }
+    });
+});
+    </script>
+{% endblock %}

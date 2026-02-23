@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block content %}
+    <style>
+    .charte-container {
+        max-width: 800px;
+        margin: 40px auto;
+        padding: 50px;
+        background-color: #fdfcf0; /* Teinte papier ancien */
+        border: 2px solid #2c3e50;
+        box-shadow: 10px 10px 0px #2c3e50;
+        font-family: 'Georgia', serif;
+        position: relative;
+        line-height: 1.6;
+    }
+
+    /* Effet de sceau de cire */
+    .charte-container::after {
+        content: "GP";
+        position: absolute;
+        bottom: 30px;
+        right: 40px;
+        width: 60px;
+        height: 60px;
+        background: #962d2d;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #f1c40f;
+        font-weight: bold;
+        font-size: 1.5rem;
+        transform: rotate(-15deg);
+        border: 3px double #7c2525;
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+    }
+
+    .charte-header {
+        text-align: center;
+        border-bottom: 2px double #2c3e50;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+    }
+
+    .charte-header h1 {
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        color: #2c3e50;
+        margin: 0;
+        font-size: 2.5rem;
+    }
+
+    .charte-header p {
+        font-style: italic;
+        color: #7f8c8d;
+        font-size: 1.2rem;
+    }
+
+    .loi {
+        display: flex; /* Utilise flexbox pour aligner le numéro et le texte */
+        align-items: flex-start;
+        margin-bottom: 25px;
+    }
+
+    .loi-number {
+        font-weight: bold;
+        font-size: 1.4rem;
+        color: #962d2d;
+        min-width: 60px; /* Espace suffisant pour "VIII." */
+        margin-right: 15px;
+        text-align: right; /* Aligne les chiffres vers la droite pour un look plus pro */
+        flex-shrink: 0; /* Empêche le numéro de s'écraser */
+    }
+
+    .loi-text {
+        font-size: 1.1rem;
+        color: #2c3e50;
+        text-align: justify;
+        flex: 1; /* Prend tout l'espace restant */
+    }
+
+    .loi-text em {
+        color: #7f8c8d;
+    }
+
+    .footer-charte {
+        margin-top: 40px;
+        text-align: center;
+        font-variant: small-caps;
+        font-weight: bold;
+        color: #2c3e50;
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+        .charte-container {
+            margin: 10px;
+            padding: 20px;
+        }
+        .charte-header h1 { font-size: 1.5rem; }
+    }
+    </style>
+    <div class="charte-container">
+        <div class="charte-header">
+            <h1>Charte</h1>
+            <p>du Gentil Pronostiqueur (GP)</p>
+        </div>
+        <div class="loi">
+            <span class="loi-number">I.</span>
+            <div class="loi-text">
+                Tu respecteras les autres GP et leurs opinions sportives <em>(même s’ils supportent l’ASM Clermont Auvergne)</em>.
+                En particulier, tu ne profiteras pas du groupe WhatsApp pour faire de la propagande politique ou sociétale. Les boutades sont encouragées tant qu’elles ne comportent pas d’insulte <em>(on ne traite pas un autre GP de « supporter du Racing » par exemple)</em>.
+            </div>
+        </div>
+        <div class="loi">
+            <span class="loi-number">II.</span>
+            <div class="loi-text">
+                Lorsque 2 GP se retrouvent dans un même lieu afin de partager un moment rugbystique, tu montreras ton plus bel esprit sportif. Tu t'efforceras de respecter les buteurs <em>(même à Mayol)</em>, les équipes adverses <em>(oui, même le Stade Toulousain)</em> et les joueurs les plus insupportables <em>(oui, même Thomas Ramos)</em>.
+                <br>
+                <strong>Exception tolérée :</strong> devant quelqu’un qui énoncera la phrase « jeu de mains, jeu de T… »
+            </div>
+        </div>
+        <div class="loi">
+            <span class="loi-number">III.</span>
+            <div class="loi-text">
+                Tu prendras toutes les mesures possibles pour éviter les <strong>no-shows</strong>, le pire ennemi du GO.
+            </div>
+        </div>
+        <div class="loi">
+            <span class="loi-number">IV.</span>
+            <div class="loi-text">
+                Tu enverras tes pronos avant midi le jour du 1er match, évitant ainsi au GO des relances qui lui font craindre un no-show <em>(pire ennemi du GO, faut-il le rappeler)</em>.
+            </div>
+        </div>
+        <div class="loi">
+            <span class="loi-number">V.</span>
+            <div class="loi-text">
+                Tu ne plagieras pas honteusement les pronos d’un autre GP, même si l'on est en train de se faire attaquer par des manchots.
+            </div>
+        </div>
+        <div class="loi">
+            <span class="loi-number">VI.</span>
+            <div class="loi-text">
+                Tu suivras l’ordre des matches donné par le GO <em>(sauf s’il est à la bourre)</em>.
+            </div>
+        </div>
+        <div class="loi">
+            <span class="loi-number">VII.</span>
+            <div class="loi-text">
+                Tu vérifieras la bonne saisie de tes pronos <em>(même si on n'utilise plus ce fichu Excel)</em> et informeras gentiment le GO que sa nouvelle tentative de triche pour enfin finir sur le podium n’a pas fonctionné.
+            </div>
+        </div>
+        <div class="loi">
+            <span class="loi-number">VIII.</span>
+            <div class="loi-text">
+                Tu paieras ta cotisation, permettant ainsi au gagnant de remporter le maillot de son équipe favorite <em>(et au GO de se payer une bière au stade)</em>.
+            </div>
+        </div>
+        <div class="loi">
+            <span class="loi-number">IX.</span>
+            <div class="loi-text">
+                Tu mettras tout en œuvre pour assister à l’assemblée générale <em>(mariage, PEL, garde d’enfant sont des excuses secondaires)</em>.
+            </div>
+        </div>
+        <div class="footer-charte">Fait à Toulon, pour valoir ce que de droit.</div>
+    </div>
+{% endblock %}

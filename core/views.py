@@ -4,7 +4,7 @@ from django.contrib.auth import logout as auth_logout, update_session_auth_hash
 from django.contrib import messages
 from django.utils import timezone
 from django.contrib.auth.forms import PasswordChangeForm
-from django.db.models import Prefetch, Sum
+from django.db.models import Prefetch, Sum, Count, Max
 from django.contrib.admin.views.decorators import staff_member_required
 
 # Modèles conservés
@@ -981,3 +981,60 @@ def declencher_calcul_points(request, season_id):
     return redirect('recap_classement')
 
 
+def charte_view(request):
+    return render(request, "pronos/charte.html")
+
+def statistics_view(request):
+    comp_id = request.GET.get('competition')
+    season_id = request.GET.get('season')
+
+    query = Match.objects.filter(home_score__isnull=False, away_score__isnull=False, phase='POOL')
+
+    if comp_id:
+        query = query.filter(round__season__competition_id=comp_id)
+    if season_id:
+        query = query.filter(round__season_id=season_id)
+
+    # Agrégation des scores
+    stats = query.values('home_score', 'away_score').annotate(total=Count('id'))
+
+    matrix = {}
+    row_totals = {} # Sommes par ligne (Domicile)
+    col_totals = {} # Sommes par colonne (Extérieur)
+    max_occurence = 0
+    max_h, max_a = 0, 0
+
+    for s in stats:
+        h, a, t = s['home_score'], s['away_score'], s['total']
+        
+        # Remplissage matrice
+        if h not in matrix: matrix[h] = {}
+        matrix[h][a] = t
+        
+        # Calcul des totaux
+        row_totals[h] = row_totals.get(h, 0) + t
+        col_totals[a] = col_totals.get(a, 0) + t
+        
+        # Mise à jour des max pour le rendu
+        if t > max_occurence: max_occurence = t
+        if h > max_h: max_h = h
+        if a > max_a: max_a = a
+
+    # Filtrage des saisons selon la compétition choisie
+    seasons = Season.objects.all().order_by('-year')
+    if comp_id:
+        seasons = seasons.filter(competition_id=comp_id)
+
+    context = {
+        'matrix': matrix,
+        'row_totals': row_totals,
+        'col_totals': col_totals,
+        'range_h': range(0, max_h + 1), # Y : Domicile
+        'range_a': range(0, max_a + 1), # X : Extérieur
+        'max_occurence': max_occurence,
+        'competitions': Competition.objects.all(),
+        'seasons': seasons,
+        'selected_comp': int(comp_id) if comp_id else None,
+        'selected_season': int(season_id) if season_id else None,
+    }
+    return render(request, 'scores_statistics.html', context)
