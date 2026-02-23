@@ -12,7 +12,7 @@ def merge_competitions():
         # 1. On récupère les deux objets
         # Attention aux noms exacts que tu vois dans ton filtre
         wrong_comp = Competition.objects.get(name="6 nations")
-        correct_comp = Competition.objects.get(name="Tournoi des 6 nations")
+        correct_comp = Competition.objects.get(name="Tournoi des 6 Nations")
 
         print(f"Fusion de '{wrong_comp.name}' vers '{correct_comp.name}'...")
 
