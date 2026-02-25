@@ -6,12 +6,13 @@ from django.utils import timezone
 from django.contrib.auth.forms import PasswordChangeForm
 from django.db.models import Prefetch, Sum, Count, Max
 from django.contrib.admin.views.decorators import staff_member_required
+from datetime import datetime
 
 # Modèles conservés
 from .models import (
     Competition, Season, Round, Match, Team, Player, 
     Prediction, DailyScore, SeasonScore, CompetitionResult,
-    CompetitionTeam, CompetitionTeamPrediction, CompetitionBonusPrediction
+    CompetitionTeam, CompetitionTeamPrediction, CompetitionBonusPrediction, SeasonHistory
 )
 
 # Services
@@ -1061,3 +1062,65 @@ def bareme_view(request):
         'cc': RUGBY_SCORING.get("Champions Cup"),
         '6nations': RUGBY_SCORING.get("6 Nations"),
     })
+    
+def get_all_time_ranking():
+    current_year = datetime.now().year
+    histories = SeasonHistory.objects.all()
+    all_time_scores = {}
+
+    for record in histories:
+        n = current_year - record.season_year
+        name = record.display_name
+        is_active = record.user is not None  # True si le joueur a un compte
+        # Ton algo combiné :
+        # 1. Score de performance (0 à 100)
+        performance = ((record.total_players + 1 - record.rank) * 100) / record.total_players
+        
+        # 2. Coefficient temporel (0.9^n)
+        time_coeff = 0.9 ** n
+        
+        weighted_score = performance * time_coeff
+        
+        # 3. Cumul par utilisateur
+        user_name = record.user.username
+        all_time_scores[user_name] = all_time_scores.get(user_name, 0) + weighted_score
+
+    # Trier par score décroissant
+    return sorted(all_time_scores.items(), key=lambda x: x[1], reverse=True)
+
+def hall_of_fame_view(request):
+    current_year = datetime.now().year
+    histories = SeasonHistory.objects.all()
+    data = {}
+
+    for record in histories:
+        name = record.display_name
+        n = current_year - record.season_year
+        
+        # Ton algo combiné :
+        perf = ((record.total_players + 1 - record.rank) * 100) / record.total_players
+        score_annee = perf * (0.9 ** n)
+        
+        if name not in data:
+            data[name] = {
+                'user_name': name,
+                'score': 0,
+                'seasons_count': 0,
+                'best_rank': 999,
+                'is_active': record.user is not None
+            }
+        
+        data[name]['score'] += score_annee
+        data[name]['seasons_count'] += 1
+        if record.rank < data[name]['best_rank']:
+            data[name]['best_rank'] = record.rank
+
+    # Tri et calcul du score relatif
+    ranking = sorted(data.values(), key=lambda x: x['score'], reverse=True)
+    
+    if ranking:
+        max_score = ranking[0]['score']
+        for entry in ranking:
+            entry['relative_score'] = (entry['score'] / max_score) * 100
+
+    return render(request, 'hall_of_fame.html', {'all_time_ranking': ranking})

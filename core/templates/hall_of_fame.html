@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block content %}
+    <style>
+  /* --- Charte Graphique Harmonisée --- */
+  .board-header {
+    margin: 20px 0; background: #2c3e50; color: white; padding: 20px; border-radius: 8px;
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;
+  }
+  .hall-fame-card {
+    border: none; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    background: white; margin-bottom: 25px;
+  }
+  .rank-gold { color: #f1c40f; font-size: 1.5rem; }
+  .rank-silver { color: #bdc3c7; font-size: 1.4rem; }
+  .rank-bronze { color: #e67e22; font-size: 1.3rem; }
+  
+  .player-row { border-left: 5px solid #3498db; transition: 0.2s; }
+  .player-row:hover { background-color: #f8f9fa; transform: scale(1.01); }
+  
+  .longevity-badge {
+    background: #edf2f4; color: #2c3e50; padding: 4px 10px; border-radius: 20px;
+    font-size: 0.75rem; font-weight: bold; border: 1px solid #bdc3c7;
+  }
+  
+  .score-alltime {
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-weight: 800; color: #2c3e50; font-size: 1.2rem;
+  }
+
+  /* Barre de puissance All-time */
+  .power-bar-container { background: #ecf0f1; height: 10px; border-radius: 5px; overflow: hidden; width: 100px; }
+  .power-bar { background: linear-gradient(90deg, #3498db, #2ecc71); height: 100%; }
+
+  @media (max-width: 768px) {
+    .hide-mobile { display: none; }
+  }
+    </style>
+    <div class="board-header text-center text-md-start">
+        <div>
+            <h1 class="h3 mb-0">🏆 Panthéon des Légendes</h1>
+            <small class="opacity-75">Classement historique depuis 2013 (Pondéré par l'ancienneté et la densité)</small>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'pronos' %}" class="btn btn-outline-light btn-sm">🏉 Retour Pronos</a>
+        </div>
+    </div>
+    <div class="hall-fame-card">
+        <div class="table-responsive p-3">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="text-uppercase text-muted small fw-bold">
+                    <tr>
+                        <th class="text-center" style="width: 80px;">Rang</th>
+                        <th>Joueur</th>
+                        <th class="text-center hide-mobile">Saisons</th>
+                        <th class="text-center hide-mobile">Meilleur Rang</th>
+                        <th class="text-end pe-4">Score All-Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in all_time_ranking %}
+                        <tr class="player-row">
+                            <td class="text-center">
+                                {% if forloop.counter == 1 %}
+                                    <span class="rank-gold">🥇</span>
+                                {% elif forloop.counter == 2 %}
+                                    <span class="rank-silver">🥈</span>
+                                {% elif forloop.counter == 3 %}
+                                    <span class="rank-bronze">🥉</span>
+                                {% else %}
+                                    <span class="fw-bold text-muted">#{{ forloop.counter }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="d-flex flex-column">
+                                    <span class="team-name">{{ entry.user_name }}</span>
+                                    <div class="d-flex gap-1 mt-1">
+                                        {% if not entry.is_active %}
+                                            <span class="longevity-badge"
+                                                  style="background: #fdf2f2;
+                                                         color: #a94442;
+                                                         border-color: #f5c6cb">👻 Ghost (Légende)</span>
+                                        {% endif %}
+                                        {% if entry.seasons_count >= 10 %}
+                                            <span class="longevity-badge">💎 Doyen</span>
+                                        {% elif entry.seasons_count >= 5 %}
+                                            <span class="longevity-badge">🎖️ Vétéran</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-center hide-mobile">
+                                <span class="badge bg-light text-dark border">{{ entry.seasons_count }} ans</span>
+                            </td>
+                            <td class="text-center hide-mobile text-muted italic">{{ entry.best_rank }}e</td>
+                            <td class="text-end pe-4">
+                                <div class="d-flex flex-column align-items-end">
+                                    <span class="score-alltime">{{ entry.score|floatformat:1 }}</span>
+                                    <div class="power-bar-container mt-1">
+                                        <div class="power-bar" style="width: {{ entry.relative_score }}%;"></div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="row g-4 mt-2">
+        <div class="col-md-8">
+            <div class="card border-0 bg-light shadow-sm">
+                <div class="card-body">
+                    <h5 class="fw-bold text-dark">
+                        <i class="fas fa-calculating"></i> Comprendre le calcul
+                    </h5>
+                    <p class="small text-muted">
+                        Le score All-Time n'est pas une simple somme. Il récompense la <strong>performance brute</strong>,
+                        la <strong>densité d'adversaires</strong> et la <strong>régularité</strong> dans le temps.
+                    </p>
+                    <div class="text-center bg-white p-3 rounded border my-3">
+                        $$Score = \sum_{saisons} \left( \frac{N + 1 - x}{N} \times 100 \right) \times 0.9^n$$
+                    </div>
+                    <ul class="small text-muted mb-0">
+                        <li>
+                            <strong>$N$</strong> : Nombre de participants cette saison-là.
+                        </li>
+                        <li>
+                            <strong>$x$</strong> : Ton rang final.
+                        </li>
+                        <li>
+                            <strong>$n$</strong> : Âge de la saison (0 pour cette année, 1 pour l'an passé...).
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 bg-light shadow-sm">
+                <div class="card-body">
+                    <h5 class="fw-bold text-dark">
+                        <i class="fas fa-medal"></i> Distinctions
+                    </h5>
+                    <div class="d-flex flex-column gap-2 mt-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="longevity-badge">💎 Doyen</span>
+                            <small class="text-muted">+10 saisons disputées</small>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="longevity-badge">🎖️ Vétéran</span>
+                            <small class="text-muted">+5 saisons disputées</small>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="longevity-badge" style="background: #fdf2f2; color: #a94442;">👻 Ghost</span>
+                            <small class="text-muted">Ancien membre (non inscrit)</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

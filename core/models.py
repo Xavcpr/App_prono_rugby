@@ -334,3 +334,21 @@ class CompetitionResult(models.Model):
 
     def __str__(self):
         return f"Résultats réels {self.season}"
+    
+# Classement all-time des saisons jouées (pour affichage historique)
+class SeasonHistory(models.Model):
+    season_year = models.IntegerField()
+    # On rend l'utilisateur optionnel (null=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    # On ajoute un champ texte pour le nom "historique"
+    player_name_legacy = models.CharField(max_length=100, null=True, blank=True)
+    
+    rank = models.IntegerField()
+    total_players = models.IntegerField()
+
+    @property
+    def display_name(self):
+        # Priorité au compte utilisateur s'il existe, sinon le nom texte
+        if self.user:
+            return self.user.username
+        return self.player_name_legacy
