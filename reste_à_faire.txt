@@ -29,10 +29,6 @@ To do list ! :
 
 ---- FIN DE LA V2 ----
 
-- * vue classement all_time
-    - à réfléchir
-    - reprise de données
-
 - debug = true ?
 
 ---- FIN DE LA V3 ----

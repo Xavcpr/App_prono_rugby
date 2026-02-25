@@ -27,16 +27,21 @@ urlpatterns = [
     
      # Statistiques générales sur les paris   
     path("statistiques/", statistiques_view, name="statistiques"),
-    
+    # détail classement par journée
     path('debug-scores/', debug_scores_view, name='debug_scores'),
-    
+    # Pronostics de classement de tous les pronostiqueurs
     path('classement/recap/', recap_pronos_classement, name='recap_classement'),
-    
+    # Vue pour rentrer les classements réels en admin de fin de saison régulière
     path('admin/saisie-resultats/', admin_saisie_resultats, name='admin_saisie_resultats'),
+    # 
     path('admin/calcul-points/<int:season_id>/', declencher_calcul_points, name='calcul_points_classement'),
+    # Charte 2024
     path('charte/', charte_view, name='charte'),
+    # Historique des scores des saisons passées
     path('stats-scores/', statistics_view, name='scores_statistics'),
+    # Explication/logigramme barème de points
     path('bareme/', bareme_view, name='bareme'),
+    # Classement all-time
     path('hall-of-fame/', hall_of_fame_view, name='hall_of_fame')
 ]
 
