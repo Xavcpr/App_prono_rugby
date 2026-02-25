@@ -108,29 +108,39 @@
     </div>
     <div class="row g-4 mt-2">
         <div class="col-md-8">
-            <div class="card border-0 bg-light shadow-sm">
+            <div class="card border-0 bg-light shadow-sm mt-4">
                 <div class="card-body">
-                    <h5 class="fw-bold text-dark">
-                        <i class="fas fa-calculating"></i> Comprendre le calcul
-                    </h5>
-                    <p class="small text-muted">
-                        Le score All-Time n'est pas une simple somme. Il récompense la <strong>performance brute</strong>,
-                        la <strong>densité d'adversaires</strong> et la <strong>régularité</strong> dans le temps.
-                    </p>
-                    <div class="text-center bg-white p-3 rounded border my-3">
-                        $$Score = \sum_{saisons} \left( \frac{N + 1 - x}{N} \times 100 \right) \times 0.9^n$$
+                    <h5 class="fw-bold text-dark mb-3">🛠 Comment ça marche ?</h5>
+                    <div class="row align-items-center">
+                        <div class="col-md-7">
+                            <p>Ton score total est la somme de tes points gagnés chaque année.</p>
+                            <p class="mb-1">
+                                <strong>Étape 1 :</strong> On calcule ton score sur 100 pour la saison.
+                            </p>
+                            <div class="bg-white p-2 rounded border text-center mb-3">
+                                <small class="text-muted">Formule :</small>
+                                <br>
+                                <strong>(Joueurs Battus / Total Joueurs) x 100</strong>
+                            </div>
+                            <p class="mb-1">
+                                <strong>Étape 2 :</strong> On applique le coefficient d'ancienneté.
+                            </p>
+                            <div class="bg-white p-2 rounded border text-center">
+                                <small class="text-muted">Coefficient :</small>
+                                <br>
+                                <strong>0.9<sup>n</sup></strong> <span class="text-muted ms-2">(où n est l'âge de la saison)</span>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="alert alert-info py-2 mt-3 mt-md-0">
+                                <small><strong>En résumé :</strong>
+                                    <br>
+                                    Une victoire aujourd'hui vaut 100 pts.
+                                    <br>
+                                La même victoire il y a 5 ans n'en vaut plus que 59 pts dans le classement All-Time. Cela force à rester bon chaque année !</small>
+                            </div>
+                        </div>
                     </div>
-                    <ul class="small text-muted mb-0">
-                        <li>
-                            <strong>$N$</strong> : Nombre de participants cette saison-là.
-                        </li>
-                        <li>
-                            <strong>$x$</strong> : Ton rang final.
-                        </li>
-                        <li>
-                            <strong>$n$</strong> : Âge de la saison (0 pour cette année, 1 pour l'an passé...).
-                        </li>
-                    </ul>
                 </div>
             </div>
         </div>
