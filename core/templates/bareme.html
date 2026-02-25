@@ -16,235 +16,241 @@
                 <div class="mermaid text-center">
                     flowchart TB
                     A["Match Terminé"] --> B{"Prono Saisi ?"}
-                    B -- "NO SHOW !!" --> Z["0 Point"]
+                    B -- "NO SHOW !!" --> Z["0 Point"]:::redNode
                     B -- "OUI" --> P1{"Bon Vainqueur ?"}
                     subgraph Pool_Sect["Victoire"]
-                    P1 -- "OUI" --> V1["Poids match: {{ SCORING_CONFIG.MATCH_POOL_BASE }} pts / N"]
+                    P1 -- "OUI" --> V1["Poids match: {{ SCORING_CONFIG.MATCH_POOL_BASE }} pts / N"]:::greenNode
                     V1 --> V2{"Type de victoire ?"}
-                    V2 -- "A l'ext." --> V3["+{{ SCORING_CONFIG.AWAY_WIN_BONUS }} pts"]
-                    V2 -- "Nul" --> V4["+{{ SCORING_CONFIG.DRAW_BONUS }} pts"]
+                    V2 -- "A l'ext." --> V3["+{{ SCORING_CONFIG.AWAY_WIN_BONUS }} pts"]:::greenNode
+                    V2 -- "Nul" --> V4["+{{ SCORING_CONFIG.DRAW_BONUS }} pts"]:::greenNode
                     V2 -- "Dom. ou terrain neutre" --> V5["0 pt"]
-                    P1 -- "NON" --> V0["0 pt"]
+                    P1 -- "NON" --> V0["0 pt"]:::redNode
                     end
                     V0 & V3 & V4 & V5 --> S_Check
                     subgraph Precision["Précision des Scores"]
                     S_Check{"Scores Exacts ?"}
-                    S_Check -- "Dom. OK" --> S_H["+{{ SCORING_CONFIG.HALF_PERFECT_BONUS }} pts"]
-                    S_Check -- "Ext. OK" --> S_A["+{{ SCORING_CONFIG.HALF_PERFECT_BONUS }} pts"]
-                    S_H & S_A -- "Tout-Pile" --> S_P["+{{ SCORING_CONFIG.PERFECT_SCORE_BONUS }} pts"]
-                    S_P -- "Écarts" --> E_Table["Tables Diff/Somme"]
+                    S_Check -- "Dom. OK" --> S_H["+{{ SCORING_CONFIG.HALF_PERFECT_BONUS }} pts"]:::greenNode
+                    S_Check -- "Ext. OK" --> S_A["+{{ SCORING_CONFIG.HALF_PERFECT_BONUS }} pts"]:::greenNode
+                    S_H & S_A -- "Tout-Pile" --> S_P["+{{ SCORING_CONFIG.PERFECT_SCORE_BONUS }} pts"]:::goldNode
+                    S_P -- "Écarts" --> E_Table["Tables Diff/Somme"]:::blueNode
                     end
                     E_Table --> O_Check
                     subgraph Expertise["Bonus Rugby"]
                     O_Check{"Prono BO ?"}
                     O_Check -- "Non" --> O_N["+0 pt"]
-                    O_Check -- "Oui et il est correct" --> O_P["+{{ SCORING_CONFIG.OFFENSIVE_BONUS_VALUE }} pts"]
-                    O_Check -- "Oui et il est faux" --> O_M["{{ SCORING_CONFIG.BONUS_MALUS }} pts"]
+                    O_Check -- "Oui et il est correct" --> O_P["+{{ SCORING_CONFIG.OFFENSIVE_BONUS_VALUE }} pts"]:::greenNode
+                    O_Check -- "Oui et il est faux" --> O_M["{{ SCORING_CONFIG.BONUS_MALUS }} pts"]:::redNode
                     O_P & O_M & O_N --> D_Check{"Prono BD"}
-                    D_Check -- "Oui et il est correct" --> D_P["+{{ SCORING_CONFIG.DEFENSIVE_BONUS_VALUE }} pts"]
+                    D_Check -- "Oui et il est correct" --> D_P["+{{ SCORING_CONFIG.DEFENSIVE_BONUS_VALUE }} pts"]:::greenNode
                     D_Check -- "Oui et il est faux" --> D_M["0 pt"]
                     D_M -- "Bonus pour l'Autre équipe/Nul" --> D_Z["0 pt (Neutre)"]
-                    D_M -- "pas de BD dans le match" --> D_X["{{ SCORING_CONFIG.BONUS_MALUS }} pts"]
+                    D_M -- "pas de BD dans le match" --> D_X["{{ SCORING_CONFIG.BONUS_MALUS }} pts"]:::redNode
                     D_X & D_P & D_Z --> J1["Total match phase régulière"]
+                    end
                     J1 -- "1/8" --> D_H["x{{ PHASE_MULTIPLIERS.R16 }}"]
                     J1 -- "1/4" --> D_Q["x{{ PHASE_MULTIPLIERS.QF }}"]
                     J1 -- "Phase Rég." --> D_R["x{{ PHASE_MULTIPLIERS.POOL }}"]
                     J1 -- "1/2" --> D_D["x{{ PHASE_MULTIPLIERS.SF }}"]
                     J1 -- "Finale" --> D_F["x{{ PHASE_MULTIPLIERS.FINAL }}"]
-                    D_D & D_F & D_Q & D_H & D_R --> D_T["Total match"]
-                    end
+                    D_D & D_F & D_Q & D_H & D_R --> D_T["Total match"]:::blueNode
                     D_T --> B_J
                     subgraph Journee["Bonus Journée"]
                     B_J{"Nbr bons pronos sur la J"}
                     B_J -- "Top14" --> B_T["5 ou plus ?"]
                     B_J -- "Champions Cup" --> B_C["9 ou plus ?"]
-                    B_J -- "6 nations" --> B_N["x 2 !"]
-                    B_T -- "oui" --> B_B["voir tableau BJ"]
-                    B_C -- "oui" --> B_B["voir tableau BJ"]
+                    B_J -- "6 nations" --> B_N["x 2 !"]:::goldNode
+                    B_T -- "oui" --> B_B["voir tableau BJ"]:::greenNode
+                    B_C -- "oui" --> B_B
                     B_T -- "non" --> B_F["Score journée"]
-                    B_C -- "non" --> B_F["Score journée"]
-                    B_B & B_N--> B_F["Score journée"]
+                    B_C -- "non" --> B_F
+                    B_B & B_N--> B_F
                     end
                     B_F --> P_C
                     subgraph Comp_pool ["Phase régulière"]
                     P_C{"Fin de phase régulière"}
-                    P_C --> P_T["voir tableau classement par comp"]
+                    P_C --> P_T["voir tableau classement par comp"]:::blueNode
                     end
                     P_T --> X_C
                     subgraph Comp_end ["Fin de compétition"]
                     X_C{"Fin de compétition"}
                     X_C --> X_W["Bon vainqueur ?"]
-                    X_W -- "oui top14"--> X_T["{{ t14.winner }} pt"]
-                    X_T -- "meilleur marqueur ?" --> X_S["{{ t14.bonus }} pt"]
-                    X_S -- "meilleur réalisateur ?" --> X_R["{{ t14.bonus }} pt"]
-                    X_W -- "oui CC"--> X_H["{{ cc.winner }} pt"]
-                    X_W -- "oui 6 nations"--> X_N["{{ 6nations.winner }} pt"]
+                    X_W -- "oui top14"--> X_T["{{ t14.winner }} pt"]:::greenNode
+                    X_T -- "meilleur marqueur ?" --> X_S["{{ t14.bonus }} pt"]:::greenNode
+                    X_S -- "meilleur réalisateur ?" --> X_R["{{ t14.bonus }} pt"]:::greenNode
+                    X_W -- "oui CC"--> X_H["{{ cc.winner }} pt"]:::greenNode
+                    X_W -- "oui 6 nations"--> X_N["{{ 6nations.winner }} pt"]:::greenNode
                     X_W -- non --> X_Y["Pronostiqueur dans le top3 ?"]
-                    X_R & X_H & X_N --> X_Y["Pronostiqueur dans le top3 ?"]
-                    X_Y --> X_P["voir tableau podium"]
-                    X_P --> Z_Z["et on fait la somme de tout ça !"]
+                    X_R & X_H & X_N --> X_Y
+                    X_Y --> X_P["voir tableau podium"]:::goldNode
+                    X_P --> Z_Z["Somme totale !"]:::blueNode
                     end
+                    %% Styles CSS pour les noeuds
+                    classDef greenNode fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724;
+                    classDef redNode fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#721c24;
+                    classDef blueNode fill:#cfe2ff,stroke:#0d6efd,stroke-width:2px,color:#084298;
+                    classDef goldNode fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404;
                 </div>
-            </div>
-        </div>
-        <div class="row g-4 mb-5">
-            <div class="col-md-6">
-                <div class="card h-100 border-warning shadow-sm">
-                    <div class="card-header bg-warning text-dark fw-bold">
-                        📏 Table des Écarts de Différence ({{ SCORING_CONFIG.DIFF_TABLE|length }} paliers)
-                    </div>
-                    <div class="card-body p-0 text-center">
-                        <table class="table table-hover mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Erreur sur l'écart</th>
-                                    <th>Points</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for err, pts in SCORING_CONFIG.DIFF_TABLE.items %}
-                                    <tr>
-                                        <td>{{ err }} pt(s)</td>
-                                        <td class="fw-bold text-primary">+{{ pts }}</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card h-100 border-secondary shadow-sm">
-                    <div class="card-header bg-secondary text-white fw-bold">🔢 Table des Écarts de Somme</div>
-                    <div class="card-body p-0 text-center">
-                        <table class="table table-hover mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Erreur sur la somme</th>
-                                    <th>Points</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for err, pts in SCORING_CONFIG.SUM_TABLE.items %}
-                                    <tr>
-                                        <td>{{ err }} pt(s)</td>
-                                        <td class="fw-bold text-success">+{{ pts }}</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="card shadow-sm mb-5 border-info">
-            <div class="card-header bg-info text-white fw-bold">🏆 BJ : Bonus Journée (Performance Journée)</div>
-            <div class="card-body">
-                <div class="row">
-                    {% for comp, scales in BONUS_SCALES.items %}
-                        <div class="col-md-6 border-end">
-                            <h5 class="text-info fw-bold">{{ comp }}</h5>
-                            <table class="table">
-                                {% for threshold, bonus in scales.items %}
-                                    <tr>
-                                        <td>≥ {{ threshold }} bons vainqueurs</td>
-                                        <td class="text-end fw-bold text-success">+ {{ bonus }} pts</td>
-                                    </tr>
-                                {% endfor %}
-                            </table>
-                        </div>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-        <div class="card shadow-sm mb-5 border-dark">
-            <div class="card-header bg-dark text-white fw-bold">📈 Multiplicateurs de Phase & Compétition</div>
-            <div class="card-body p-0 text-center">
-                <table class="table table-bordered mb-0">
-                    <tr class="table-light">
-                        {% for phase, mult in PHASE_MULTIPLIERS.items %}<th>{{ phase }}</th>{% endfor %}
-                        <th class="bg-primary text-white">6 NATIONS</th>
-                    </tr>
-                    <tr>
-                        {% for phase, mult in PHASE_MULTIPLIERS.items %}<td class="fw-bold">x {{ mult }}</td>{% endfor %}
-                        <td class="fw-bold text-primary">x 2.0 (Cumulable)</td>
-                    </tr>
-                </table>
             </div>
         </div>
     </div>
-    <div class="card shadow-sm mb-5 border-primary">
-        <div class="card-header bg-primary text-white fw-bold">📊 Points de Classement Final (Phase Régulière)</div>
-        <div class="card-body p-0">
-            <table class="table table-hover mb-0 text-center align-middle">
-                <thead class="table-light">
+    <div class="row g-4 mb-5">
+        <div class="col-md-6">
+            <div class="card h-100 border-warning shadow-sm">
+                <div class="card-header bg-warning text-dark fw-bold">
+                    📏 Table des Écarts de Différence ({{ SCORING_CONFIG.DIFF_TABLE|length }} paliers)
+                </div>
+                <div class="card-body p-0 text-center">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Erreur sur l'écart</th>
+                                <th>Points</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for err, pts in SCORING_CONFIG.DIFF_TABLE.items %}
+                                <tr>
+                                    <td>{{ err }} pt(s)</td>
+                                    <td class="fw-bold text-primary">+{{ pts }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100 border-secondary shadow-sm">
+                <div class="card-header bg-secondary text-white fw-bold">🔢 Table des Écarts de Somme</div>
+                <div class="card-body p-0 text-center">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Erreur sur la somme</th>
+                                <th>Points</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for err, pts in SCORING_CONFIG.SUM_TABLE.items %}
+                                <tr>
+                                    <td>{{ err }} pt(s)</td>
+                                    <td class="fw-bold text-success">+{{ pts }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card shadow-sm mb-5 border-info">
+        <div class="card-header bg-info text-white fw-bold">🏆 BJ : Bonus Journée (Performance Journée)</div>
+        <div class="card-body">
+            <div class="row">
+                {% for comp, scales in BONUS_SCALES.items %}
+                    <div class="col-md-6 border-end">
+                        <h5 class="text-info fw-bold">{{ comp }}</h5>
+                        <table class="table">
+                            {% for threshold, bonus in scales.items %}
+                                <tr>
+                                    <td>≥ {{ threshold }} bons vainqueurs</td>
+                                    <td class="text-end fw-bold text-success">+ {{ bonus }} pts</td>
+                                </tr>
+                            {% endfor %}
+                        </table>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="card shadow-sm mb-5 border-dark">
+        <div class="card-header bg-dark text-white fw-bold">📈 Multiplicateurs de Phase & Compétition</div>
+        <div class="card-body p-0 text-center">
+            <table class="table table-bordered mb-0">
+                <tr class="table-light">
+                    {% for phase, mult in PHASE_MULTIPLIERS.items %}<th>{{ phase }}</th>{% endfor %}
+                    <th class="bg-primary text-white">6 NATIONS</th>
+                </tr>
+                <tr>
+                    {% for phase, mult in PHASE_MULTIPLIERS.items %}<td class="fw-bold">x {{ mult }}</td>{% endfor %}
+                    <td class="fw-bold text-primary">x 2.0 (Cumulable)</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>
+<div class="card shadow-sm mb-5 border-primary">
+    <div class="card-header bg-primary text-white fw-bold">📊 Points de Classement Final (Phase Régulière)</div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0 text-center align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th class="text-start ps-4">Compétition</th>
+                    <th>Rang Exact</th>
+                    <th>Écart +/- 1</th>
+                    <th>Écart +/- 2</th>
+                    <th class="bg-light-subtle">✨ Classement Complet</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for comp, values in RUGBY_SCORING.items %}
                     <tr>
-                        <th class="text-start ps-4">Compétition</th>
-                        <th>Rang Exact</th>
-                        <th>Écart +/- 1</th>
-                        <th>Écart +/- 2</th>
-                        <th class="bg-light-subtle">✨ Classement Complet</th>
+                        <td class="fw-bold text-start ps-4">{{ comp }}</td>
+                        <td>
+                            <span class="badge bg-success">+{{ values.exact_rank }} pts</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-info">+{{ values.gap_1 }} pts</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">+{{ values.gap_2 }} pts</span>
+                        </td>
+                        <td class="fw-bold text-primary">
+                            {% if values.all_class > 0 %}
+                                +{{ values.all_class }} pts
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer small text-muted italic">
+        <i class="fas fa-info-circle"></i> Ces points sont attribués par équipe selon la précision de votre classement final. Le bonus "Classement Complet" s'ajoute si l'intégralité du tableau est correcte.
+    </div>
+</div>
+<div class="card shadow-sm mb-5 border-warning">
+    <div class="card-header bg-warning text-dark fw-bold">🥇 Podium Final de la Compétition</div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 text-center">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="text-start ps-4">Récompense</th>
+                        {% for comp in RUGBY_SCORING.keys %}<th>{{ comp }}</th>{% endfor %}
                     </tr>
                 </thead>
                 <tbody>
-                    {% for comp, values in RUGBY_SCORING.items %}
-                        <tr>
-                            <td class="fw-bold text-start ps-4">{{ comp }}</td>
-                            <td>
-                                <span class="badge bg-success">+{{ values.exact_rank }} pts</span>
-                            </td>
-                            <td>
-                                <span class="badge bg-info">+{{ values.gap_1 }} pts</span>
-                            </td>
-                            <td>
-                                <span class="badge bg-secondary">+{{ values.gap_2 }} pts</span>
-                            </td>
-                            <td class="fw-bold text-primary">
-                                {% if values.all_class > 0 %}
-                                    +{{ values.all_class }} pts
-                                {% else %}
-                                    -
-                                {% endif %}
-                            </td>
-                        </tr>
-                    {% endfor %}
+                    <tr>
+                        <td class="text-start ps-4 fw-bold">🏆 1ère place (Vainqueur)</td>
+                        {% for values in RUGBY_SCORING.values %}<td class="fw-bold text-success">+ {{ values.1st }} pts</td>{% endfor %}
+                    </tr>
+                    <tr>
+                        <td class="text-start ps-4 fw-bold">🥈 2ème place</td>
+                        {% for values in RUGBY_SCORING.values %}<td class="fw-bold text-primary">+ {{ values.2nd }} pts</td>{% endfor %}
+                    </tr>
+                    <tr>
+                        <td class="text-start ps-4 fw-bold">🥉 3ème place</td>
+                        {% for values in RUGBY_SCORING.values %}<td class="fw-bold text-warning">+ {{ values.3rd }} pts</td>{% endfor %}
+                    </tr>
                 </tbody>
             </table>
         </div>
-        <div class="card-footer small text-muted italic">
-            <i class="fas fa-info-circle"></i> Ces points sont attribués par équipe selon la précision de votre classement final. Le bonus "Classement Complet" s'ajoute si l'intégralité du tableau est correcte.
-        </div>
     </div>
-    <div class="card shadow-sm mb-5 border-warning">
-        <div class="card-header bg-warning text-dark fw-bold">🥇 Podium Final de la Compétition</div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0 text-center">
-                    <thead class="table-dark">
-                        <tr>
-                            <th class="text-start ps-4">Récompense</th>
-                            {% for comp in RUGBY_SCORING.keys %}<th>{{ comp }}</th>{% endfor %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td class="text-start ps-4 fw-bold">🏆 1ère place (Vainqueur)</td>
-                            {% for values in RUGBY_SCORING.values %}<td class="fw-bold text-success">+ {{ values.1st }} pts</td>{% endfor %}
-                        </tr>
-                        <tr>
-                            <td class="text-start ps-4 fw-bold">🥈 2ème place</td>
-                            {% for values in RUGBY_SCORING.values %}<td class="fw-bold text-primary">+ {{ values.2nd }} pts</td>{% endfor %}
-                        </tr>
-                        <tr>
-                            <td class="text-start ps-4 fw-bold">🥉 3ème place</td>
-                            {% for values in RUGBY_SCORING.values %}<td class="fw-bold text-warning">+ {{ values.3rd }} pts</td>{% endfor %}
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <div class="card-footer small text-muted">
-            <i class="fas fa-info-circle"></i> Ces bonus récompensent les trois meilleurs pronostiqueurs au classement général final de chaque compétition.
-        </div>
+    <div class="card-footer small text-muted">
+        <i class="fas fa-info-circle"></i> Ces bonus récompensent les trois meilleurs pronostiqueurs au classement général final de chaque compétition.
     </div>
+</div>
 {% endblock %}
