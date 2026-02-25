@@ -16,7 +16,7 @@ from .models import (
 
 # Services
 from .services import scoring
-from .services.scoring import process_round_scores, get_winner_side, calculate_match_points
+from .services.scoring import PHASE_MULTIPLIERS, SCORING_CONFIG, process_round_scores, get_winner_side, calculate_match_points, BONUS_SCALES
 from .services.statistics import compute_statistics
 
 
@@ -28,6 +28,10 @@ RUGBY_SCORING = {
         "exact_rank": 80,
         "gap_1": 40,
         "gap_2": 20,
+        "all_class" : 3000,
+        "1st" : 300,
+        "2nd" : 150,
+        "3rd" : 50,
     },
     "Champions Cup": {
         "bonus": 0,        # Pas de bonus marqueur sur cette compète
@@ -35,6 +39,10 @@ RUGBY_SCORING = {
         "exact_rank": 50,
         "gap_1": 20,
         "gap_2": 0,
+        "all_class" : 100,        
+        "1st" : 150,
+        "2nd" : 75,
+        "3rd" : 25,
     },
     "6 Nations": {
         "bonus": 0,
@@ -42,6 +50,10 @@ RUGBY_SCORING = {
         "exact_rank": 50,
         "gap_1": 0,
         "gap_2": 0,
+        "all_class" : 100,
+        "1st" : 50,
+        "2nd" : 25,
+        "3rd" : 10,
     }
 }
 
@@ -1038,3 +1050,14 @@ def statistics_view(request):
         'selected_season': int(season_id) if season_id else None,
     }
     return render(request, 'scores_statistics.html', context)
+
+def bareme_view(request):
+    return render(request, 'bareme.html', {
+        'SCORING_CONFIG': SCORING_CONFIG,
+        'PHASE_MULTIPLIERS': PHASE_MULTIPLIERS,
+        'BONUS_SCALES': BONUS_SCALES,
+        'RUGBY_SCORING': RUGBY_SCORING,
+        't14': RUGBY_SCORING.get("Top 14"),
+        'cc': RUGBY_SCORING.get("Champions Cup"),
+        '6nations': RUGBY_SCORING.get("6 Nations"),
+    })

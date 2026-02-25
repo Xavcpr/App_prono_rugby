@@ -24,6 +24,11 @@ PHASE_MULTIPLIERS = {
     "FINAL": 3.0
 }
 
+BONUS_SCALES = {
+        "Top 14": {7: 150, 6: 60, 5: 20},
+        "Champions Cup": {12: 300, 11: 150, 10: 100, 9: 40}
+}
+
 # --- OUTILS DE CALCUL ---
 
 def get_winner_side(score_home, score_away):
@@ -110,10 +115,7 @@ def process_round_scores(round_obj):
     players = Player.objects.all()
     
     # 1. Barème des Bonus de palier
-    BONUS_SCALES = {
-        "Top 14": {7: 150, 6: 60, 5: 20},
-        "Champions Cup": {12: 300, 11: 150, 10: 100, 9: 40}
-    }
+    
     comp_name = round_obj.season.competition.name
     current_scale = BONUS_SCALES.get(comp_name, {})
 

@@ -1,5 +1,5 @@
 from django.urls import path 
-from .views import charte_view, admin_saisie_resultats, declencher_calcul_points, recap_pronos_classement, debug_scores_view, statistics_view, statistiques_view, all_pronos_view, compute_round_view, pronos_view, logout_view, round_results_board, settings_view, competition_ranking_view, classement_prediction
+from .views import bareme_view, charte_view, admin_saisie_resultats, declencher_calcul_points, recap_pronos_classement, debug_scores_view, statistics_view, statistiques_view, all_pronos_view, compute_round_view, pronos_view, logout_view, round_results_board, settings_view, competition_ranking_view, classement_prediction
 
 urlpatterns = [
     # Page principale des pronos
@@ -36,6 +36,7 @@ urlpatterns = [
     path('admin/calcul-points/<int:season_id>/', declencher_calcul_points, name='calcul_points_classement'),
     path('charte/', charte_view, name='charte'),
     path('stats-scores/', statistics_view, name='scores_statistics'),
+    path('bareme/', bareme_view, name='bareme'),
 ]
 
 

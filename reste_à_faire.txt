@@ -5,18 +5,19 @@ To do list ! :
     - créer alerte mail vers users à H-6h puis H-1h + copie admin
     - rédiger texte
 
+
+- remplacer le "calculé" dans le tableau recap_classement
+
 ---- FIN DE LA V1 ----
 - * S : compétition
-       - filtre par joueur ou non
-        - afficher tous les pronos sous forme de tableau + surligner ceux qui sont bons
-    - bonus classement
-        - faire le barème
-    - bonus vainqueur de la compétition + meilleur marqueur / kicker
+    - bonus vainqueur de la compétition + meilleur marqueur / kicker (attention date)
 
 -* S : vue total : filtre toutes compétitions + filtre par compétition
     - faire apparatire : la variation par rapport à la dernière journée ?
     - graphiques d'évolution classement joueur
     - graphiques d'évolution de points 
+    - BO / BD / DTP
+    - Ratios bons BO / bons BD
 
 - * vue joueur = page de garde ?
     - épurer les boutons de navigation
@@ -24,9 +25,7 @@ To do list ! :
     - détail par compétition
     - détail par compétition du nombre de TP/DTP... + un classement
 
-- X : rdd années précédentes
-
-- * charte
+    - podium par compétition + bonus
 
 ---- FIN DE LA V2 ----
 
@@ -34,19 +33,8 @@ To do list ! :
     - à réfléchir
     - reprise de données
 
-- * vue statistiques
-    - filtre par compétition
-    - filtre par statistique TP/DTP...
-
-- * vue historique score top14
-    - filtre : all/time, par saison
-    - stats : le plus Dom / ext / au total, graphique
-    - reprise de données
-
 - debug = true ?
 
 ---- FIN DE LA V3 ----
-
-- * règlement
 
 - * guide admin
