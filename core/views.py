@@ -1097,8 +1097,9 @@ def hall_of_fame_view(request):
         name = record.display_name
         n = current_year - record.season_year
         
-        # Ton algo combiné :
+        # Calcul de la performance saisonnière (sur 100)
         perf = ((record.total_players + 1 - record.rank) * 100) / record.total_players
+        # Application de la dépréciation temporelle (0.9^n)
         score_annee = perf * (0.9 ** n)
         
         if name not in data:
@@ -1107,15 +1108,29 @@ def hall_of_fame_view(request):
                 'score': 0,
                 'seasons_count': 0,
                 'best_rank': 999,
-                'is_active': record.user is not None
+                'is_active': record.user is not None,
+                'history_details': [] 
             }
         
         data[name]['score'] += score_annee
         data[name]['seasons_count'] += 1
+        
+        # Ajout du détail pour la modale
+        data[name]['history_details'].append({
+            'year': record.season_year,
+            'rank': record.rank,
+            'total': record.total_players,
+            'perf_score': perf
+        })
+        
         if record.rank < data[name]['best_rank']:
             data[name]['best_rank'] = record.rank
 
-    # Tri et calcul du score relatif
+    # Tri des détails par année (plus récent en haut) pour chaque joueur
+    for player in data.values():
+        player['history_details'].sort(key=lambda x: x['year'], reverse=True)
+
+    # Tri du classement All-Time par score décroissant
     ranking = sorted(data.values(), key=lambda x: x['score'], reverse=True)
     
     if ranking:

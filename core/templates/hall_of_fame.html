@@ -14,8 +14,8 @@
   .rank-silver { color: #bdc3c7; font-size: 1.4rem; }
   .rank-bronze { color: #e67e22; font-size: 1.3rem; }
   
-  .player-row { border-left: 5px solid #3498db; transition: 0.2s; }
-  .player-row:hover { background-color: #f8f9fa; transform: scale(1.01); }
+  .player-row { border-left: 5px solid #3498db; transition: 0.2s; cursor: pointer; }
+  .player-row:hover { background-color: #f8f9fa; transform: scale(1.005); }
   
   .longevity-badge {
     background: #edf2f4; color: #2c3e50; padding: 4px 10px; border-radius: 20px;
@@ -27,13 +27,13 @@
     font-weight: 800; color: #2c3e50; font-size: 1.2rem;
   }
 
-  /* Barre de puissance All-time */
   .power-bar-container { background: #ecf0f1; height: 10px; border-radius: 5px; overflow: hidden; width: 100px; }
   .power-bar { background: linear-gradient(90deg, #3498db, #2ecc71); height: 100%; }
 
-  @media (max-width: 768px) {
-    .hide-mobile { display: none; }
-  }
+  .player-link { color: #2c3e50; text-decoration: none; font-weight: 700; }
+  .player-link:hover { color: #3498db; }
+
+  @media (max-width: 768px) { .hide-mobile { display: none; } }
     </style>
     <div class="board-header text-center text-md-start">
         <div>
@@ -50,15 +50,17 @@
                 <thead class="text-uppercase text-muted small fw-bold">
                     <tr>
                         <th class="text-center" style="width: 80px;">Rang</th>
-                        <th>Joueur</th>
+                        <th>Joueur (cliquer pour détails)</th>
                         <th class="text-center hide-mobile">Saisons</th>
-                        <th class="text-center hide-mobile">Meilleur Rang</th>
+                        <th class="text-center hide-mobile text-nowrap">Meilleur Rang</th>
                         <th class="text-end pe-4">Score All-Time</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for entry in all_time_ranking %}
-                        <tr class="player-row">
+                        <tr class="player-row"
+                            data-bs-toggle="modal"
+                            data-bs-target="#modal-{{ forloop.counter }}">
                             <td class="text-center">
                                 {% if forloop.counter == 1 %}
                                     <span class="rank-gold">🥇</span>
@@ -72,13 +74,13 @@
                             </td>
                             <td>
                                 <div class="d-flex flex-column">
-                                    <span class="team-name">{{ entry.user_name }}</span>
-                                    <div class="d-flex gap-1 mt-1">
+                                    <span class="player-link">{{ entry.user_name }} 🔍</span>
+                                    <div class="d-flex gap-1 mt-1 flex-wrap">
                                         {% if not entry.is_active %}
                                             <span class="longevity-badge"
                                                   style="background: #fdf2f2;
                                                          color: #a94442;
-                                                         border-color: #f5c6cb">👻 Ghost (Légende)</span>
+                                                         border-color: #f5c6cb">👻 Ghost</span>
                                         {% endif %}
                                         {% if entry.seasons_count >= 10 %}
                                             <span class="longevity-badge">💎 Doyen</span>
@@ -91,7 +93,9 @@
                             <td class="text-center hide-mobile">
                                 <span class="badge bg-light text-dark border">{{ entry.seasons_count }} ans</span>
                             </td>
-                            <td class="text-center hide-mobile text-muted italic">{{ entry.best_rank }}e</td>
+                            <td class="text-center hide-mobile text-muted">
+                                <strong>{{ entry.best_rank }}e</strong>
+                            </td>
                             <td class="text-end pe-4">
                                 <div class="d-flex flex-column align-items-end">
                                     <span class="score-alltime">{{ entry.score|floatformat:1 }}</span>
@@ -106,38 +110,28 @@
             </table>
         </div>
     </div>
-    <div class="row g-4 mt-2">
+    <div class="row g-4 mt-2 mb-5">
         <div class="col-md-8">
-            <div class="card border-0 bg-light shadow-sm mt-4">
+            <div class="card border-0 bg-light shadow-sm">
                 <div class="card-body">
                     <h5 class="fw-bold text-dark mb-3">🛠 Comment ça marche ?</h5>
                     <div class="row align-items-center">
-                        <div class="col-md-7">
-                            <p>Ton score total est la somme de tes points gagnés chaque année.</p>
-                            <p class="mb-1">
-                                <strong>Étape 1 :</strong> On calcule ton score sur 100 pour la saison.
-                            </p>
+                        <div class="col-md-7 border-end-md">
+                            <p class="small">Ton score total est la somme de tes performances annuelles pondérées.</p>
                             <div class="bg-white p-2 rounded border text-center mb-3">
-                                <small class="text-muted">Formule :</small>
+                                <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Score Saison / 100</small>
                                 <br>
-                                <strong>(Joueurs Battus / Total Joueurs) x 100</strong>
+                                <strong>(Joueurs Battus / Total) x 100</strong>
                             </div>
-                            <p class="mb-1">
-                                <strong>Étape 2 :</strong> On applique le coefficient d'ancienneté.
-                            </p>
                             <div class="bg-white p-2 rounded border text-center">
-                                <small class="text-muted">Coefficient :</small>
+                                <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Pondération Temporelle</small>
                                 <br>
-                                <strong>0.9<sup>n</sup></strong> <span class="text-muted ms-2">(où n est l'âge de la saison)</span>
+                                <strong>Score x 0.9<sup>n</sup></strong> <small class="text-muted">(n = âge saison)</small>
                             </div>
                         </div>
                         <div class="col-md-5">
-                            <div class="alert alert-info py-2 mt-3 mt-md-0">
-                                <small><strong>En résumé :</strong>
-                                    <br>
-                                    Une victoire aujourd'hui vaut 100 pts.
-                                    <br>
-                                La même victoire il y a 5 ans n'en vaut plus que 59 pts dans le classement All-Time. Cela force à rester bon chaque année !</small>
+                            <div class="alert alert-info py-2 mt-3 mt-md-0 border-0 mb-0">
+                                <small>Chaque année qui passe, vos points perdent 10% de leur valeur. La régularité est la clé pour rester une légende !</small>
                             </div>
                         </div>
                     </div>
@@ -145,27 +139,64 @@
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card border-0 bg-light shadow-sm">
+            <div class="card border-0 bg-light shadow-sm h-100">
                 <div class="card-body">
-                    <h5 class="fw-bold text-dark">
+                    <h5 class="fw-bold text-dark mb-3">
                         <i class="fas fa-medal"></i> Distinctions
                     </h5>
-                    <div class="d-flex flex-column gap-2 mt-3">
+                    <div class="d-flex flex-column gap-3">
                         <div class="d-flex align-items-center gap-2">
                             <span class="longevity-badge">💎 Doyen</span>
-                            <small class="text-muted">+10 saisons disputées</small>
+                            <small class="text-muted">+10 saisons</small>
                         </div>
                         <div class="d-flex align-items-center gap-2">
                             <span class="longevity-badge">🎖️ Vétéran</span>
-                            <small class="text-muted">+5 saisons disputées</small>
+                            <small class="text-muted">+5 saisons</small>
                         </div>
                         <div class="d-flex align-items-center gap-2">
                             <span class="longevity-badge" style="background: #fdf2f2; color: #a94442;">👻 Ghost</span>
-                            <small class="text-muted">Ancien membre (non inscrit)</small>
+                            <small class="text-muted">Ancien membre</small>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+    {% for entry in all_time_ranking %}
+        <div class="modal fade"
+             id="modal-{{ forloop.counter }}"
+             tabindex="-1"
+             aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow">
+                    <div class="modal-header bg-dark text-white">
+                        <h5 class="modal-title">📜 Historique : {{ entry.user_name }}</h5>
+                        <button type="button"
+                                class="btn-close btn-close-white"
+                                data-bs-dismiss="modal"
+                                aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-0">
+                        <div class="list-group list-group-flush">
+                            {% for h in entry.history_details %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                                    <div>
+                                        <span class="fw-bold text-primary">{{ h.year }}</span>
+                                        <br>
+                                        <small class="text-muted">{{ h.total }} participants</small>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="badge {% if h.rank == 1 %}bg-warning{% elif h.rank <= 3 %}bg-info text-white{% else %}bg-secondary{% endif %} rounded-pill">
+                                            Rang : {{ h.rank }} / {{ h.total }}
+                                        </span>
+                                        <div class="small mt-1 text-success fw-bold">+{{ h.perf_score|floatformat:1 }} pts</div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
 {% endblock %}
