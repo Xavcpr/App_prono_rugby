@@ -44,21 +44,39 @@
     <div class="navigation-zone">
       <form method="get"
             action="{% url 'all_pronos' %}"
-            id="roundForm"
-            style="display: flex;
-                   align-items: center;
-                   gap: 10px;
-                   margin: 0">
-        <label style="margin: 0; font-weight: bold;">Journée :</label>
-        <select name="round" id="roundSelect" onchange="this.form.submit()">
-          <option value="">-- Sélectionner --</option>
-          {% for r in rounds %}
-            <option value="{{ r.id }}"
-                    {% if r.id|slugify == selected_round|slugify %}selected{% endif %}>
-              {{ r.season }} - J.{{ r.number }}
-            </option>
-          {% endfor %}
-        </select>
+            id="filterForm"
+            class="d-flex flex-wrap align-items-center gap-3 margin-0">
+        <div class="d-flex align-items-center gap-1">
+          <label class="small fw-bold mb-0">Compétition:</label>
+          <select name="comp"
+                  onchange="this.form.season.value=''; this.form.round.value=''; this.form.submit()">
+            {% for c in competitions %}
+              <option value="{{ c.id }}"
+                      {% if c.id == selected_comp.id %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="d-flex align-items-center gap-1">
+          <label class="small fw-bold mb-0">Saison:</label>
+          <select name="season" onchange="this.form.round.value=''; this.form.submit()">
+            {% for s in seasons %}
+              <option value="{{ s.id }}"
+                      {% if s.id == selected_season.id %}selected{% endif %}>
+                {{ s.year_start }}/{{ s.year_end }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="d-flex align-items-center gap-1">
+          <label class="small fw-bold mb-0">Journée:</label>
+          <select name="round" onchange="this.form.submit()">
+            <option value="">-- Sélectionner --</option>
+            {% for r in rounds %}
+              <option value="{{ r.id }}"
+                      {% if r.id == current_round_obj.id %}selected{% endif %}>J.{{ r.number }}</option>
+            {% endfor %}
+          </select>
+        </div>
       </form>
       <div class="btn-group-actions">
         <a href="{% url 'pronos' %}" class="btn-custom btn-edit">✏️ Mes pronos</a>
