@@ -377,7 +377,7 @@ def all_pronos_view(request):
         selected_comp = near_round.season.competition if near_round else all_competitions.first()
 
     # Liste des saisons pour la compétition choisie
-    seasons = Season.objects.filter(competition=selected_comp).order_by('-year_start')
+    seasons = Season.objects.filter(competition=selected_comp).order_by('-year')
     
     # Sélection de la saison par défaut
     if season_id:
