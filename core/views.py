@@ -63,7 +63,6 @@ RUGBY_SCORING = {
 # ------------------
 @login_required
 def pronos_view(request):
-    print("--- LA VUE EST TRES BIEN CHARGÉE ---")
     user = request.user
     try:
         player = user.player
@@ -71,107 +70,87 @@ def pronos_view(request):
         messages.error(request, "Votre compte n’est pas encore lié à un joueur.")
         return redirect("logout")
 
+    # 1. RÉCUPÉRATION DES PARAMÈTRES
     competition_id = request.GET.get("competition")
+    season_id = request.GET.get("season")
     round_id = request.GET.get("round")
     now = timezone.now()
-    today = now.date()
 
-    # --- Round par défaut ---
-    if round_id is None:
-        rounds_query = Round.objects.filter(date__gte=today)
-        if competition_id:
-            rounds_query = rounds_query.filter(season__competition_id=competition_id)
-        
-        next_round = rounds_query.order_by("date").first()
-        if next_round:
-            round_id = str(next_round.id)
-
-    # --- Récupération des matchs ---
-    matches = Match.objects.select_related(
-        "round__season__competition",
-        "home_team",
-        "away_team",
-    )
-
+    # 2. LOGIQUE DES MENUS DÉROULANTS
+    competitions = Competition.objects.all().order_by('name')
+    
+    # Choix de la compétition
     if competition_id:
-        matches = matches.filter(round__season__competition_id=competition_id)
-    if round_id:
-        matches = matches.filter(round_id=round_id)
+        selected_comp = competitions.filter(id=competition_id).first()
+    else:
+        # Par défaut : compétition du prochain round à venir
+        next_r = Round.objects.filter(date__gte=now.date()).order_by("date").first()
+        selected_comp = next_r.season.competition if next_r else competitions.first()
 
-    matches = matches.order_by("kickoff_at")
+    # Choix de la saison
+    seasons = Season.objects.filter(competition=selected_comp).order_by('-year')
+    if season_id:
+        selected_season = seasons.filter(id=season_id).first()
+    else:
+        selected_season = seasons.first()
 
-    # ------------------
-    # POST = SAUVEGARDE
-    # ------------------
+    # Choix du round
+    rounds = Round.objects.filter(season=selected_season).order_by('number')
+    if not round_id:
+        # On cherche le prochain round de CETTE saison
+        current_r_obj = rounds.filter(date__gte=now.date()).order_by("date").first()
+        if not current_r_obj:
+            current_r_obj = rounds.last()
+        round_id = str(current_r_obj.id) if current_r_obj else None
+    else:
+        current_r_obj = rounds.filter(id=round_id).first()
+
+    # 3. GESTION DU POST (SAUVEGARDE)
+    # On garde ta logique de sauvegarde très robuste, elle est parfaite.
     if request.method == "POST":
-        for match in matches:
-            mid = match.id
+        matches_to_save = Match.objects.filter(round_id=round_id)
+        for match in matches_to_save:
+            if match.is_locked: continue
             
-            # 1. Ne pas traiter si verrouillé
-            if match.is_locked:
-                continue
+            h_score_raw = request.POST.get(f"home_score_{match.id}", "").strip()
+            a_score_raw = request.POST.get(f"away_score_{match.id}", "").strip()
 
-            # 2. Récupération et nettoyage immédiat des espaces
-            h_score_raw = request.POST.get(f"home_score_{mid}", "").strip()
-            a_score_raw = request.POST.get(f"away_score_{mid}", "").strip()
-
-            # 3. Vérification stricte : si l'un des deux est vide, on ignore TOTALEMENT le match
-            if not h_score_raw or not a_score_raw:
-                continue
-
-            # 4. Tentative de conversion en nombre
-            try:
-                home_score = int(h_score_raw)
-                away_score = int(a_score_raw)
-            except (ValueError, TypeError):
-                # Si ce n'est pas un chiffre (ex: du texte), on ignore le match
-                continue
-
-            # 5. Récupération des bonus
-            bonus_home = f"bonus_home_{mid}" in request.POST
-            bonus_away = f"bonus_away_{mid}" in request.POST
-
-            # 6. SAUVEGARDE : On utilise update_or_create pour être plus propre
-            Prediction.objects.update_or_create(
-                match=match,
-                player=player,
-                defaults={
-                    'home_score_pred': home_score,
-                    'away_score_pred': away_score,
-                    'bonus_home_pred': bonus_home,
-                    'bonus_away_pred': bonus_away,
-                }
-            )
+            if h_score_raw and a_score_raw:
+                try:
+                    Prediction.objects.update_or_create(
+                        match=match, player=player,
+                        defaults={
+                            'home_score_pred': int(h_score_raw),
+                            'away_score_pred': int(a_score_raw),
+                            'bonus_home_pred': f"bonus_home_{match.id}" in request.POST,
+                            'bonus_away_pred': f"bonus_away_{match.id}" in request.POST,
+                        }
+                    )
+                except ValueError: continue
 
         messages.success(request, "Pronostics enregistrés !")
-        return redirect(f"{request.path}?competition={competition_id or ''}&round={round_id or ''}")
+        return redirect(f"{request.path}?competition={selected_comp.id}&season={selected_season.id}&round={round_id}")
 
-    # ------------------
-    # PREPARATION AFFICHAGE
-    # ------------------
-    predictions_by_match = {p.match_id: p for p in Prediction.objects.filter(player=player)}
+    # 4. PRÉPARATION AFFICHAGE
+    matches = Match.objects.filter(round_id=round_id).select_related("home_team", "away_team").order_by("kickoff_at")
+    predictions_by_match = {p.match_id: p for p in Prediction.objects.filter(player=player, match__round_id=round_id)}
 
     submit_disabled = True
     for match in matches:
         match.user_prediction = predictions_by_match.get(match.id)
-        if not match.is_locked:
-            submit_disabled = False
-
-    competitions = Competition.objects.all()
-    all_rounds = Round.objects.select_related('season__competition').all()
-    if competition_id:
-        all_rounds = all_rounds.filter(season__competition_id=competition_id)
+        if not match.is_locked: submit_disabled = False
 
     return render(request, "pronos/pronos.html", {
         "player": player,
         "matches": matches,
         "competitions": competitions,
-        "rounds": all_rounds,
-        "submit_disabled": submit_disabled,
+        "seasons": seasons,
+        "rounds": rounds,
+        "selected_competition": selected_comp,
+        "selected_season": selected_season,
         "selected_round": round_id,
-        "selected_competition": competition_id,
+        "submit_disabled": submit_disabled,
     })
-
 # ... reste de tes vues (logout, settings, etc.) inchangé ...
 
 # ------------------

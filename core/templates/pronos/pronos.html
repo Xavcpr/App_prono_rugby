@@ -47,37 +47,46 @@
     </div>
   </div>
   <div class="navigation-zone">
-    <form method="get" class="row g-3">
-      <div class="col-12 col-md-4">
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-12 col-md-3">
         <label class="form-label fw-bold small text-muted text-uppercase">Compétition</label>
-        <select name="competition" class="form-select" onchange="this.form.submit()">
-          <option value="">Toutes</option>
+        <select name="competition"
+                class="form-select form-select-sm"
+                onchange="this.form.season.value=''; this.form.round.value=''; this.form.submit()">
           {% for comp in competitions %}
             <option value="{{ comp.id }}"
-                    {% if selected_competition == comp.id|stringformat:"s" %}selected{% endif %}>
-              {{ comp.name }}
-            </option>
+                    {% if selected_competition.id == comp.id %}selected{% endif %}>{{ comp.name }}</option>
           {% endfor %}
         </select>
       </div>
-      <div class="col-12 col-md-3">
+      <div class="col-12 col-md-2">
+        <label class="form-label fw-bold small text-muted text-uppercase">Saison</label>
+        <select name="season"
+                class="form-select form-select-sm"
+                onchange="this.form.round.value=''; this.form.submit()">
+          {% for s in seasons %}
+            <option value="{{ s.id }}"
+                    {% if selected_season.id == s.id %}selected{% endif %}>{{ s.year }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-2">
         <label class="form-label fw-bold small text-muted text-uppercase">Journée</label>
-        <select name="round" class="form-select" onchange="this.form.submit()">
-          <option value="">Toutes</option>
+        <select name="round"
+                class="form-select form-select-sm"
+                onchange="this.form.submit()">
+          <option value="">-- Choisir --</option>
           {% for r in rounds %}
             <option value="{{ r.id }}"
-                    {% if selected_round == r.id|stringformat:"s" %}selected{% endif %}>{{ r }}</option>
+                    {% if selected_round == r.id|stringformat:"s" %}selected{% endif %}>J.{{ r.number }}</option>
           {% endfor %}
         </select>
       </div>
-      <div class="col-12 col-md-5 d-flex align-items-end gap-2">
+      <div class="col-12 col-md-5 d-flex gap-2">
         <a href="{% if selected_round %}{% url 'round_board' selected_round %}{% else %}#{% endif %}"
-           class="btn btn-primary flex-grow-1 {% if not selected_round %}disabled{% endif %}">📊 Résultats de la journée</a>
-        <a href="/statistiques/{% if selected_competition %}?competition={{ selected_competition }}{% endif %}"
-           class="btn btn-indigo flex-grow-1 text-white"
-           style="background-color: #6610f2;
-                  border-color: #6610f2">📈 Classement général</a>
-        <a href="{% url 'all_pronos' %}" class="btn btn-dark flex-grow-1">👁️ Pronos des autres</a>
+           class="btn btn-primary btn-sm flex-grow-1 {% if not selected_round %}disabled{% endif %}">📊 Résultats</a>
+        <a href="{% url 'all_pronos' %}?round={{ selected_round }}"
+           class="btn btn-dark btn-sm flex-grow-1">👁️ Les autres</a>
       </div>
     </form>
   </div>
