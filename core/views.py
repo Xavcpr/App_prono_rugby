@@ -462,6 +462,11 @@ def all_pronos_view(request):
 
 def round_results_board(request, round_id):
     round_obj = get_object_or_404(Round, id=round_id)
+    selected_comp = round_obj.season.competition
+    selected_season = round_obj.season
+    all_competitions = Competition.objects.all().order_by('name')
+    seasons = Season.objects.filter(competition=selected_comp).order_by('-year')
+    rounds = Round.objects.filter(season=selected_season).order_by('number')
     players = Player.objects.all().order_by('name')
     matches = Match.objects.filter(round=round_obj).order_by('kickoff_at')
     all_competitions = Competition.objects.prefetch_related(
@@ -665,6 +670,10 @@ def round_results_board(request, round_id):
         'matrix': matrix,
         'totals': totals_display,
         'all_competitions': all_competitions,
+        'seasons': seasons,
+        'rounds': rounds,
+        'selected_comp': selected_comp,
+        'selected_season': selected_season,
     }
     return render(request, 'round_board.html', context)
 
