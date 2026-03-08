@@ -61,9 +61,7 @@
           <select name="season" onchange="this.form.round.value=''; this.form.submit()">
             {% for s in seasons %}
               <option value="{{ s.id }}"
-                      {% if s.id == selected_season.id %}selected{% endif %}>
-                {{ s.year_start }}/{{ s.year_end }}
-              </option>
+                      {% if s.id == selected_season.id %}selected{% endif %}>{{ s.year }}</option>
             {% endfor %}
           </select>
         </div>
