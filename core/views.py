@@ -391,6 +391,7 @@ def all_pronos_view(request):
             prono = next((pred for pred in predictions if pred.match_id == m.id and pred.player_id == p.id), None)
             
             p_dict = {
+                'has_prono': prono is not None,
                 'score_home': None,
                 'score_away': None,
                 'bonus_home': False,
@@ -409,6 +410,9 @@ def all_pronos_view(request):
             # Si le match n'est pas commencé ET que l'utilisateur n'est pas admin -> on cache
             if not is_locked and not is_admin:
                 p_dict['display_locked'] = True
+            
+            if (is_locked or is_admin) and prono:
+                p_dict['score_home'] = prono.home_score_pred
             
             # Si le match est commencé OU que l'utilisateur est admin -> on traite les données
             elif prono:

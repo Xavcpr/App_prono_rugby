@@ -69,6 +69,8 @@
       </div>
     </div>
     <div class="legend-small">
+      <span>✅ Prono fait</span>
+      <span>❌ Pas de prono</span>
       <span><span class="perfect-score" style="border-width: 1px;">24</span> Score exact</span>
       <span><span class="bonus-success">24</span> Bonus Validé</span>
       <span><span class="bonus-fail">24</span> Bonus Raté</span>
@@ -96,9 +98,14 @@
               {% for p_data in row.player_pronos %}
                 <td class="{{ p_data.class }}">
                   {% if p_data.display_locked %}
-                    <span class="text-muted">🔒</span>
+                    {# MATCH NON COMMENCÉ ET JOUEUR NON ADMIN #}
+                    {% if p_data.has_prono %}
+                      <span class="text-success" title="Prono enregistré">✅</span>
+                    {% else %}
+                      <span class="text-muted" title="Aucun prono">❌</span>
+                    {% endif %}
                   {% elif p_data.score_home != None %}
-                    {# Indicateur Admin pour les matches non commencés #}
+                    {# MATCH COMMENCÉ OU ADMIN : ON AFFICHE LE SCORE #}
                     {% if not row.is_locked %}
                       <span class="admin-eye"
                             title="Match non commencé : Visible seulement par l'admin">👁️</span>
@@ -111,6 +118,7 @@
                       {{ p_data.score_away }}
                     </span>
                   {% else %}
+                    {# PAS DE PRONO ET MATCH DÉBLOQUÉ #}
                     <span class="text-muted">-</span>
                   {% endif %}
                 </td>
