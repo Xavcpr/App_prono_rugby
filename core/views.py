@@ -440,8 +440,22 @@ def all_pronos_view(request):
 
 def round_results_board(request, round_id):
     round_obj = get_object_or_404(Round, id=round_id)
-    selected_comp = round_obj.season.competition
-    selected_season = round_obj.season
+    new_comp_id = request.GET.get('comp')
+    if new_comp_id:
+        selected_comp = get_object_or_404(Competition, id=new_comp_id)
+        # Si on change de comp, il faut prendre la saison la plus récente (2025/26) de cette comp
+        selected_season = Season.objects.filter(competition=selected_comp, year__gte=2025).first()
+        # Et prendre le premier round de cette saison
+        if selected_season:
+             first_round = Round.objects.filter(season=selected_season).first()
+             if first_round:
+                 # Optionnel : rediriger pour mettre à jour l'ID dans l'URL
+                 from django.shortcuts import redirect
+                 return redirect('round_board', round_id=first_round.id)
+    else:
+        selected_comp = round_obj.season.competition
+        selected_season = round_obj.season
+    # ------------------------------
     all_competitions = Competition.objects.all().order_by('name')
     seasons = Season.objects.filter(competition=selected_comp,year__gte=2025).order_by('-year')
     rounds = Round.objects.filter(season=selected_season).order_by('number')
