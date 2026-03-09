@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 from django.db.models import Sum
 from django.contrib.auth import get_user_model
 
-from core.models import Competition, Round, Match, Player, Prediction, DailyScore
+from core.models import Competition, Round, Match, Player, Prediction, DailyScore, Season
 
 # =========================
 # Mapping champs à adapter
@@ -76,25 +76,25 @@ class StatsResult:
     cuilleres_bois: List[Dict]
 
 
-def compute_statistics(competition: Optional[Competition]) -> StatsResult:
+def compute_statistics(competition: Optional[Competition], season: Optional[Season] = None) -> StatsResult:
     # 1. ---- Définition du périmètre des Rounds ----
     rounds_qs = Round.objects.all()
-    if competition is not None:
-        try:
-            rounds_qs = rounds_qs.filter(season__competition=competition)
-        except Exception:
-            pass
+    
+    # FILTRE PRIORITAIRE : Si une saison est spécifiée, on ne prend QUE ses rounds
+    if season is not None:
+        rounds_qs = rounds_qs.filter(season=season)
+    # Sinon, si seulement la compétition est spécifiée
+    elif competition is not None:
+        rounds_qs = rounds_qs.filter(season__competition=competition)
 
-    # Tri chronologique
+    # Tri chronologique (on garde ta logique)
     if hasattr(Round, "date"):
         rounds_qs = rounds_qs.order_by("date")
-    elif hasattr(Round, "number"):
-        rounds_qs = rounds_qs.order_by("number")
     else:
-        rounds_qs = rounds_qs.order_by("id")
+        rounds_qs = rounds_qs.order_by("number")
 
     rounds = list(rounds_qs)
-    labels = [getattr(r, "name", f"J{r.id}") for r in rounds]
+    labels = [getattr(r, "name", f"J{r.number}") for r in rounds] # Utilisation de .number pour plus de clarté
     round_ids = [r.id for r in rounds]
 
     # 2. ---- Chargement des Joueurs ----
