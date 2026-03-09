@@ -88,7 +88,7 @@ def pronos_view(request):
         selected_comp = next_r.season.competition if next_r else competitions.first()
 
     # Choix de la saison
-    seasons = Season.objects.filter(competition=selected_comp).order_by('-year')
+    seasons = Season.objects.filter(competition=selected_comp,year__gte=2025).order_by('-year')
     if season_id:
         selected_season = seasons.filter(id=season_id).first()
     else:
@@ -356,8 +356,7 @@ def all_pronos_view(request):
         selected_comp = near_round.season.competition if near_round else all_competitions.first()
 
     # Liste des saisons pour la compétition choisie
-    seasons = Season.objects.filter(competition=selected_comp).order_by('-year')
-    
+    seasons = Season.objects.filter(competition=selected_comp,year__gte=2025).order_by('-year')
     # Sélection de la saison par défaut
     if season_id:
         selected_season = seasons.filter(id=season_id).first()
@@ -444,7 +443,7 @@ def round_results_board(request, round_id):
     selected_comp = round_obj.season.competition
     selected_season = round_obj.season
     all_competitions = Competition.objects.all().order_by('name')
-    seasons = Season.objects.filter(competition=selected_comp).order_by('-year')
+    seasons = Season.objects.filter(competition=selected_comp,year__gte=2025).order_by('-year')
     rounds = Round.objects.filter(season=selected_season).order_by('number')
     players = Player.objects.all().order_by('name')
     matches = Match.objects.filter(round=round_obj).order_by('kickoff_at')
