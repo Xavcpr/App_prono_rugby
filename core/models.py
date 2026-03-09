@@ -66,31 +66,48 @@ class Season(models.Model):
 
 # ----- Journées / Rounds -----
 class Round(models.Model):
+    # On définit les choix ici ou on importe ceux que tu avais
+    class MatchPhase(models.TextChoices):
+        POOL = "POOL", "Phase de poules"
+        R16 = "R16", "Huitièmes de finale"
+        QF = "QF", "Quarts de finale / Barrages"
+        SF = "SF", "Demi-finales"
+        FINAL = "FINAL", "Finale"
+
     season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="rounds")
-    number = models.PositiveIntegerField()
-    date = models.DateField(
-        null=True,
-        blank=True,
-        help_text="Date indicative de la journée"
+    number = models.PositiveIntegerField(help_text="Ordre chronologique (1, 2, 3...)")
+    
+    # Nouveau champ pour le type de phase
+    phase = models.CharField(
+        max_length=10, 
+        choices=MatchPhase.choices, 
+        default=MatchPhase.POOL
     )
+    
+    # Nouveau champ optionnel pour un nom personnalisé (ex: "Barrages")
+    name_override = models.CharField(
+        max_length=100, 
+        blank=True, 
+        null=True, 
+        help_text="Nom personnalisé (ex: 'Match de barrage'). Laisse vide pour 'Journée X'"
+    )
+    
+    date = models.DateField(null=True, blank=True)
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(
-                fields=["season", "number"],
-                name="unique_round_per_season"
-            )
+            models.UniqueConstraint(fields=["season", "number"], name="unique_round_per_season")
         ]
         ordering = ["season", "number"]
 
     def __str__(self):
+        # Logique d'affichage intelligente
+        if self.name_override:
+            return f"{self.season} – {self.name_override}"
+        if self.phase != self.MatchPhase.POOL:
+            return f"{self.season} – {self.get_phase_display()}"
         return f"{self.season} – Journée {self.number}"
-
-    @property
-    def competition(self):
-        # On déduit la compétition directement depuis la saison
-        return self.season.competition
-
+    
 # ----- Matchs -----
 class Match(models.Model):
     round = models.ForeignKey(Round, on_delete=models.CASCADE, null=True, related_name="matches")
