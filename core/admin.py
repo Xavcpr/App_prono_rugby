@@ -36,7 +36,7 @@ class RoundForm(forms.ModelForm):
 
     class Meta:
         model = Round
-        fields = ("competition", "season", "number", "date")
+        fields = ("competition", "season", "number", "phase", "name_override", "date")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -58,9 +58,12 @@ class RoundForm(forms.ModelForm):
 @admin.register(Round)
 class RoundAdmin(admin.ModelAdmin):
     form = RoundForm
-    list_display = ("__str__", "season", "number", "date")
-    list_filter = ("season__competition", "season")
-    fields = ("competition", "season", "number", "date")
+    # Ajoute les colonnes pour y voir clair dans la liste globale
+    list_display = ("__str__", "season", "number", "phase", "date") 
+    list_filter = ("season__competition", "season", "phase")
+    
+    # Ajoute les champs pour qu'ils apparaissent dans la page "Ajouter un round"
+    fields = ("competition", "season", "number", "phase", "name_override", "date")
 
 @admin.register(Season)
 class SeasonAdmin(admin.ModelAdmin):
