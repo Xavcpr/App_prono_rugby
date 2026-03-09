@@ -663,81 +663,82 @@ def compute_round_view(request, round_id):
     # Une fois fini, on revient sur la page des résultats
     return redirect('round_board', round_id=round_id)
 
-# ------------------
-# STATISTIQUES VIEW
-# ------------------
 @login_required
 def statistiques_view(request):
     competition_id = request.GET.get("competition", "").strip()
+    season_id = request.GET.get("season", "").strip() # Nouveau paramètre
+    
     competitions = Competition.objects.all().order_by("name")
 
+    # 1. Gestion de la Compétition
     competition = None
     if competition_id.isdigit():
-        competition = get_object_or_404(Competition, id=int(competition_id))
+        competition = Competition.objects.filter(id=int(competition_id)).first()
 
-    # Calcul des stats via le service
-    stats = compute_statistics(competition)
+    # 2. Gestion des Saisons (Uniquement >= 2025)
+    seasons = Season.objects.filter(year__gte=2025)
+    if competition:
+        seasons = seasons.filter(competition=competition)
+    seasons = seasons.order_by("-year")
+
+    # 3. Sélection de la saison actuelle pour le calcul
+    selected_season = None
+    if season_id.isdigit():
+        selected_season = seasons.filter(id=int(season_id)).first()
+    
+    # Si aucune saison n'est sélectionnée, on prend la plus récente par défaut
+    if not selected_season:
+        selected_season = seasons.first()
+
+    # 4. Calcul des stats
+    # Note : Il faudra peut-être adapter ton 'compute_statistics' pour 
+    # accepter 'selected_season' au lieu de juste 'competition'
+    stats = compute_statistics(competition, season=selected_season)
 
     # --- SÉCURISATION DU CRASH SeasonScore ---
     season_scores = {}
     try:
-        if competition:
-            # On récupère les scores s'ils existent
-            qs = SeasonScore.objects.filter(competition=competition).values('user__username', 'ranking_points')
-            season_scores = {item['user__username']: item['ranking_points'] for item in qs}
-        else:
-            qs = SeasonScore.objects.values('user__username').annotate(total_rk=Sum('ranking_points'))
-            season_scores = {item['user__username']: item['total_rk'] for item in qs}
+        # On filtre SeasonScore par la saison sélectionnée
+        qs = SeasonScore.objects.filter(season=selected_season)
+        season_scores = {item.user.username: item.ranking_points for item in qs}
     except Exception:
-        # Si la colonne n'existe vraiment pas, on met 0 pour tout le monde au lieu de crasher
         season_scores = {}
 
+    # ... (Le reste de ta logique de calcul de ranking reste identique) ...
     for r in stats.detailed_ranking:
         r['match_pts'] = r.get('points', 0)
-        # On récupère le score de classement, sinon 0
         r['ranking_pts'] = season_scores.get(r['username'], 0)
         r['total_global'] = r['match_pts'] + r['ranking_pts']
 
-    # Tri final sur le total global
     stats.detailed_ranking.sort(key=lambda x: x['total_global'], reverse=True)
-    for i, r in enumerate(stats.detailed_ranking, 1):
-        r['rank'] = i
-        
-    # 1. On crée le classement Flair (trié par ranking_pts)
-    flair_ranking = sorted(stats.detailed_ranking, key=lambda x: x.get('ranking_pts', 0), reverse=True)
     
-    # 2. On récupère le tableau des victoires depuis l'objet stats (calculé par compute_statistics)
-    # Note: Vérifie que compute_statistics renvoie bien 'victory_table'
-    victory_table = getattr(stats, 'victory_table', [])
-    
-    # On cherche la dernière journée pour le bouton "Résultats"
+    # On cherche la dernière journée pour le bouton
     last_round_id = None
-    if competition:
-        # On récupère la dernière journée de la compétition sélectionnée
-        # On part de la saison la plus récente et de la journée la plus haute
-        from .models import Round # Assure-toi que l'import est là
-        lr = Round.objects.filter(season__competition=competition).order_by('-number').first()
-        if lr:
-            last_round_id = lr.id
-    
-    # ... reste du context identique ...
+    if selected_season:
+        lr = Round.objects.filter(season=selected_season).order_by('-number').first()
+        if lr: last_round_id = lr.id
+
     context = {
         "competitions": competitions,
         "competition": competition,
+        "seasons": seasons,
+        "selected_season": selected_season,
         "kpi": stats.kpi,
         "labels": stats.labels,
         "score_series": stats.score_series,
+        "rank_series": stats.rank_series,
         "detailed_ranking": stats.detailed_ranking,
         "choppes_or": stats.choppes_or,
         "chopes_cumulees": stats.chopes_cumulees,
         "cuilleres_bois": stats.cuilleres_bois,
-        "flair_ranking": flair_ranking,
-        "victory_table": victory_table,
+        "flair_ranking": sorted(stats.detailed_ranking, key=lambda x: x.get('ranking_pts', 0), reverse=True),
+        "victory_table": getattr(stats, 'victory_table', []),
         "last_round_id": last_round_id,
+        "pie_labels": stats.pie_labels, # Assure-toi que ces noms correspondent
+        "pie_values": stats.pie_values,
     }
 
     return render(request, "statistiques.html", context)
-
 
 @login_required
 def debug_scores_view(request):
