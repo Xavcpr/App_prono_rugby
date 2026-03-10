@@ -20,6 +20,12 @@
   
   /* --- Table Layout --- */
   .table-container { overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 30px; }
+  .rugby-board td {white-space: nowrap; vertical-align: middle; }
+  .rugby-board td span {
+    display: inline-block; /* Permet de mieux contrôler les bordures basses */
+    min-width: 20px;       /* Aligne un peu mieux les chiffres simples (ex: 9 vs 24) */
+    text-align: center;
+}
   .rugby-board { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.95em; min-width: 1000px; }
   .rugby-board th, .rugby-board td { border: 1px solid #bdc3c7; padding: 12px; text-align: center; vertical-align: middle; }
   .header-dark { background: #34495e; color: white; }
