@@ -339,144 +339,116 @@ def all_pronos_view(request):
     now = timezone.now()
     is_admin = request.user.is_staff or request.user.is_superuser
     
-    # 1. RÉCUPÉRATION DES IDs DEPUIS L'URL
     comp_id = request.GET.get("comp")
     season_id = request.GET.get("season")
     round_id = request.GET.get("round")
 
-    # 2. LISTES POUR LES MENUS DÉROULANTS
     all_competitions = Competition.objects.all().order_by('name')
     
-    # Sélection de la compétition par défaut (la première ou la sélectionnée)
     if comp_id:
         selected_comp = all_competitions.filter(id=comp_id).first()
     else:
-        # Par défaut, on cherche s'il y a un round proche d'aujourd'hui pour deviner la compétition
         near_round = Round.objects.filter(date__gte=now.date()).order_by("date").first()
         selected_comp = near_round.season.competition if near_round else all_competitions.first()
 
-    # Liste des saisons pour la compétition choisie
-    seasons = Season.objects.filter(competition=selected_comp,year__gte=2025).order_by('-year')
-    # Sélection de la saison par défaut
-    if season_id:
-        selected_season = seasons.filter(id=season_id).first()
-    else:
-        selected_season = seasons.first() # La plus récente
-
-    # Liste des journées pour la saison choisie
+    seasons = Season.objects.filter(competition=selected_comp, year__gte=2025).order_by('-year')
+    selected_season = seasons.filter(id=season_id).first() if season_id else seasons.first()
     rounds = Round.objects.filter(season=selected_season).order_by('number')
 
-    # 3. IDENTIFICATION DU ROUND FINAL À AFFICHER
     if round_id:
         current_round_obj = rounds.filter(id=round_id).first()
     else:
-        # Automatisme : round le plus proche du présent dans cette saison
-        current_round_obj = rounds.filter(date__gte=now.date()).order_by("date").first()
-        if not current_round_obj:
-            current_round_obj = rounds.last()
+        current_round_obj = rounds.filter(date__gte=now.date()).order_by("date").first() or rounds.last()
 
-    # 4. RÉCUPÉRATION DES DONNÉES DE MATCH ET PRONOS
-    matches = []
-    players = Player.objects.all().select_related('user').order_by('user__username')
     rows = []
+    players = Player.objects.all().select_related('user').order_by('user__username')
 
     if current_round_obj:
         matches = Match.objects.filter(round=current_round_obj).select_related('home_team', 'away_team').order_by("kickoff_at")
         predictions = Prediction.objects.filter(match__round=current_round_obj)
+        threshold = current_round_obj.season.competition.bonus_defense_threshold
 
         for m in matches:
             is_locked = now > m.kickoff_at if m.kickoff_at else False
-            player_pronos = []
             has_result = m.home_score is not None and m.away_score is not None
-            threshold = current_round_obj.season.competition.bonus_defense_threshold
+            real_bd = m.get_defense_bonus() # Attendu: 'HOME', 'AWAY' ou None
             
+            player_pronos = []
             for p in players:
                 prono = next((pred for pred in predictions if pred.match_id == m.id and pred.player_id == p.id), None)
                 
-                p_dict = {     
+                # Init du dictionnaire de données pour le template
+                p_dict = {
                     'has_prono': prono is not None,
-                    'score_home': None,
-                    'score_away': None,
-                    'class': "",
-                    'display_locked': False,
-                    'is_perfect_home': False,
-                    'is_perfect_away': False,
-                    'bonus_home_success': False,
-                    'bonus_home_fail': False,
-                    'bonus_home': False,
-                    'bonus_away_success': False,
-                    'bonus_away_fail': False,
-                    'bonus_away': False,
+                    'score_home': None, 'score_away': None,
+                    'class': "", 'display_locked': False,
+                    'is_perfect_home': False, 'is_perfect_away': False,
+                    'bo_home_ok': False, 'bo_home_ko': False,
+                    'bd_home_ok': False, 'bd_home_ko': False,
+                    'bo_away_ok': False, 'bo_away_ko': False,
+                    'bd_away_ok': False, 'bd_away_ko': False,
+                    'pending_home': False, 'pending_away': False,
                 }
 
-                # Logique de visibilité
                 if not is_locked and not is_admin:
                     p_dict['display_locked'] = True
                 
                 if (is_locked or is_admin) and prono:
-                    p_dict.update({
-                        'score_home': prono.home_score_pred,
-                        'score_away': prono.away_score_pred,
-                        'bonus_home': prono.bonus_home_pred,
-                        'bonus_away': prono.bonus_away_pred,
-                        # Ajoute ici tes calculs de bonus success/fail que tu avais déjà
-                    })
-                    # 2. Calcul des Bonus visuels si le résultat réel existe
+                    p_dict.update({'score_home': prono.home_score_pred, 'score_away': prono.away_score_pred})
+                    
                     if has_result:
-                        # Scores Exacts (Encadré vert)
+                        # 1. Scores Exacts
                         p_dict['is_perfect_home'] = (prono.home_score_pred == m.home_score)
                         p_dict['is_perfect_away'] = (prono.away_score_pred == m.away_score)
 
-                        # Bonus Offensif (Soulignement Vert/Rouge)
+                        # 2. Bonus Offensifs (BO)
                         if prono.bonus_home_pred:
-                            p_dict['bonus_home_success'] = m.bonus_offense_home
-                            p_dict['bonus_home_fail'] = not m.bonus_offense_home
-                        
+                            if m.bonus_offense_home: p_dict['bo_home_ok'] = True
+                            else: p_dict['bo_home_ko'] = True
                         if prono.bonus_away_pred:
-                            p_dict['bonus_away_success'] = m.bonus_offense_away
-                            p_dict['bonus_away_fail'] = not m.bonus_offense_away
-
-                        # Bonus Défensif (Logique automatique : diff <= seuil)
-                        # Si le prono prévoit un BD, on vérifie s'il a eu lieu
-                        real_bd = m.get_defense_bonus() # Renvoie 'HOME', 'AWAY' ou None
+                            if m.bonus_offense_away: p_dict['bo_away_ok'] = True
+                            else: p_dict['bo_away_ko'] = True
                         
-                        # BD Pronostiqué pour Home
+                        # 3. Bonus Défensifs (BD) - Logique Auto
+                        # Home prédit BD
                         if prono.home_score_pred < prono.away_score_pred and (prono.away_score_pred - prono.home_score_pred) <= threshold:
-                            p_dict['bonus_home_success'] = (real_bd == 'HOME' or m.home_score == m.away_score)
-                            p_dict['bonus_home_fail'] = not p_dict['bonus_home_success']
-                        
-                        # BD Pronostiqué pour Away
+                            if real_bd == 'HOME' or m.home_score == m.away_score: p_dict['bd_home_ok'] = True
+                            else: p_dict['bd_home_ko'] = True
+                        # Away prédit BD
                         if prono.away_score_pred < prono.home_score_pred and (prono.home_score_pred - prono.away_score_pred) <= threshold:
-                            p_dict['bonus_away_success'] = (real_bd == 'AWAY' or m.home_score == m.away_score)
-                            p_dict['bonus_away_fail'] = not p_dict['bonus_away_success']
+                            if real_bd == 'AWAY' or m.home_score == m.away_score: p_dict['bd_away_ok'] = True
+                            else: p_dict['bd_away_ko'] = True
+                    else:
+                        # Match non joué : Orange si un bonus est "dans les tuyaux"
+                        if prono.bonus_home_pred or (prono.home_score_pred < prono.away_score_pred and (prono.away_score_pred - prono.home_score_pred) <= threshold):
+                            p_dict['pending_home'] = True
+                        if prono.bonus_away_pred or (prono.away_score_pred < prono.home_score_pred and (prono.home_score_pred - prono.away_score_pred) <= threshold):
+                            p_dict['pending_away'] = True
 
-                    # 3. Classe de fond (Gagnant du match)
+                    # Background couleur selon vainqueur prédit
                     if prono.home_score_pred > prono.away_score_pred: p_dict['class'] = "bg-home-win"
                     elif prono.away_score_pred > prono.home_score_pred: p_dict['class'] = "bg-away-win"
                     else: p_dict['class'] = "bg-draw"
 
                 player_pronos.append(p_dict)
 
-
             rows.append({
                 'info': f"{m.home_team.name if m.home_team else 'TBD'} - {m.away_team.name if m.away_team else 'TBD'}",
                 'reel_home': m.home_score,
                 'reel_away': m.away_score,
+                'bo_reel_home': m.bonus_offense_home,
+                'bd_reel_home': (real_bd == 'HOME'),
+                'bo_reel_away': m.bonus_offense_away,
+                'bd_reel_away': (real_bd == 'AWAY'),
                 'player_pronos': player_pronos,
                 'is_locked': is_locked
             })
 
     return render(request, "pronos/all_pronos.html", {
-        "rows": rows,
-        "players": players,
-        "competitions": all_competitions,
-        "seasons": seasons,
-        "rounds": rounds,
-        "selected_comp": selected_comp,
-        "selected_season": selected_season,
-        "current_round_obj": current_round_obj,
-    })
-    
+        "rows": rows, "players": players, "competitions": all_competitions,
+        "seasons": seasons, "rounds": rounds, "selected_comp": selected_comp,
+        "selected_season": selected_season, "current_round_obj": current_round_obj,
+    })  
 
 def round_results_board(request, round_id):
     round_obj = get_object_or_404(Round, id=round_id)

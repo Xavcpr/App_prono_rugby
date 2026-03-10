@@ -4,94 +4,69 @@
   /* --- Charte Graphique --- */
   .board-header { margin: 20px 0; background: #2c3e50; color: white; padding: 20px; border-radius: 8px; }
   .navigation-zone { background: #ecf0f1; padding: 15px; border-radius: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 15px; margin-bottom: 20px; }
+  
+  /* --- Scores et Bonus --- */
   .perfect-score { border: 2px solid #27ae60; background-color: rgba(39, 174, 96, 0.1); padding: 1px 4px; border-radius: 4px; font-weight: bold; }
-  .bonus-success { text-decoration: underline; text-decoration-thickness: 3px; text-decoration-color: #27ae60; }
-  .bonus-fail { text-decoration: underline; text-decoration-thickness: 3px; text-decoration-color: #e74c3c; }
+  
+  /* BO : Trait plein */
+  .bo-success { text-decoration: underline; text-decoration-thickness: 3px; text-decoration-color: #27ae60; }
+  .bo-fail { text-decoration: underline; text-decoration-thickness: 3px; text-decoration-color: #e74c3c; }
+  
+  /* BD : Pointillés */
+  .bd-success { border-bottom: 3px dashed #27ae60; }
+  .bd-fail { border-bottom: 3px dashed #e74c3c; }
+
   .bonus-pending { text-decoration: underline; text-decoration-thickness: 3px; text-decoration-color: #f39c12; }
-  .bonus-off { text-decoration: underline; text-decoration-thickness: 3px; text-decoration-color: #34495e; }
-  .legend-small { font-size: 0.8rem; display: flex; flex-wrap: wrap; gap: 15px; margin: 0 0 15px 5px; color: #2c3e50; font-weight: 500; }
-  .table-container { overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 30px; -webkit-overflow-scrolling: touch; }
+  
+  /* --- Table Layout --- */
+  .table-container { overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 30px; }
   .rugby-board { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.95em; min-width: 1000px; }
   .rugby-board th, .rugby-board td { border: 1px solid #bdc3c7; padding: 12px; text-align: center; vertical-align: middle; }
   .header-dark { background: #34495e; color: white; }
   .sticky-match { position: sticky; left: 0; z-index: 10; background: #f9f9f9 !important; font-weight: bold; text-align: left !important; min-width: 220px; border-right: 2px solid #34495e !important; }
   .sticky-score { position: sticky; left: 220px; z-index: 10; background: #edf2f4 !important; font-weight: bold; min-width: 100px; border-right: 2px solid #34495e !important; }
-  thead th.sticky-match, thead th.sticky-score { z-index: 11; background: #34495e !important; }
-  .bg-home-win { background-color: #d4edda !important; color: #155724; }
-  .bg-away-win { background-color: #f8d7da !important; color: #721c24; }
-  .bg-draw { background-color: #fff3cd !important; color: #856404; }
-  .btn-group-actions { margin-left: auto; display: flex; gap: 10px; }
-  .btn-custom { padding: 8px 15px; text-decoration: none !important; border-radius: 4px; font-weight: bold; transition: 0.3s; display: inline-block; white-space: nowrap; }
-  .btn-results { background: #3498db; color: white; }
-  .btn-edit { background: #f39c12; color: white; }
-  .admin-eye { font-size: 0.8rem; cursor: help; margin-right: 3px; vertical-align: middle; }
-
-  @media (max-width: 768px) {
-    .navigation-zone { flex-direction: column; align-items: stretch; }
-    .btn-group-actions { margin-left: 0; display: grid; grid-template-columns: 1fr 1fr; }
-    .sticky-match { min-width: 150px !important; }
-    .sticky-score { left: 150px !important; min-width: 80px !important; }
-    .rugby-board { min-width: 850px; }
-  }
+  
+  .bg-home-win { background-color: #d4edda !important; }
+  .bg-away-win { background-color: #f8d7da !important; }
+  .bg-draw { background-color: #fff3cd !important; }
+  
+  .legend-small { font-size: 0.8rem; display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 15px; color: #2c3e50; }
   </style>
   <div class="container-fluid">
     <div class="board-header">
-      <h1 style="margin: 0">Grille des Pronostics</h1>
-      {% if current_round_obj %}
-        <h3 style="margin: 5px 0 0 0; opacity: 0.9">{{ current_round_obj.season }} — {{ current_round_obj }}</h3>
-      {% endif %}
+      <h1>Grille des Pronostics</h1>
+      {% if current_round_obj %}<h3>{{ current_round_obj.season }} — {{ current_round_obj }}</h3>{% endif %}
     </div>
     <div class="navigation-zone">
       <form method="get"
             action="{% url 'all_pronos' %}"
-            id="filterForm"
-            class="d-flex flex-wrap align-items-center gap-3 margin-0">
-        <div class="d-flex align-items-center gap-1">
-          <label class="small fw-bold mb-0">Compétition:</label>
-          <select name="comp"
-                  onchange="this.form.season.value=''; this.form.round.value=''; this.form.submit()">
-            {% for c in competitions %}
-              <option value="{{ c.id }}"
-                      {% if c.id == selected_comp.id %}selected{% endif %}>{{ c.name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="d-flex align-items-center gap-1">
-          <label class="small fw-bold mb-0">Saison:</label>
-          <select name="season" onchange="this.form.round.value=''; this.form.submit()">
-            {% for s in seasons %}
-              <option value="{{ s.id }}"
-                      {% if s.id == selected_season.id %}selected{% endif %}>{{ s.year }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="d-flex align-items-center gap-1">
-          <label class="small fw-bold mb-0">Journée:</label>
-          <select name="round" onchange="this.form.submit()">
-            <option value="">-- Sélectionner --</option>
-            {% for r in rounds %}
-              <option value="{{ r.id }}"
-                      {% if r.id == current_round_obj.id %}selected{% endif %}>{{ r }}</option>
-            {% endfor %}
-          </select>
-        </div>
+            class="d-flex flex-wrap gap-3 align-items-center">
+        <select name="comp" onchange="this.form.submit()">
+          {% for c in competitions %}
+            <option value="{{ c.id }}"
+                    {% if c.id == selected_comp.id %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+        <select name="season" onchange="this.form.submit()">
+          {% for s in seasons %}
+            <option value="{{ s.id }}"
+                    {% if s.id == selected_season.id %}selected{% endif %}>{{ s.year }}</option>
+          {% endfor %}
+        </select>
+        <select name="round" onchange="this.form.submit()">
+          {% for r in rounds %}
+            <option value="{{ r.id }}"
+                    {% if r.id == current_round_obj.id %}selected{% endif %}>{{ r }}</option>
+          {% endfor %}
+        </select>
       </form>
-      <div class="btn-group-actions">
-        <a href="{% url 'pronos' %}" class="btn-custom btn-edit">✏️ Mes pronos</a>
-        {% if current_round_obj %}
-          <a href="{% url 'round_board' current_round_obj.id %}"
-             class="btn-custom btn-results">📊 Résultats</a>
-        {% endif %}
-      </div>
     </div>
     <div class="legend-small">
-      <span>✅ Prono fait</span>
-      <span>❌ Pas de prono</span>
-      <span><span class="perfect-score" style="border-width: 1px;">24</span> Score exact</span>
-      <span><span class="bonus-success">24</span> Bonus Validé</span>
-      <span><span class="bonus-fail">24</span> Bonus Raté</span>
-      <span><span class="bonus-pending">24</span> En attente</span>
-      {% if user.is_staff %}<span><span class="admin-eye">👁️</span> Vu par Admin seul</span>{% endif %}
+      <span><span class="bo-success">24</span> BO réussi</span>
+      <span><span class="bo-fail">24</span> BO raté</span>
+      <span><span class="bd-success">24</span> BD réussi</span>
+      <span><span class="bd-fail">24</span> BD raté</span>
+      <span><span class="perfect-score">24</span> Score exact</span>
     </div>
     <div class="table-container">
       <table class="rugby-board">
@@ -99,7 +74,7 @@
           <tr class="header-dark">
             <th class="sticky-match">Match</th>
             <th class="sticky-score">Score Réel</th>
-            {% for player in players %}<th style="min-width: 120px;">{{ player.name }}</th>{% endfor %}
+            {% for player in players %}<th>{{ player.name }}</th>{% endfor %}
           </tr>
         </thead>
         <tbody>
@@ -107,35 +82,28 @@
             <tr>
               <td class="sticky-match">{{ row.info }}</td>
               <td class="sticky-score">
-                <span class="{% if row.bonus_home_reel %}bonus-off{% endif %}">{{ row.reel_home|default_if_none:"-" }}</span>
-                {% if row.reel_home != None %}-{% endif %}
-                <span class="{% if row.bonus_away_reel %}bonus-off{% endif %}">{{ row.reel_away|default_if_none:"-" }}</span>
+                <span class="{% if row.bo_reel_home %}bo-success{% elif row.bd_reel_home %}bd-success{% endif %}">
+                  {{ row.reel_home|default_if_none:"-" }}
+                </span>
+                -
+                <span class="{% if row.bo_reel_away %}bo-success{% elif row.bd_reel_away %}bd-success{% endif %}">
+                  {{ row.reel_away|default_if_none:"-" }}
+                </span>
               </td>
               {% for p_data in row.player_pronos %}
                 <td class="{{ p_data.class }}">
                   {% if p_data.display_locked %}
-                    {# MATCH NON COMMENCÉ ET JOUEUR NON ADMIN #}
-                    {% if p_data.has_prono %}
-                      <span class="text-success" title="Prono enregistré">✅</span>
-                    {% else %}
-                      <span class="text-muted" title="Aucun prono">❌</span>
-                    {% endif %}
+                    <span>{{ p_data.has_prono|yesno:"✅,❌" }}</span>
                   {% elif p_data.score_home != None %}
-                    {# MATCH COMMENCÉ OU ADMIN : ON AFFICHE LE SCORE #}
-                    {% if not row.is_locked %}
-                      <span class="admin-eye"
-                            title="Match non commencé : Visible seulement par l'admin">👁️</span>
-                    {% endif %}
-                    <span class="{% if p_data.bonus_home_success %}bonus-success{% elif p_data.bonus_home_fail %}bonus-fail{% elif p_data.bonus_home %}bonus-pending{% endif %} {% if p_data.is_perfect_home %}perfect-score{% endif %}">
+                    <span class="{% if p_data.is_perfect_home %}perfect-score{% endif %} {% if p_data.bo_home_ok %}bo-success{% elif p_data.bo_home_ko %}bo-fail{% endif %} {% if p_data.bd_home_ok %}bd-success{% elif p_data.bd_home_ko %}bd-fail{% endif %} {% if p_data.pending_home %}bonus-pending{% endif %}">
                       {{ p_data.score_home }}
                     </span>
-                    <span class="text-muted mx-1">-</span>
-                    <span class="{% if p_data.bonus_away_success %}bonus-success{% elif p_data.bonus_away_fail %}bonus-fail{% elif p_data.bonus_away %}bonus-pending{% endif %} {% if p_data.is_perfect_away %}perfect-score{% endif %}">
+                    -
+                    <span class="{% if p_data.is_perfect_away %}perfect-score{% endif %} {% if p_data.bo_away_ok %}bo-success{% elif p_data.bo_away_ko %}bo-fail{% endif %} {% if p_data.bd_away_ok %}bd-success{% elif p_data.bd_away_ko %}bd-fail{% endif %} {% if p_data.pending_away %}bonus-pending{% endif %}">
                       {{ p_data.score_away }}
                     </span>
                   {% else %}
-                    {# PAS DE PRONO ET MATCH DÉBLOQUÉ #}
-                    <span class="text-muted">-</span>
+                    -
                   {% endif %}
                 </td>
               {% endfor %}
