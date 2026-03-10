@@ -717,41 +717,49 @@ def compute_round_view(request, round_id):
 @login_required
 def statistiques_view(request):
     competition_id = request.GET.get("competition", "").strip()
-    season_id = request.GET.get("season", "").strip() # Nouveau paramètre
+    season_id = request.GET.get("season", "").strip()
     
     competitions = Competition.objects.all().order_by("name")
 
     # 1. Gestion de la Compétition
     competition = None
-    if competition_id.isdigit():
+    if competition_id and competition_id.isdigit():
         competition = Competition.objects.filter(id=int(competition_id)).first()
 
-    # 2. Gestion des Saisons (Uniquement >= 2025)
+    # 2. Gestion des Saisons
+    # Si competition est None, on montre TOUTES les saisons >= 2025 de TOUTES les compétitions
     seasons = Season.objects.filter(year__gte=2025)
     if competition:
         seasons = seasons.filter(competition=competition)
-    seasons = seasons.order_by("-year")
+    seasons = seasons.order_by("-year", "competition__name")
 
-    # 3. Sélection de la saison actuelle pour le calcul
+    # 3. Sélection de la saison
     selected_season = None
     if season_id.isdigit():
         selected_season = seasons.filter(id=int(season_id)).first()
     
-    # Si aucune saison n'est sélectionnée, on prend la plus récente par défaut
-    if not selected_season:
+    # --- LA CORRECTION EST ICI ---
+    # Si on est en mode "Toutes les compétitions", on ne veut PAS forcément 
+    # forcer selected_season sur la première venue, sinon on filtre par cette saison.
+    # On ne force un selected_season que si une compétition est choisie.
+    if not selected_season and competition:
         selected_season = seasons.first()
 
     # 4. Calcul des stats
-    # Note : Il faudra peut-être adapter ton 'compute_statistics' pour 
-    # accepter 'selected_season' au lieu de juste 'competition'
+    # On passe competition (qui peut être None) et selected_season (qui peut être None)
     stats = compute_statistics(competition, season=selected_season)
 
     # --- SÉCURISATION DU CRASH SeasonScore ---
     season_scores = {}
     try:
-        # On filtre SeasonScore par la saison sélectionnée
-        qs = SeasonScore.objects.filter(season=selected_season)
-        season_scores = {item.user.username: item.ranking_points for item in qs}
+        # Si selected_season est None, on agrège les points de toutes les saisons
+        qs = SeasonScore.objects.all()
+        if selected_season:
+            qs = qs.filter(season=selected_season)
+        
+        # On somme les points par utilisateur si on est en mode global
+        user_points = qs.values('user__username').annotate(total_ranking=Sum('ranking_points'))
+        season_scores = {item['user__username']: item['total_ranking'] for item in user_points}
     except Exception:
         season_scores = {}
 
