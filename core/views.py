@@ -339,26 +339,43 @@ def all_pronos_view(request):
     now = timezone.now()
     is_admin = request.user.is_staff or request.user.is_superuser
     
+    # 1. Récupération des IDs
     comp_id = request.GET.get("comp")
     season_id = request.GET.get("season")
     round_id = request.GET.get("round")
 
     all_competitions = Competition.objects.all().order_by('name')
     
+    # 2. Détermination de la compétition
     if comp_id:
         selected_comp = all_competitions.filter(id=comp_id).first()
     else:
+        # Automatisme par défaut au premier chargement
         near_round = Round.objects.filter(date__gte=now.date()).order_by("date").first()
         selected_comp = near_round.season.competition if near_round else all_competitions.first()
 
+    # 3. Détermination de la saison (FILTRÉE par la compétition choisie)
     seasons = Season.objects.filter(competition=selected_comp, year__gte=2025).order_by('-year')
-    selected_season = seasons.filter(id=season_id).first() if season_id else seasons.first()
+    
+    if season_id and seasons.filter(id=season_id).exists():
+        selected_season = seasons.filter(id=season_id).first()
+    else:
+        # Si on change de comp, season_id devient invalide, on prend la plus récente de la nouvelle comp
+        selected_season = seasons.first()
+
+    # 4. Détermination des journées (FILTRÉES par la saison choisie)
     rounds = Round.objects.filter(season=selected_season).order_by('number')
 
-    if round_id:
+    # 5. Détermination du Round final à afficher
+    if round_id and rounds.filter(id=round_id).exists():
         current_round_obj = rounds.filter(id=round_id).first()
     else:
-        current_round_obj = rounds.filter(date__gte=now.date()).order_by("date").first() or rounds.last()
+        # Si on change de saison/comp, round_id n'est plus dans la liste, on cherche le plus proche
+        current_round_obj = rounds.filter(date__gte=now.date()).order_by("date").first()
+        if not current_round_obj:
+            current_round_obj = rounds.last() # Ou le premier .first() selon ta préférence
+
+    # ... (Le reste de ton code pour les matches et les lignes reste identique)
 
     rows = []
     players = Player.objects.all().select_related('user').order_by('user__username')
