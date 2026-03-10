@@ -50,8 +50,7 @@
             class="d-flex flex-wrap gap-3 align-items-center">
         <div class="d-flex align-items-center gap-1">
           <label class="small fw-bold mb-0">Compétition:</label>
-          <select name="comp"
-                  onchange="this.form.season.value=''; this.form.round.value=''; this.form.submit()">
+          <select name="comp" onchange="this.form.submit()">
             {% for c in competitions %}
               <option value="{{ c.id }}"
                       {% if c.id == selected_comp.id %}selected{% endif %}>{{ c.name }}</option>
@@ -60,7 +59,7 @@
         </div>
         <div class="d-flex align-items-center gap-1">
           <label class="small fw-bold mb-0">Saison:</label>
-          <select name="season" onchange="this.form.round.value=''; this.form.submit()">
+          <select name="season" onchange="this.form.submit()">
             {% for s in seasons %}
               <option value="{{ s.id }}"
                       {% if s.id == selected_season.id %}selected{% endif %}>{{ s.year }}</option>
@@ -76,12 +75,6 @@
             {% endfor %}
           </select>
         </div>
-        <input type="hidden"
-               name="season"
-               value="{{ selected_season.id|default:'' }}">
-        <input type="hidden"
-               name="round"
-               value="{{ current_round_obj.id|default:'' }}">
       </form>
     </div>
     <div class="legend-small">

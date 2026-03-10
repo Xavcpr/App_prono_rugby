@@ -367,13 +367,22 @@ def all_pronos_view(request):
     rounds = Round.objects.filter(season=selected_season).order_by('number')
 
     # 5. Détermination du Round final à afficher
-    if round_id and rounds.filter(id=round_id).exists():
+    # 5. DÉTERMINATION DU ROUND FINAL À AFFICHER
+    # On initialise à None
+    current_round_obj = None
+
+    # PRIORITÉ 1 : L'utilisateur a choisi un round manuellement
+    if round_id and round_id.isdigit():
         current_round_obj = rounds.filter(id=round_id).first()
-    else:
-        # Si on change de saison/comp, round_id n'est plus dans la liste, on cherche le plus proche
+
+    # PRIORITÉ 2 : Si aucun round choisi (ou ID invalide), on lance l'automatisme
+    if not current_round_obj:
+        # On cherche le round le plus proche de maintenant dans la saison sélectionnée
         current_round_obj = rounds.filter(date__gte=now.date()).order_by("date").first()
+        
+        # PRIORITÉ 3 : Si tous les rounds sont passés, on prend le dernier
         if not current_round_obj:
-            current_round_obj = rounds.last() # Ou le premier .first() selon ta préférence
+            current_round_obj = rounds.last()
 
     # ... (Le reste de ton code pour les matches et les lignes reste identique)
 
