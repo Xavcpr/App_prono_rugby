@@ -388,17 +388,25 @@ def all_pronos_view(request):
             is_locked = now > m.kickoff_at if m.kickoff_at else False
             player_pronos = []
             has_result = m.home_score is not None and m.away_score is not None
+            threshold = current_round_obj.season.competition.bonus_defense_threshold
             
             for p in players:
                 prono = next((pred for pred in predictions if pred.match_id == m.id and pred.player_id == p.id), None)
                 
-                p_dict = {
+                p_dict = {     
                     'has_prono': prono is not None,
                     'score_home': None,
                     'score_away': None,
                     'class': "",
                     'display_locked': False,
-                    # ... (tes autres clés de bonus success/fail ici)
+                    'is_perfect_home': False,
+                    'is_perfect_away': False,
+                    'bonus_home_success': False,
+                    'bonus_home_fail': False,
+                    'bonus_home': False,
+                    'bonus_away_success': False,
+                    'bonus_away_fail': False,
+                    'bonus_away': False,
                 }
 
                 # Logique de visibilité
@@ -409,14 +417,46 @@ def all_pronos_view(request):
                     p_dict.update({
                         'score_home': prono.home_score_pred,
                         'score_away': prono.away_score_pred,
+                        'bonus_home': prono.bonus_home_pred,
+                        'bonus_away': prono.bonus_away_pred,
                         # Ajoute ici tes calculs de bonus success/fail que tu avais déjà
                     })
-                    # Calcul de la classe CSS
+                    # 2. Calcul des Bonus visuels si le résultat réel existe
+                    if has_result:
+                        # Scores Exacts (Encadré vert)
+                        p_dict['is_perfect_home'] = (prono.home_score_pred == m.home_score)
+                        p_dict['is_perfect_away'] = (prono.away_score_pred == m.away_score)
+
+                        # Bonus Offensif (Soulignement Vert/Rouge)
+                        if prono.bonus_home_pred:
+                            p_dict['bonus_home_success'] = m.bonus_offense_home
+                            p_dict['bonus_home_fail'] = not m.bonus_offense_home
+                        
+                        if prono.bonus_away_pred:
+                            p_dict['bonus_away_success'] = m.bonus_offense_away
+                            p_dict['bonus_away_fail'] = not m.bonus_offense_away
+
+                        # Bonus Défensif (Logique automatique : diff <= seuil)
+                        # Si le prono prévoit un BD, on vérifie s'il a eu lieu
+                        real_bd = m.get_defense_bonus() # Renvoie 'HOME', 'AWAY' ou None
+                        
+                        # BD Pronostiqué pour Home
+                        if prono.home_score_pred < prono.away_score_pred and (prono.away_score_pred - prono.home_score_pred) <= threshold:
+                            p_dict['bonus_home_success'] = (real_bd == 'HOME' or m.home_score == m.away_score)
+                            p_dict['bonus_home_fail'] = not p_dict['bonus_home_success']
+                        
+                        # BD Pronostiqué pour Away
+                        if prono.away_score_pred < prono.home_score_pred and (prono.home_score_pred - prono.away_score_pred) <= threshold:
+                            p_dict['bonus_away_success'] = (real_bd == 'AWAY' or m.home_score == m.away_score)
+                            p_dict['bonus_away_fail'] = not p_dict['bonus_away_success']
+
+                    # 3. Classe de fond (Gagnant du match)
                     if prono.home_score_pred > prono.away_score_pred: p_dict['class'] = "bg-home-win"
                     elif prono.away_score_pred > prono.home_score_pred: p_dict['class'] = "bg-away-win"
                     else: p_dict['class'] = "bg-draw"
 
                 player_pronos.append(p_dict)
+
 
             rows.append({
                 'info': f"{m.home_team.name if m.home_team else 'TBD'} - {m.away_team.name if m.away_team else 'TBD'}",
