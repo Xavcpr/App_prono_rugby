@@ -228,65 +228,80 @@ def compute_season_ranking_points(season_obj):
     players = Player.objects.all()
     for p in players:
         if p.user:
-            # On calcule la somme des points de chaque journée pour cette saison
             total_matchs = DailyScore.objects.filter(
                 user=p.user, 
                 round__season=season_obj
             ).aggregate(total=Sum('points'))['total'] or 0
             
-            # On met à jour le SeasonScore (on le crée s'il n'existe pas)
             ss, _ = SeasonScore.objects.get_or_create(
                 user=p.user, 
                 season=season_obj, 
                 competition=season_obj.competition
             )
             ss.match_points = total_matchs
-            ss.ranking_points = 0  # On remet à zéro pour éviter les cumuls d'anciens tests
+            ss.ranking_points = 0  # Reset propre
             ss.save()
 
-    # --- ÉTAPE 1 : CALCUL DU FLAIR (Rangs + Vainqueur) ---
+    # --- ÉTAPE 1 : CALCUL DU FLAIR (Rangs + Gaps + Vainqueur) ---
     res = CompetitionResult.objects.filter(season=season_obj).first()
     real_rankings = res.rankings_json.get('all', {})
-    cfg = RUGBY_SCORING.get("6 Nations", {}) # ou ton clean_key
+    
+    # On détermine la clé du barème
+    comp_name = season_obj.competition.name
+    clean_key = "6 Nations" if "6 Nations" in comp_name else ("Top 14" if "Top 14" in comp_name else "Champions Cup")
+    cfg = RUGBY_SCORING.get(clean_key, {})
 
     for p in players:
         if not p.user: continue
         pts_flair = 0
         all_correct = True
         
-        # Rangs exacts
         preds = CompetitionTeamPrediction.objects.filter(player=p, season=season_obj)
         for pr in preds:
-            if real_rankings.get(pr.team.name) == pr.position:
+            real_pos = real_rankings.get(pr.team.name)
+            if real_pos is None: 
+                all_correct = False
+                continue
+            
+            # Calcul de l'écart (Gap)
+            gap = abs(pr.position - real_pos)
+            
+            if gap == 0:
                 pts_flair += cfg.get("exact_rank", 0)
+            elif gap == 1:
+                pts_flair += cfg.get("gap_1", 0)
+                all_correct = False
+            elif gap == 2:
+                pts_flair += cfg.get("gap_2", 0)
+                all_correct = False
             else:
                 all_correct = False
         
-        # Bonus tout bon
+        # Bonus "All Class" (Tout le classement parfait)
         if all_correct and preds.count() >= 6:
             pts_flair += cfg.get("all_class", 0)
 
-        # Bonus Vainqueur (100 pts)
+        # Bonus Vainqueur Final (via le champ Winner dédié)
         bonus_pred = CompetitionBonusPrediction.objects.filter(player=p, season=season_obj).first()
         if bonus_pred and bonus_pred.winner == res.real_winner:
-            pts_flair += 100
+            pts_flair += cfg.get("winner", 0)
 
-        # Sauvegarde du flair
+        # Sauvegarde du flair calculé
         ss = SeasonScore.objects.get(user=p.user, season=season_obj)
         ss.ranking_points = pts_flair
         ss.save()
 
-    # --- ÉTAPE 2 : LE PODIUM (Tri sur la somme réelle) ---
+    # --- ÉTAPE 2 : LE PODIUM ---
     all_scores = list(SeasonScore.objects.filter(season=season_obj))
-    # Tri par (Total, puis Matchs pour départager)
     all_scores.sort(key=lambda x: (x.match_points + x.ranking_points, x.match_points), reverse=True)
 
-    bonus_podium = [cfg.get("1st", 0), cfg.get("2nd", 0), cfg.get("3rd", 0)]
-    for i in range(min(3, len(all_scores))):
-        score_obj = all_scores[i]
-        val_bonus = bonus_podium[i]
-        score_obj.ranking_points += val_bonus
-        score_obj.save()
-        print(f"Podium {i+1} : {score_obj.user.username} | Total final: {score_obj.total_points}")
+    bonus_keys = ["1st", "2nd", "3rd"]
+    for i, b_key in enumerate(bonus_keys):
+        if len(all_scores) > i:
+            score_obj = all_scores[i]
+            val_b = cfg.get(b_key, 0)
+            score_obj.ranking_points += val_b
+            score_obj.save()
+            print(f"Podium {i+1} : {score_obj.user.username} | Total: {score_obj.total_points}")
 
-    return "Succès total !"
+    return "Calcul complet terminé (Matchs + Flair + Gaps + Podium) !"
