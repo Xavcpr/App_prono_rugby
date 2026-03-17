@@ -1,6 +1,6 @@
 from django.db import transaction
 from core.models import CompetitionResult, CompetitionTeamPrediction, CompetitionBonusPrediction, SeasonScore, Prediction, DailyScore, Player
-from django.db.models import Sum
+from django.db.models import Sum, F
 import core.services.scoring as scoring
 
 
@@ -270,27 +270,25 @@ def compute_season_ranking_points(season_obj):
             ss.ranking_points = pts_flair
             ss.save()
 
-    # --- ÉTAPE 2 : PODIUM DES JOUEURS (Trié sur Matchs + Flair) ---
-    # On récupère tous les scores de la saison
-    all_scores = SeasonScore.objects.filter(season=season_obj)
-    
-    # On les trie en Python sur la somme match_points + ranking_points
-    # La lambda calcule le total pour chaque objet SeasonScore afin de trier
-    sorted_scores = sorted(
-        all_scores, 
-        key=lambda x: x.match_points + x.ranking_points, 
-        reverse=True
-    )
-    
-    # Attribution des bonus de podium (1st, 2nd, 3rd)
+
+    # --- ÉTAPE 2 : PODIUM DES JOUEURS (Version SQL Robuste) ---
+
+    # On récupère les scores en créant une colonne temporaire 'final_total' 
+    # qui est la somme exacte de match_points et ranking_points
+    podium_qs = SeasonScore.objects.filter(season=season_obj).annotate(
+        final_total=F('match_points') + F('ranking_points')
+    ).order_by('-final_total', '-match_points') # En cas d'égalité, on favorise les points de match
+
+    # On applique les bonus
     bonus_keys = ["1st", "2nd", "3rd"]
     for i, bonus_key in enumerate(bonus_keys):
-        if len(sorted_scores) > i:
-            score_obj = sorted_scores[i]
+        if podium_qs.count() > i:
+            score_to_update = podium_qs[i]
             bonus_value = cfg.get(bonus_key, 0)
-            # Ici on AJOUTE le bonus au ranking_points déjà calculé
-            score_obj.ranking_points += bonus_value
-            score_obj.save()
-            print(f"Podium {i+1} : {score_obj.user.username} gagne +{bonus_value} pts")
-
-    return f"Calcul terminé pour {season_obj}."
+            
+            # On met à jour directement en base pour éviter les conflits d'objets
+            SeasonScore.objects.filter(pk=score_to_update.pk).update(
+                ranking_points=F('ranking_points') + bonus_value
+            )
+            
+            print(f"Podium {i+1} : {score_to_update.user.username} (Total: {score_to_update.final_total}) +{bonus_value} pts")
