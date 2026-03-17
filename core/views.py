@@ -17,46 +17,11 @@ from .models import (
 
 # Services
 from .services import scoring
-from .services.scoring import PHASE_MULTIPLIERS, SCORING_CONFIG, process_round_scores, get_winner_side, calculate_match_points, BONUS_SCALES
+from .services.scoring import PHASE_MULTIPLIERS, SCORING_CONFIG, RUGBY_SCORING, process_round_scores, get_winner_side, calculate_match_points, BONUS_SCALES
 from .services.statistics import compute_statistics
 
-
 # CONFIGURATION DU BAREME DES POINTS
-RUGBY_SCORING = {
-    "Top 14": {
-        "bonus": 200,      # Marqueur / Scoreur
-        "winner": 200,
-        "exact_rank": 80,
-        "gap_1": 40,
-        "gap_2": 20,
-        "all_class" : 3000,
-        "1st" : 300,
-        "2nd" : 150,
-        "3rd" : 50,
-    },
-    "Champions Cup": {
-        "bonus": 0,        # Pas de bonus marqueur sur cette compète
-        "winner": 200,
-        "exact_rank": 50,
-        "gap_1": 20,
-        "gap_2": 0,
-        "all_class" : 100,        
-        "1st" : 150,
-        "2nd" : 75,
-        "3rd" : 25,
-    },
-    "6 Nations": {
-        "bonus": 0,
-        "winner": 150,
-        "exact_rank": 50,
-        "gap_1": 0,
-        "gap_2": 0,
-        "all_class" : 100,
-        "1st" : 50,
-        "2nd" : 25,
-        "3rd" : 10,
-    }
-}
+
 
 # ------------------
 # PRONOS VIEW
