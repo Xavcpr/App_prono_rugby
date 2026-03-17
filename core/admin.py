@@ -1,6 +1,6 @@
 from django.contrib import admin, messages
 from .models import (
-    CompetitionTeam, Season, Team, Player, Competition, Round, Match, ScoringConfig,
+    CompetitionResult, CompetitionTeam, Season, Team, Player, Competition, Round, Match, ScoringConfig,
     Prediction, DailyScore, SeasonScore, CompetitionBonusPrediction, CompetitionTeamPrediction
 )
 from django.db.models import Sum
@@ -123,3 +123,4 @@ admin.site.register(Team)
 admin.site.register(Player)
 admin.site.register(Competition)
 admin.site.register(ScoringConfig)
+admin.site.register(CompetitionResult)
