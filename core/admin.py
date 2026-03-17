@@ -118,9 +118,13 @@ class CompetitionTeamPredictionAdmin(admin.ModelAdmin):
     list_filter = ("season", "competition", "player")
     ordering = ("player", "season", "competition", "position")
 
+@admin.register(CompetitionResult)
+class CompetitionResultAdmin(admin.ModelAdmin):
+    list_display = ("season", "real_winner", "real_best_try_scorer")
+    list_filter = ("season__competition", "season")
+
 # Modèles simples
 admin.site.register(Team)
 admin.site.register(Player)
 admin.site.register(Competition)
 admin.site.register(ScoringConfig)
-admin.site.register(CompetitionResult)
