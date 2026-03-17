@@ -56,7 +56,7 @@ RUGBY_SCORING = {
     },
     "6 Nations": {
         "bonus": 0,
-        "winner": 150,
+        "winner": 100,
         "exact_rank": 50,
         "gap_1": 0,
         "gap_2": 0,
@@ -225,26 +225,24 @@ def process_round_scores(round_obj):
 def compute_season_ranking_points(season_obj):
     """
     Calcule les points de Flair et de Vainqueur Final,
-    puis attribue les bonus de podium aux 3 meilleurs joueurs.
+    puis attribue les bonus de podium aux 3 meilleurs joueurs basés sur le TOTAL.
     """
     res = CompetitionResult.objects.filter(season=season_obj).first()
     if not res:
-        return "Erreur : Aucun résultat réel saisi dans l'admin pour cette saison."
+        return "Erreur : Aucun résultat réel saisi."
 
     comp_name = season_obj.competition.name
-    # Mapping pour trouver la bonne clé dans RUGBY_SCORING
     clean_key = "6 Nations" if "6 Nations" in comp_name else ("Top 14" if "Top 14" in comp_name else "Champions Cup")
     cfg = RUGBY_SCORING.get(clean_key, {})
 
     real_rankings = res.rankings_json.get('all', {})
     players = Player.objects.all()
 
-    # --- ÉTAPE 1 : CALCUL DES POINTS INDIVIDUELS (Rangs + Vainqueur) ---
+    # --- ÉTAPE 1 : CALCUL INDIVIDUEL (RANGS + VAINQUEUR) ---
     for p in players:
-        pts_c_est_ca = 0
+        pts_flair = 0
         all_correct = True
         
-        # 1. Vérification des rangs exacts
         preds = CompetitionTeamPrediction.objects.filter(player=p, season=season_obj)
         if not preds.exists():
             all_correct = False
@@ -252,49 +250,47 @@ def compute_season_ranking_points(season_obj):
             for pr in preds:
                 real_pos = real_rankings.get(pr.team.name)
                 if real_pos == pr.position:
-                    pts_c_est_ca += cfg.get("exact_rank", 0)
+                    pts_flair += cfg.get("exact_rank", 0)
                 else:
                     all_correct = False
-                    # On pourrait ajouter ici la gestion de gap_1 / gap_2 si besoin
         
-        # 2. Bonus "All Class" (si tout le classement est parfait)
-        if all_correct:
-            pts_c_est_ca += cfg.get("all_class", 0)
+        if all_correct and preds.count() >= 6: # Sécurité : il faut avoir pronostiqué les 6
+            pts_flair += cfg.get("all_class", 0)
 
-        # 3. Bonus Vainqueur Final (via le champ Winner de CompetitionBonusPrediction)
         bonus_pred = CompetitionBonusPrediction.objects.filter(player=p, season=season_obj).first()
         if bonus_pred and bonus_pred.winner == res.real_winner:
-            pts_c_est_ca += cfg.get("winner", 0)
+            # On utilise 100 ici comme tu l'as précisé
+            pts_flair += 100 
 
-        # Sauvegarde intermédiaire pour ce joueur
         if p.user:
             ss, _ = SeasonScore.objects.get_or_create(
-                user=p.user, 
-                season=season_obj, 
-                competition=season_obj.competition
+                user=p.user, season=season_obj, competition=season_obj.competition
             )
-            # On stocke les points de flair/bonus cumulés ici
-            ss.ranking_points = pts_c_est_ca 
+            # IMPORTANT : On remplace (on n'ajoute pas) pour pouvoir relancer le script
+            ss.ranking_points = pts_flair
             ss.save()
 
-    # --- ÉTAPE 2 : PODIUM DES JOUEURS (1er, 2e, 3e pronostiqueurs) ---
-    # On récupère les scores de saison classés par points totaux décroissants
-    top_scores = SeasonScore.objects.filter(season=season_obj).order_by('-match_points', '-ranking_points')
+    # --- ÉTAPE 2 : PODIUM DES JOUEURS (Trié sur Matchs + Flair) ---
+    # On récupère tous les scores de la saison
+    all_scores = SeasonScore.objects.filter(season=season_obj)
     
-    # On applique les bonus de ton dictionnaire aux 3 premiers
-    if top_scores.count() >= 1:
-        s1 = top_scores[0]
-        s1.ranking_points += cfg.get("1st", 0)
-        s1.save()
-        
-    if top_scores.count() >= 2:
-        s2 = top_scores[1]
-        s2.ranking_points += cfg.get("2nd", 0)
-        s2.save()
-        
-    if top_scores.count() >= 3:
-        s3 = top_scores[2]
-        s3.ranking_points += cfg.get("3rd", 0)
-        s3.save()
+    # On les trie en Python sur la somme match_points + ranking_points
+    # La lambda calcule le total pour chaque objet SeasonScore afin de trier
+    sorted_scores = sorted(
+        all_scores, 
+        key=lambda x: x.match_points + x.ranking_points, 
+        reverse=True
+    )
+    
+    # Attribution des bonus de podium (1st, 2nd, 3rd)
+    bonus_keys = ["1st", "2nd", "3rd"]
+    for i, bonus_key in enumerate(bonus_keys):
+        if len(sorted_scores) > i:
+            score_obj = sorted_scores[i]
+            bonus_value = cfg.get(bonus_key, 0)
+            # Ici on AJOUTE le bonus au ranking_points déjà calculé
+            score_obj.ranking_points += bonus_value
+            score_obj.save()
+            print(f"Podium {i+1} : {score_obj.user.username} gagne +{bonus_value} pts")
 
-    return f"Calcul terminé : Rangs, Vainqueur et Podium Joueurs attribués pour {season_obj}."
+    return f"Calcul terminé pour {season_obj}."
