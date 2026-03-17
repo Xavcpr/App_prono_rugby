@@ -236,7 +236,23 @@ def compute_season_ranking_points(season_obj):
     cfg = RUGBY_SCORING.get(clean_key, {})
 
     real_rankings = res.rankings_json.get('all', {})
+
+    # --- ÉTAPE 0 : MISE À JOUR DES POINTS DE MATCHS ---
+    # On s'assure que match_points reflète la somme des DailyScore de la saison
     players = Player.objects.all()
+    for p in players:
+        if p.user:
+            # On somme tous les DailyScore de ce joueur pour les rounds de cette saison
+            total_m = DailyScore.objects.filter(
+                user=p.user, 
+                round__season=season_obj
+            ).aggregate(total=Sum('points'))['total'] or 0
+            
+            ss, _ = SeasonScore.objects.get_or_create(
+                user=p.user, season=season_obj, competition=season_obj.competition
+            )
+            ss.match_points = total_m
+            ss.save()
 
     # --- ÉTAPE 1 : CALCUL INDIVIDUEL (RANGS + VAINQUEUR) ---
     for p in players:
