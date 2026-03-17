@@ -270,25 +270,38 @@ def compute_season_ranking_points(season_obj):
             ss.ranking_points = pts_flair
             ss.save()
 
+# --- ÉTAPE 2 : PODIUM DES JOUEURS ---
 
-    # --- ÉTAPE 2 : PODIUM DES JOUEURS (Version SQL Robuste) ---
+    # 1. On récupère tous les scores de la saison
+    all_scores = list(SeasonScore.objects.filter(season=season_obj))
+    
+    # 2. On trie la liste Python. 
+    # Pour chaque score 'x', on calcule (Matchs + Flair actuel) pour le tri.
+    # On ajoute x.match_points en deuxième critère pour départager les égalités.
+    all_scores.sort(
+        key=lambda x: (x.match_points + x.ranking_points, x.match_points), 
+        reverse=True
+    )
 
-    # On récupère les scores en créant une colonne temporaire 'final_total' 
-    # qui est la somme exacte de match_points et ranking_points
-    podium_qs = SeasonScore.objects.filter(season=season_obj).annotate(
-        final_total=F('match_points') + F('ranking_points')
-    ).order_by('-final_total', '-match_points') # En cas d'égalité, on favorise les points de match
+    # 3. Attribution des bonus aux 3 premiers de cette liste triée
+    podium_bonuses = [cfg.get("1st", 0), cfg.get("2nd", 0), cfg.get("3rd", 0)]
+    labels = ["1er", "2ème", "3ème"]
 
-    # On applique les bonus
-    bonus_keys = ["1st", "2nd", "3rd"]
-    for i, bonus_key in enumerate(bonus_keys):
-        if podium_qs.count() > i:
-            score_to_update = podium_qs[i]
-            bonus_value = cfg.get(bonus_key, 0)
-            
-            # On met à jour directement en base pour éviter les conflits d'objets
-            SeasonScore.objects.filter(pk=score_to_update.pk).update(
-                ranking_points=F('ranking_points') + bonus_value
-            )
-            
-            print(f"Podium {i+1} : {score_to_update.user.username} (Total: {score_to_update.final_total}) +{bonus_value} pts")
+    print(f"--- Classement Final {season_obj} ---")
+    for i in range(min(3, len(all_scores))):
+        score_obj = all_scores[i]
+        bonus = podium_bonuses[i]
+        
+        # On affiche le score AVANT bonus pour vérifier
+        total_avant = score_obj.match_points + score_obj.ranking_points
+        
+        # On applique le bonus de podium
+        score_obj.ranking_points += bonus
+        score_obj.save()
+        
+        print(f"{labels[i]} : {score_obj.user.username} | "
+              f"Score (Matchs+Flair): {total_avant} pts | "
+              f"Bonus Podium: +{bonus} | "
+              f"Nouveau Total: {score_obj.total_points}")
+
+    return f"Calcul du podium terminé pour {season_obj}."
