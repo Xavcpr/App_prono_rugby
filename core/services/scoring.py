@@ -223,101 +223,70 @@ def process_round_scores(round_obj):
                 ds.save()
                 
 def compute_season_ranking_points(season_obj):
-    """
-    Calcule les points de Flair et de Vainqueur Final,
-    puis attribue les bonus de podium aux 3 meilleurs joueurs basés sur le TOTAL.
-    """
-    res = CompetitionResult.objects.filter(season=season_obj).first()
-    if not res:
-        return "Erreur : Aucun résultat réel saisi."
-
-    comp_name = season_obj.competition.name
-    clean_key = "6 Nations" if "6 Nations" in comp_name else ("Top 14" if "Top 14" in comp_name else "Champions Cup")
-    cfg = RUGBY_SCORING.get(clean_key, {})
-
-    real_rankings = res.rankings_json.get('all', {})
-
-    # --- ÉTAPE 0 : MISE À JOUR DES POINTS DE MATCHS ---
-    # On s'assure que match_points reflète la somme des DailyScore de la saison
+    # --- ÉTAPE 0 : RÉCUPÉRER LES POINTS DE MATCHS ---
+    print("Synchronisation des points de matchs...")
     players = Player.objects.all()
     for p in players:
         if p.user:
-            # On somme tous les DailyScore de ce joueur pour les rounds de cette saison
-            total_m = DailyScore.objects.filter(
+            # On calcule la somme des points de chaque journée pour cette saison
+            total_matchs = DailyScore.objects.filter(
                 user=p.user, 
                 round__season=season_obj
             ).aggregate(total=Sum('points'))['total'] or 0
             
+            # On met à jour le SeasonScore (on le crée s'il n'existe pas)
             ss, _ = SeasonScore.objects.get_or_create(
-                user=p.user, season=season_obj, competition=season_obj.competition
+                user=p.user, 
+                season=season_obj, 
+                competition=season_obj.competition
             )
-            ss.match_points = total_m
+            ss.match_points = total_matchs
+            ss.ranking_points = 0  # On remet à zéro pour éviter les cumuls d'anciens tests
             ss.save()
 
-    # --- ÉTAPE 1 : CALCUL INDIVIDUEL (RANGS + VAINQUEUR) ---
+    # --- ÉTAPE 1 : CALCUL DU FLAIR (Rangs + Vainqueur) ---
+    res = CompetitionResult.objects.filter(season=season_obj).first()
+    real_rankings = res.rankings_json.get('all', {})
+    cfg = RUGBY_SCORING.get("6 Nations", {}) # ou ton clean_key
+
     for p in players:
+        if not p.user: continue
         pts_flair = 0
         all_correct = True
         
+        # Rangs exacts
         preds = CompetitionTeamPrediction.objects.filter(player=p, season=season_obj)
-        if not preds.exists():
-            all_correct = False
-        else:
-            for pr in preds:
-                real_pos = real_rankings.get(pr.team.name)
-                if real_pos == pr.position:
-                    pts_flair += cfg.get("exact_rank", 0)
-                else:
-                    all_correct = False
+        for pr in preds:
+            if real_rankings.get(pr.team.name) == pr.position:
+                pts_flair += cfg.get("exact_rank", 0)
+            else:
+                all_correct = False
         
-        if all_correct and preds.count() >= 6: # Sécurité : il faut avoir pronostiqué les 6
+        # Bonus tout bon
+        if all_correct and preds.count() >= 6:
             pts_flair += cfg.get("all_class", 0)
 
+        # Bonus Vainqueur (100 pts)
         bonus_pred = CompetitionBonusPrediction.objects.filter(player=p, season=season_obj).first()
         if bonus_pred and bonus_pred.winner == res.real_winner:
-            # On utilise 100 ici comme tu l'as précisé
-            pts_flair += 100 
+            pts_flair += 100
 
-        if p.user:
-            ss, _ = SeasonScore.objects.get_or_create(
-                user=p.user, season=season_obj, competition=season_obj.competition
-            )
-            # IMPORTANT : On remplace (on n'ajoute pas) pour pouvoir relancer le script
-            ss.ranking_points = pts_flair
-            ss.save()
+        # Sauvegarde du flair
+        ss = SeasonScore.objects.get(user=p.user, season=season_obj)
+        ss.ranking_points = pts_flair
+        ss.save()
 
-# --- ÉTAPE 2 : PODIUM DES JOUEURS ---
-
-    # 1. On récupère tous les scores de la saison
+    # --- ÉTAPE 2 : LE PODIUM (Tri sur la somme réelle) ---
     all_scores = list(SeasonScore.objects.filter(season=season_obj))
-    
-    # 2. On trie la liste Python. 
-    # Pour chaque score 'x', on calcule (Matchs + Flair actuel) pour le tri.
-    # On ajoute x.match_points en deuxième critère pour départager les égalités.
-    all_scores.sort(
-        key=lambda x: (x.match_points + x.ranking_points, x.match_points), 
-        reverse=True
-    )
+    # Tri par (Total, puis Matchs pour départager)
+    all_scores.sort(key=lambda x: (x.match_points + x.ranking_points, x.match_points), reverse=True)
 
-    # 3. Attribution des bonus aux 3 premiers de cette liste triée
-    podium_bonuses = [cfg.get("1st", 0), cfg.get("2nd", 0), cfg.get("3rd", 0)]
-    labels = ["1er", "2ème", "3ème"]
-
-    print(f"--- Classement Final {season_obj} ---")
+    bonus_podium = [cfg.get("1st", 0), cfg.get("2nd", 0), cfg.get("3rd", 0)]
     for i in range(min(3, len(all_scores))):
         score_obj = all_scores[i]
-        bonus = podium_bonuses[i]
-        
-        # On affiche le score AVANT bonus pour vérifier
-        total_avant = score_obj.match_points + score_obj.ranking_points
-        
-        # On applique le bonus de podium
-        score_obj.ranking_points += bonus
+        val_bonus = bonus_podium[i]
+        score_obj.ranking_points += val_bonus
         score_obj.save()
-        
-        print(f"{labels[i]} : {score_obj.user.username} | "
-              f"Score (Matchs+Flair): {total_avant} pts | "
-              f"Bonus Podium: +{bonus} | "
-              f"Nouveau Total: {score_obj.total_points}")
+        print(f"Podium {i+1} : {score_obj.user.username} | Total final: {score_obj.total_points}")
 
-    return f"Calcul du podium terminé pour {season_obj}."
+    return "Succès total !"
