@@ -65,7 +65,8 @@
       .navigation-zone div { margin-left: 0 !important; flex-wrap: wrap; justify-content: center; }
     }
   </style>
-  <div class="board-header">
+  <div class="board-header"
+       style="border-left: 10px solid {% if '6 Nations' in round.season.competition.name %}#e74c3c{% else %}#3498db{% endif %}">
     <h1 style="margin: 0">{{ round.season.competition.name }}</h1>
     <h3 style="margin: 5px 0 0 0; opacity: 0.9">Résultats : {{ round }}</h3>
   </div>
