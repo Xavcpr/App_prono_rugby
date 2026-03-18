@@ -1,6 +1,6 @@
 from django.contrib import admin, messages
 
-from backend.core.services.scoring import compute_season_ranking_points
+from .services.scoring import compute_season_ranking_points
 from .models import (
     CompetitionResult, CompetitionTeam, Season, Team, Player, Competition, Round, Match, ScoringConfig,
     Prediction, DailyScore, SeasonScore, CompetitionBonusPrediction, CompetitionTeamPrediction
