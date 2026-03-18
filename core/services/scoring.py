@@ -1,5 +1,5 @@
 from django.db import transaction
-from core.models import CompetitionResult, CompetitionTeamPrediction, CompetitionBonusPrediction, SeasonScore, Prediction, DailyScore, Player, 
+from core.models import CompetitionResult, CompetitionTeamPrediction, CompetitionBonusPrediction, SeasonScore, Prediction, DailyScore, Player 
 from django.db.models import Sum, F
 import core.services.scoring as scoring
 
