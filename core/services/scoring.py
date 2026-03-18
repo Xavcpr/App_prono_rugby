@@ -1,5 +1,5 @@
 from django.db import transaction
-from core.models import CompetitionResult, CompetitionTeamPrediction, CompetitionBonusPrediction, SeasonScore, Prediction, DailyScore, Player
+from core.models import CompetitionResult, CompetitionTeamPrediction, CompetitionBonusPrediction, SeasonScore, Prediction, DailyScore, Player, 
 from django.db.models import Sum, F
 import core.services.scoring as scoring
 
@@ -66,6 +66,9 @@ RUGBY_SCORING = {
         "3rd" : 10,
     }
 }
+
+# Bonus journée tournoi des 6 nations pour ceux qui ont plus que X bons pronos
+MASTER_PALIERS = {12: 50, 13: 150, 14: 200, 15: 250}
 # --- OUTILS DE CALCUL ---
 
 def get_winner_side(score_home, score_away):
@@ -220,103 +223,130 @@ def process_round_scores(round_obj):
             if p.user:
                 ds, _ = DailyScore.objects.get_or_create(user=p.user, round=round_obj)
                 ds.points = int(final_daily_score)
-                ds.save()
-                
+                ds.save()       
+
 def compute_season_ranking_points(season_obj):
-    # --- ÉTAPE 0 : VÉRIFICATION DU JSON ---
+
+    # --- ÉTAPE 0 : VÉRIFICATION DU JSON ET DES DONNÉES ---
     res = CompetitionResult.objects.filter(season=season_obj).first()
     if not res:
         return "Erreur : Aucun résultat créé pour cette saison."
     
     real_rankings = res.rankings_json.get('all', {})
-    
-    # On récupère toutes les équipes qui ont participé à cette saison
-    # On suppose que ton modèle Season ou Round permet d'accéder aux équipes
-    # Sinon on prend toutes les équipes de la compétition
     expected_teams = season_obj.competition.teams.all() 
     
-    missing_teams = []
-    for team in expected_teams:
-        if team.name not in real_rankings:
-            missing_teams.append(team.name)
-            
+    missing_teams = [t.name for t in expected_teams if t.name not in real_rankings]
     if missing_teams:
         return f"Erreur : Équipes manquantes dans le JSON : {', '.join(missing_teams)}"
 
     if not res.real_winner:
-        # On prévient mais on peut continuer si tu veux juste le flair 
-        # (Ici on décide de bloquer pour avoir un calcul complet)
         return "Erreur : Le vainqueur réel (Winner) n'est pas renseigné."
 
-    # --- ÉTAPE 1 : RÉCUPÉRER LES POINTS DE MATCHS ---
+    # --- ÉTAPE 1 : SYNCHRONISATION DES POINTS DE MATCHS ---
     print(f"Synchronisation pour {season_obj}...")
-    players = Player.objects.all()
+    players = Player.objects.filter(user__isnull=False)
     for p in players:
-        if p.user:
-            total_matchs = DailyScore.objects.filter(
-                user=p.user, 
-                round__season=season_obj
-            ).aggregate(total=Sum('points'))['total'] or 0
-            
-            ss, _ = SeasonScore.objects.get_or_create(
-                user=p.user, 
-                season=season_obj, 
-                competition=season_obj.competition
-            )
-            ss.match_points = total_matchs
-            ss.ranking_points = 0  # Reset propre
-            ss.save()
+        total_matchs = DailyScore.objects.filter(
+            user=p.user, 
+            round__season=season_obj
+        ).aggregate(total=Sum('points'))['total'] or 0
+        
+        ss, _ = SeasonScore.objects.get_or_create(
+            user=p.user, 
+            season=season_obj, 
+            competition=season_obj.competition
+        )
+        ss.match_points = total_matchs
+        ss.ranking_points = 0  # Reset pour recalcul propre
+        ss.save()
 
-    # --- ÉTAPE 1 : CALCUL DU FLAIR (Rangs + Gaps + Vainqueur) ---
-    res = CompetitionResult.objects.filter(season=season_obj).first()
-    real_rankings = res.rankings_json.get('all', {})
-    
-    # On détermine la clé du barème
+    # --- ÉTAPE 2 : CALCUL DU FLAIR (Rangs + Gaps + Vainqueur + Master) ---
     comp_name = season_obj.competition.name
     clean_key = "6 Nations" if "6 Nations" in comp_name else ("Top 14" if "Top 14" in comp_name else "Champions Cup")
     cfg = RUGBY_SCORING.get(clean_key, {})
 
     for p in players:
-        if not p.user: continue
         pts_flair = 0
         all_correct = True
         
+        # A. Rangs et Gaps
         preds = CompetitionTeamPrediction.objects.filter(player=p, season=season_obj)
         for pr in preds:
             real_pos = real_rankings.get(pr.team.name)
-            if real_pos is None: 
-                all_correct = False
-                continue
-            
-            # Calcul de l'écart (Gap)
-            gap = abs(pr.position - real_pos)
-            
-            if gap == 0:
-                pts_flair += cfg.get("exact_rank", 0)
-            elif gap == 1:
-                pts_flair += cfg.get("gap_1", 0)
-                all_correct = False
-            elif gap == 2:
-                pts_flair += cfg.get("gap_2", 0)
-                all_correct = False
+            if real_pos is not None:
+                gap = abs(pr.position - real_pos)
+                if gap == 0:
+                    pts_flair += cfg.get("exact_rank", 0)
+                elif gap == 1:
+                    pts_flair += cfg.get("gap_1", 0)
+                    all_correct = False
+                elif gap == 2:
+                    pts_flair += cfg.get("gap_2", 0)
+                    all_correct = False
+                else:
+                    all_correct = False
             else:
                 all_correct = False
         
-        # Bonus "All Class" (Tout le classement parfait)
+        # B. Bonus "All Class"
         if all_correct and preds.count() >= 6:
             pts_flair += cfg.get("all_class", 0)
 
-        # Bonus Vainqueur Final (via le champ Winner dédié)
+        # C. Bonus Vainqueur Final
         bonus_pred = CompetitionBonusPrediction.objects.filter(player=p, season=season_obj).first()
         if bonus_pred and bonus_pred.winner == res.real_winner:
-            pts_flair += cfg.get("winner", 0)
+            # On utilise cfg.get("winner") pour être flexible, ou 100 par défaut
+            pts_flair += cfg.get("winner", 100)
 
-        # Sauvegarde du flair calculé
+        # D. BONUS MASTER TOURNOI (Paliers 12 à 15 bons pronos)
+        if clean_key == "6 Nations":
+            from core.models import Prediction # Utilisation du bon nom de modèle
+            
+            # On récupère tous les pronos du joueur pour cette saison
+            user_preds = Prediction.objects.filter(
+                player=p, 
+                match__round__season=season_obj
+            ).select_related('match', 'match__home_team', 'match__away_team')
+
+            good_matches_count = 0
+
+            for pr in user_preds:
+                # 1. Déterminer le vainqueur réel du match
+                real_win = pr.match.winner() # Utilise ta méthode winner() du modèle Match
+                
+                # 2. Déterminer le vainqueur prédit par le joueur
+                if pr.home_score_pred > pr.away_score_pred:
+                    pred_win = pr.match.home_team
+                elif pr.home_score_pred < pr.away_score_pred:
+                    pred_win = pr.match.away_team
+                else:
+                    pred_win = None # Match nul prédit
+                
+                # 3. Comparaison (si les deux sont identiques et pas nuls)
+                if real_win and pred_win and real_win == pred_win:
+                    good_matches_count += 1
+                # Optionnel : si tu veux compter les matchs nuls corrects
+                elif real_win is None and pred_win is None and pr.match.home_score is not None:
+                    good_matches_count += 1
+
+            # 4. Attribution du bonus selon les paliers
+            bonus_master = 0
+            # MASTER_PALIERS = {12: 50, 13: 150, 14: 200, 15: 250}
+            for seuil, valeur in sorted(MASTER_PALIERS.items(), reverse=True):
+                if good_matches_count >= seuil:
+                    bonus_master = valeur
+                    break
+            
+            if bonus_master > 0:
+                pts_flair += bonus_master
+                print(f"Master Tournoi : {p.name} (+{bonus_master} pts pour {good_matches_count}/15)")
+
+        # Sauvegarde intermédiaire du Flair
         ss = SeasonScore.objects.get(user=p.user, season=season_obj)
         ss.ranking_points = pts_flair
         ss.save()
 
-    # --- ÉTAPE 2 : LE PODIUM ---
+    # --- ÉTAPE 3 : LE PODIUM ---
     all_scores = list(SeasonScore.objects.filter(season=season_obj))
     all_scores.sort(key=lambda x: (x.match_points + x.ranking_points, x.match_points), reverse=True)
 
@@ -329,4 +359,4 @@ def compute_season_ranking_points(season_obj):
             score_obj.save()
             print(f"Podium {i+1} : {score_obj.user.username} | Total: {score_obj.total_points}")
 
-    return "Calcul complet terminé (Matchs + Flair + Gaps + Podium) !"
+    return "Calcul complet terminé (Matchs + Flair + Gaps + Master + Podium) !"
