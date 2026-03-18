@@ -1,4 +1,6 @@
 from django.contrib import admin, messages
+
+from backend.core.services.scoring import compute_season_ranking_points
 from .models import (
     CompetitionResult, CompetitionTeam, Season, Team, Player, Competition, Round, Match, ScoringConfig,
     Prediction, DailyScore, SeasonScore, CompetitionBonusPrediction, CompetitionTeamPrediction
@@ -116,12 +118,60 @@ class CompetitionBonusPredictionAdmin(admin.ModelAdmin):
 class CompetitionTeamPredictionAdmin(admin.ModelAdmin):
     list_display = ("player", "competition", "season", "team", "position")
     list_filter = ("season", "competition", "player")
-    ordering = ("player", "season", "competition", "position")
+    ordering = ("player", "season", "competition", "position")  
+
+
+
+# --- DÉFINITION DE L'ACTION ADMIN ---
 
 @admin.register(CompetitionResult)
 class CompetitionResultAdmin(admin.ModelAdmin):
-    list_display = ("season", "real_winner", "real_best_try_scorer")
+    # Les colonnes affichées dans la liste
+    list_display = ("season", "get_competition_name", "get_season_year", "real_winner")
     list_filter = ("season__competition", "season")
+    
+    # L'action personnalisée à ajouter au menu déroulant
+    actions = ['recalculate_season_points']
+
+    # --- MÉTHODES D'AFFICHAGE ---
+    
+    @admin.display(description="Compétition")
+    def get_competition_name(self, obj):
+        return obj.season.competition.name
+
+    @admin.display(description="Saison")
+    def get_season_year(self, obj):
+        return obj.season.year
+
+    # --- LA LOGIQUE DE L'ACTION ---
+
+    @admin.action(description="🔥 Calculer/Rafraîchir les points de fin de saison 🔥")
+    def recalculate_season_points(self, request, queryset):
+        """
+        Cette méthode est appelée quand tu coches un CompetitionResult
+        et que tu choisis l'action dans le menu déroulant.
+        """
+        if queryset.count() > 1:
+            self.message_user(request, "Erreur : Veuillez sélectionner une seule saison à la fois.", messages.ERROR)
+            return
+
+        # On récupère le résultat sélectionné
+        result_obj = queryset.first()
+        season_to_compute = result_obj.season
+
+        try:
+            # On lance le gros calcul que l'on a mis au point
+            msg = compute_season_ranking_points(season_to_compute)
+            
+            # On affiche un message de succès vert en haut de l'admin
+            self.message_user(request, f"Succès : {msg}", messages.SUCCESS)
+            
+        except Exception as e:
+            # En cas d'erreur technique, on affiche un message rouge
+            self.message_user(request, f"Erreur lors du calcul : {str(e)}", messages.ERROR)
+
+
+
 
 # Modèles simples
 admin.site.register(Team)

@@ -223,8 +223,33 @@ def process_round_scores(round_obj):
                 ds.save()
                 
 def compute_season_ranking_points(season_obj):
-    # --- ÉTAPE 0 : RÉCUPÉRER LES POINTS DE MATCHS ---
-    print("Synchronisation des points de matchs...")
+    # --- ÉTAPE 0 : VÉRIFICATION DU JSON ---
+    res = CompetitionResult.objects.filter(season=season_obj).first()
+    if not res:
+        return "Erreur : Aucun résultat créé pour cette saison."
+    
+    real_rankings = res.rankings_json.get('all', {})
+    
+    # On récupère toutes les équipes qui ont participé à cette saison
+    # On suppose que ton modèle Season ou Round permet d'accéder aux équipes
+    # Sinon on prend toutes les équipes de la compétition
+    expected_teams = season_obj.competition.teams.all() 
+    
+    missing_teams = []
+    for team in expected_teams:
+        if team.name not in real_rankings:
+            missing_teams.append(team.name)
+            
+    if missing_teams:
+        return f"Erreur : Équipes manquantes dans le JSON : {', '.join(missing_teams)}"
+
+    if not res.real_winner:
+        # On prévient mais on peut continuer si tu veux juste le flair 
+        # (Ici on décide de bloquer pour avoir un calcul complet)
+        return "Erreur : Le vainqueur réel (Winner) n'est pas renseigné."
+
+    # --- ÉTAPE 1 : RÉCUPÉRER LES POINTS DE MATCHS ---
+    print(f"Synchronisation pour {season_obj}...")
     players = Player.objects.all()
     for p in players:
         if p.user:
