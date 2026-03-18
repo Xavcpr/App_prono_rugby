@@ -780,56 +780,58 @@ def statistiques_view(request):
 
 @login_required
 def debug_scores_view(request):
-    # 1. Récupérer la compétition sélectionnée (ou la dernière par défaut)
+    # 1. Récupérer toutes les compétitions pour le premier menu
+    competitions = Competition.objects.all().order_by('name')
+    
+    # 2. Récupérer la compétition sélectionnée
     competition_id = request.GET.get('competition')
     if competition_id:
         selected_competition = get_object_or_404(Competition, id=competition_id)
     else:
-        selected_competition = Competition.objects.first()
+        selected_competition = competitions.first()
 
     if not selected_competition:
-        return render(request, "pronos/debug_scores.html", {"error": "Aucune compétition trouvée"})
+        return render(request, "debug_scores.html", {"error": "Aucune compétition trouvée"})
 
-    # 2. Récupérer les rounds et les joueurs
-    rounds = Round.objects.filter(season__competition=selected_competition).order_by('number')
-    players = Player.objects.all().select_related('user').order_by('name')
+    # 3. Récupérer les SAISONS de cette compétition pour le deuxième menu
+    seasons = Season.objects.filter(competition=selected_competition).order_by('-year')
     
-    # 3. Récupérer tous les scores de cette compétition
-    # On utilise DailyScore qui semble être ton modèle de stockage par round
-    daily_scores = DailyScore.objects.filter(round__in=rounds).select_related('user', 'round')
+    # 4. Récupérer la saison sélectionnée (ou la dernière par défaut)
+    season_id = request.GET.get('season')
+    if season_id:
+        selected_season = get_object_or_404(Season, id=season_id)
+    else:
+        selected_season = seasons.first()
 
-    # 4. Construire la matrice de données
-    # Structure : { user_id: { round_id: points } }
+    # 5. Filtrer les Rounds UNIQUEMENT pour cette saison
+    rounds = Round.objects.filter(season=selected_season).order_by('number')
+    players = Player.objects.filter(user__isnull=False).order_by('name')
+    
+    # 6. Matrice de scores (ton code reste le même, mais filtré par rounds de la saison)
+    daily_scores = DailyScore.objects.filter(round__in=rounds).select_related('user', 'round')
     score_matrix = {}
     for score in daily_scores:
         if score.user_id not in score_matrix:
             score_matrix[score.user_id] = {}
         score_matrix[score.user_id][score.round_id] = score.points
 
-    # 5. Calculer le total par joueur pour vérification
     player_data = []
     for p in players:
-        row = {
-            'player': p,
-            'scores': [],
-            'total_calc': 0
-        }
+        row = {'player': p, 'scores': [], 'total_calc': 0}
         for r in rounds:
-            # On récupère le score stocké en base
             pts = score_matrix.get(p.user_id, {}).get(r.id, 0)
             row['scores'].append(pts)
             row['total_calc'] += pts
         player_data.append(row)
 
-    competitions = Competition.objects.all()
-
     return render(request, "debug_scores.html", {
         "selected_competition": selected_competition,
+        "selected_season": selected_season,
         "competitions": competitions,
+        "seasons": seasons,
         "rounds": rounds,
         "player_data": player_data,
-    })
-    
+    })    
     
 @login_required
 def recap_pronos_classement(request):

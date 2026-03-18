@@ -16,16 +16,31 @@
             <p style="margin: 5px 0 0 0; opacity: 0.9">Détail par joueur et par journée pour {{ selected_competition.name }}</p>
         </div>
         <div class="mb-4">
-            <form method="get" class="d-flex align-items-center gap-2">
-                <label>Choisir une compétition :</label>
-                <select name="competition"
-                        onchange="this.form.submit()"
-                        class="form-select w-auto">
-                    {% for comp in competitions %}
-                        <option value="{{ comp.id }}"
-                                {% if comp.id == selected_competition.id %}selected{% endif %}>{{ comp.name }}</option>
-                    {% endfor %}
-                </select>
+            <form method="get" class="d-flex align-items-center gap-3 flex-wrap">
+                <div class="d-flex align-items-center gap-2">
+                    <label class="fw-bold">Compétition :</label>
+                    <select name="competition"
+                            onchange="this.form.season.value=''; this.form.submit()"
+                            class="form-select w-auto">
+                        {% for comp in competitions %}
+                            <option value="{{ comp.id }}"
+                                    {% if comp.id == selected_competition.id %}selected{% endif %}>
+                                {{ comp.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <label class="fw-bold">Saison :</label>
+                    <select name="season"
+                            onchange="this.form.submit()"
+                            class="form-select w-auto">
+                        {% for s in seasons %}
+                            <option value="{{ s.id }}"
+                                    {% if s.id == selected_season.id %}selected{% endif %}>{{ s.year }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
             </form>
         </div>
         <div class="table-container">
