@@ -442,39 +442,31 @@ def all_pronos_view(request):
     })  
 
 def round_results_board(request, round_id):
-    # 1. On récupère d'abord l'objet demandé par l'URL
+    # 1. Récupération de l'objet et gestion des changements via GET
     round_obj = get_object_or_404(Round, id=round_id)
     
-    # 2. On récupère les éventuels changements via GET
     new_comp_id = request.GET.get('comp')
     new_season_id = request.GET.get('season')
 
-    # Cas A : L'utilisateur change de COMPÉTITION
     if new_comp_id and int(new_comp_id) != round_obj.season.competition.id:
         selected_comp = get_object_or_404(Competition, id=new_comp_id)
-        # On prend la saison la plus récente de cette nouvelle comp
         selected_season = Season.objects.filter(competition=selected_comp, year__gte=2025).order_by('-year').first()
         if selected_season:
             first_round = Round.objects.filter(season=selected_season).order_by('number').first()
             if first_round:
                 return redirect('round_board', round_id=first_round.id)
 
-    # Cas B : L'utilisateur change de SAISON au sein de la même compétition
     if new_season_id and int(new_season_id) != round_obj.season.id:
         selected_season = get_object_or_404(Season, id=new_season_id)
-        # On va sur le premier round de cette saison choisie
         first_round = Round.objects.filter(season=selected_season).order_by('number').first()
         if first_round:
             return redirect('round_board', round_id=first_round.id)
 
-    # Si on arrive ici, c'est qu'on affiche le round_id de l'URL
+    # 2. Préparation des données de base
     selected_comp = round_obj.season.competition
     selected_season = round_obj.season
     
-    # ... le reste de ta vue (recherche des seasons, rounds, etc.)
-    # ------------------------------
-    all_competitions = Competition.objects.all().order_by('name')
-    seasons = Season.objects.filter(competition=selected_comp,year__gte=2025).order_by('-year')
+    seasons = Season.objects.filter(competition=selected_comp, year__gte=2025).order_by('-year')
     rounds = Round.objects.filter(season=selected_season).order_by('number')
     players = Player.objects.all().order_by('name')
     matches = Match.objects.filter(round=round_obj).order_by('kickoff_at')
@@ -482,44 +474,36 @@ def round_results_board(request, round_id):
         Prefetch('seasons', queryset=Season.objects.all().order_by('-year'))
     ).distinct()
 
-    # 1. Barème des Bonus de Journée (Vainqueurs trouvés)
-    BONUS_SCALES = {
-        "Top 14": {7: 150, 6: 60, 5: 20},
-        "Champions Cup": {12: 300, 11: 150, 10: 100, 9: 40}
-    }
+    # 3. Configuration du Barème et des Multiplicateurs
     comp_name = round_obj.season.competition.name
-    current_scale = BONUS_SCALES.get(comp_name, {})
-    # AJOUT DU MULTIPLICATEUR DE COMPÉTITION
-    comp_multiplier = 1
-    if "6 Nations" in comp_name or "Six Nations" in comp_name:
-        comp_multiplier = 2
+    current_scale = scoring.BONUS_SCALES.get(comp_name, {})
+    
+    # Multiplicateur de compétition (ex: 6 Nations)
+    comp_multiplier = 2 if ("6 Nations" in comp_name or "Six Nations" in comp_name) else 1
+    
+    # Multiplicateur de phase (ex: POOL=1, R16=1.25, QF=1.5...)
+    phase_multiplier = scoring.PHASE_MULTIPLIERS.get(round_obj.phase, 1.0)
+    
+    # Sécurité pour les bonus BO/BD (Uniquement en POOL)
+    is_pool_phase = (round_obj.phase == "POOL")
 
-    # 0. On pré-calcule le nombre de gagnants par match pour le partage du pool
+    # 4. Pré-calcul des gagnants par match (Partage du pool)
     match_winners_counts = {}
     for m in matches:
         if m.home_score is not None and m.away_score is not None:
-            # On définit le côté gagnant réel
-            if m.home_score > m.away_score: real_side = "HOME"
-            elif m.away_score > m.home_score: real_side = "AWAY"
-            else: real_side = "DRAW"
-            
-            # On compte combien de prédictions correspondent
+            real_side = get_winner_side(m.home_score, m.away_score)
             winners_count = Prediction.objects.filter(
-                match=m,
-                # Logique pour trouver le bon côté dans les scores prédits
+                match=m
             ).extra(where=[
                 "(home_score_pred > away_score_pred AND %s = 'HOME') OR "
                 "(away_score_pred > home_score_pred AND %s = 'AWAY') OR "
                 "(home_score_pred = away_score_pred AND %s = 'DRAW')"
             ], params=[real_side, real_side, real_side]).count()
-            
             match_winners_counts[m.id] = winners_count
         else:
             match_winners_counts[m.id] = 0
 
-
-
-    # 2. Construction de la matrice des points par match (Détail cellules)
+    # 5. Construction de la matrice des points (Points bruts stockés)
     matrix = {}
     for m in matches:
         matrix[m.id] = {}
@@ -527,15 +511,13 @@ def round_results_board(request, round_id):
             pred = Prediction.objects.filter(match=m, player=p).first()
             matrix[m.id][p.id] = pred.points if (pred and pred.points is not None) else 0
 
-    # 3. Calcul des totaux et des stats par joueur
+    # 6. Calcul des totaux et stats par joueur
     totals_display = []
     for p in players:
         player_preds = Prediction.objects.filter(match__round=round_obj, player=p)
-        
-        # Initialisation des compteurs
         stats = {
-            'pm': 0, 'winners': 0, 'bonus_comp': 0,
-            'bo': 0, 'bd': 0, 'diff': 0, 'somme': 0, 'ext': 0, 'dtp': 0, 'draw' :0, 'tp': 0
+            'pm': 0, 'winners': 0, 'bo': 0, 'bd': 0, 'diff': 0, 
+            'somme': 0, 'ext': 0, 'dtp': 0, 'draw': 0, 'tp': 0
         }
 
         for pr in player_preds:
@@ -543,106 +525,83 @@ def round_results_board(request, round_id):
             match_threshold = m.round.season.competition.bonus_defense_threshold
             if m.home_score is None or m.away_score is None: continue
             
-            # # 1. On cumule les points totaux du match
-            # --- CALCUL DU "PM" PUR (Partage du pool uniquement) ---
-            winners_count = match_winners_counts.get(m.id, 0)
             real_winner_side = get_winner_side(m.home_score, m.away_score)
             pred_winner_side = get_winner_side(pr.home_score_pred, pr.away_score_pred)
-            if pr.home_score_pred + pr.away_score_pred ==0 :
-                pred_winner_side = "NO SHOW" # Cas où le joueur n'a pas du tout pronostiqué (0-0 sans bonus)
+            if pr.home_score_pred + pr.away_score_pred == 0:
+                pred_winner_side = "NO SHOW"
             
+            # --- Partage du Pool (PM) ---
             if real_winner_side == pred_winner_side:
-                stats['winners'] += 1 # On incrémente le compteur de victoires trouvées
-                
+                stats['winners'] += 1
+                winners_count = match_winners_counts.get(m.id, 0)
                 if winners_count > 0:
-                    # Ici, on n'ajoute QUE la part du poids du match
                     stats['pm'] += (m.weight // winners_count)
 
-
-
-            # 2. Logique des bonus spécifiques (Basé sur ton barème probable)
-            # Bonus Offensif trouvé
-            if pr.bonus_home_pred:
-                if m.bonus_offense_home: stats['bo'] += scoring.SCORING_CONFIG['OFFENSIVE_BONUS_VALUE']
-                else: stats['bo'] += scoring.SCORING_CONFIG['BONUS_MALUS']
-            if pr.bonus_away_pred:
-                if m.bonus_offense_away: stats['bo'] += scoring.SCORING_CONFIG['OFFENSIVE_BONUS_VALUE']
-                else: stats['bo'] += scoring.SCORING_CONFIG['BONUS_MALUS']  
-            
-            # Bonus Défensif trouvé
-            real_bd = m.get_defense_bonus() # HOME ou AWAY
-            player_diff = abs((pr.home_score_pred - pr.away_score_pred))
-            pred_bd = None
-            
-            if player_diff <= match_threshold and pred_winner_side != "NO SHOW": # Si je prédis une victoire serrée (diff <= seuil) et que je ne prédis pas un nul, alors je prédis un bonus défensif pour le côté que je pense perdant
-                if pr.home_score_pred < pr.away_score_pred:
-                    pred_bd = 'HOME'
-                elif pr.away_score_pred < pr.home_score_pred:
-                    pred_bd = 'AWAY'    
-                else: pred_bd = 'DRAW'
+            # --- Bonus BO / BD (Uniquement si POOL) ---
+            if is_pool_phase:
+                # Bonus Offensif
+                if pr.bonus_home_pred:
+                    stats['bo'] += scoring.SCORING_CONFIG['OFFENSIVE_BONUS_VALUE'] if m.bonus_offense_home else scoring.SCORING_CONFIG['BONUS_MALUS']
+                if pr.bonus_away_pred:
+                    stats['bo'] += scoring.SCORING_CONFIG['OFFENSIVE_BONUS_VALUE'] if m.bonus_offense_away else scoring.SCORING_CONFIG['BONUS_MALUS']
                 
-            if pred_bd == 'HOME' : #si je prédis un bonus défensif pour l'équipe à domicile
-                if real_bd == "HOME" or m.home_score == m.away_score : # et que le bonus défensif est bien pour l'équipe à domicile ou s'il y a un nul, le joueur mérite le bonus défensif
-                    stats['bd'] += scoring.SCORING_CONFIG['DEFENSIVE_BONUS_VALUE']
-                elif real_bd is None:
-                    stats['bd'] += scoring.SCORING_CONFIG['BONUS_MALUS'] # Malus si le joueur a pris un bonus défensif alors qu'il n'y en avait pas
-            
-            if pred_bd == 'AWAY' :
-                if real_bd == "AWAY" or m.home_score == m.away_score:
-                    stats['bd'] += scoring.SCORING_CONFIG['DEFENSIVE_BONUS_VALUE']
-                elif real_bd is None:
-                    stats['bd'] += scoring.SCORING_CONFIG['BONUS_MALUS'] # Malus si le joueur a pris un bonus défensif alors qu'il n'y en avait pas
+                # Bonus Défensif
+                real_bd = m.get_defense_bonus()
+                player_diff = abs(pr.home_score_pred - pr.away_score_pred)
+                pred_bd = None
+                if player_diff <= match_threshold and pred_winner_side != "NO SHOW":
+                    if pr.home_score_pred < pr.away_score_pred: pred_bd = 'HOME'
+                    elif pr.away_score_pred < pr.home_score_pred: pred_bd = 'AWAY'
+                    else: pred_bd = 'DRAW'
+                
+                if pred_bd in ['HOME', 'AWAY']:
+                    if pred_bd == real_bd or m.home_score == m.away_score:
+                        stats['bd'] += scoring.SCORING_CONFIG['DEFENSIVE_BONUS_VALUE']
+                    elif real_bd is None:
+                        stats['bd'] += scoring.SCORING_CONFIG['BONUS_MALUS']
+                elif pred_bd == 'DRAW':
+                    if real_bd: stats['bd'] += scoring.SCORING_CONFIG['DEFENSIVE_BONUS_VALUE']
+                    else: stats['bd'] += scoring.SCORING_CONFIG['BONUS_MALUS']
 
-            # si je prédis un nul et qu'il y a quand même un bonus défensif, je mérite le bonus défensif. s'il n'y en a pas, je mérite le malus
-            if pred_bd == 'DRAW' :
-                if real_bd == "HOME" or real_bd == "AWAY":
-                    stats['bd'] += scoring.SCORING_CONFIG['DEFENSIVE_BONUS_VALUE']
-                else:
-                    stats['bd'] += scoring.SCORING_CONFIG['BONUS_MALUS'] # Malus si le joueur a pris un bonus défensif alors qu'il n'y en avait pas
-                    
-            # 3. Somme, Différence et DTP (Exact score)
+            # --- Scores Exacts, Somme et Diff ---
             home_diff = abs(pr.home_score_pred - m.home_score)
             away_diff = abs(pr.away_score_pred - m.away_score)
             
-            if home_diff == 0 and pred_winner_side != "NO SHOW": stats['dtp'] += scoring.SCORING_CONFIG['HALF_PERFECT_BONUS'] # Score exact une équipe
-            if away_diff == 0 and pred_winner_side != "NO SHOW": stats['dtp'] += scoring.SCORING_CONFIG['HALF_PERFECT_BONUS'] # Score exact une équipe
-            
-            #3.1 tout-pile
-            if home_diff == 0 and away_diff == 0: stats['tp'] += scoring.SCORING_CONFIG['PERFECT_SCORE_BONUS'] # Score exact total
+            if pred_winner_side != "NO SHOW":
+                if home_diff == 0: stats['dtp'] += scoring.SCORING_CONFIG['HALF_PERFECT_BONUS']
+                if away_diff == 0: stats['dtp'] += scoring.SCORING_CONFIG['HALF_PERFECT_BONUS']
+                if home_diff == 0 and away_diff == 0: stats['tp'] += scoring.SCORING_CONFIG['PERFECT_SCORE_BONUS']
 
-            diff = abs((pr.home_score_pred - pr.away_score_pred) - (m.home_score - m.away_score))
-            sum = abs((pr.home_score_pred + pr.away_score_pred) - (m.home_score + m.away_score))       
-            
-            if sum in scoring.SCORING_CONFIG['SUM_TABLE'].keys() and pred_winner_side != "NO SHOW":
-                stats['somme'] += scoring.SCORING_CONFIG['SUM_TABLE'][sum]
-            
-            if diff in scoring.SCORING_CONFIG['DIFF_TABLE'].keys() and pred_winner_side != "NO SHOW":
-                stats['diff'] += scoring.SCORING_CONFIG['DIFF_TABLE'][diff]
-            
-
-            # 4. Victoire à l'extérieur trouvée
-            real_winner = m.winner()
-            if real_winner == m.away_team and pr.away_score_pred > pr.home_score_pred:
-                stats['ext'] += scoring.SCORING_CONFIG['AWAY_WIN_BONUS']    
+                diff_err = abs((pr.home_score_pred - pr.away_score_pred) - (m.home_score - m.away_score))
+                sum_err = abs((pr.home_score_pred + pr.away_score_pred) - (m.home_score + m.away_score))
                 
+                if sum_err in scoring.SCORING_CONFIG['SUM_TABLE']:
+                    stats['somme'] += scoring.SCORING_CONFIG['SUM_TABLE'][sum_err]
+                if diff_err in scoring.SCORING_CONFIG['DIFF_TABLE']:
+                    stats['diff'] += scoring.SCORING_CONFIG['DIFF_TABLE'][diff_err]
 
-            # 4.1. Match nul trouvé
-            if real_winner == "DRAW" and pr.home_score_pred == pr.away_score_pred and pred_winner_side != "NO SHOW":
-                stats['draw'] += scoring.SCORING_CONFIG['DRAW_BONUS']  
+            # --- Extérieur et Nul ---
+            real_winner_obj = m.winner()
+            if real_winner_obj == m.away_team and pr.away_score_pred > pr.home_score_pred:
+                stats['ext'] += scoring.SCORING_CONFIG['AWAY_WIN_BONUS']
+            if real_winner_obj == "DRAW" and pr.home_score_pred == pr.away_score_pred and pred_winner_side != "NO SHOW":
+                stats['draw'] += scoring.SCORING_CONFIG['DRAW_BONUS']
 
-        # Calcul du Bonus journée Palier (comme avant)
+        # Bonus de Palier (basé sur le nombre de gagnants trouvés)
         daily_bonus = 0
         for threshold in sorted(current_scale.keys(), reverse=True):
             if stats['winners'] >= threshold:
                 daily_bonus = current_scale[threshold]
                 break
 
-        # Calcul du score brut (tout inclus)
+        # Score final avec tous les multiplicateurs
         raw_score = (
             stats['pm'] + stats['tp'] + stats['dtp'] + stats['bo'] + 
             stats['bd'] + stats['diff'] + stats['somme'] + 
             stats['ext'] + stats['draw'] + daily_bonus
         )
+        
+        final_score = int(raw_score * phase_multiplier * comp_multiplier)
 
         totals_display.append({
             'player': p,
@@ -655,11 +614,11 @@ def round_results_board(request, round_id):
             'somme': stats['somme'],
             'ext': stats['ext'],
             'bonus': daily_bonus,
-            'score': raw_score * comp_multiplier, # Application du multiplicateur de compétition    
+            'score': final_score,
             'rank_class': ''
         })
 
-    # 4. Attribution des chopes de bière (sur le score final)
+    # 7. Attribution des médailles
     scores_uniques = sorted(list(set(t['score'] for t in totals_display if t['score'] > 0)), reverse=True)
     if scores_uniques:
         min_score = min(t['score'] for t in totals_display)
@@ -668,7 +627,6 @@ def round_results_board(request, round_id):
                 if entry['score'] == scores_uniques[0]: entry['rank_class'] = 'gold'
                 elif len(scores_uniques) > 1 and entry['score'] == scores_uniques[1]: entry['rank_class'] = 'silver'
                 elif len(scores_uniques) > 2 and entry['score'] == scores_uniques[2]: entry['rank_class'] = 'bronze'
-            
             if entry['score'] == min_score and len(totals_display) > 1:
                 entry['rank_class'] = 'wooden-spoon'
 
