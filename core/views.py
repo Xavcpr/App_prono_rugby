@@ -1,10 +1,11 @@
+from django.db import models
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout as auth_logout, update_session_auth_hash
 from django.contrib import messages
 from django.utils import timezone
 from django.contrib.auth.forms import PasswordChangeForm
-from django.db.models import Prefetch, Sum, Count, Max
+from django.db.models import F, Prefetch, Sum, Count, Max
 from django.contrib.admin.views.decorators import staff_member_required
 from datetime import datetime
 
