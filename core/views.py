@@ -1131,8 +1131,6 @@ def hall_of_fame_view(request):
 
     return render(request, 'hall_of_fame.html', {'all_time_ranking': ranking})
 
-
-
 @login_required
 def home_view(request):
     player = request.user.player
@@ -1142,44 +1140,38 @@ def home_view(request):
     next_match = Match.objects.filter(kickoff_at__gt=now).order_by('kickoff_at').first()
 
     # --- 2. DÉTERMINER LA SAISON ACTIVE ---
-    # Logique saison : Août à Août
-    current_season_year = f"{now.year}/{now.year+1}" if now.month >= 8 else f"{now.year-1}/{now.year}"
-    active_seasons = Season.objects.filter(year=current_season_year)
+    # On gère les deux formats possibles (2025/2026 ou 2025-2026)
+    c_year = now.year
+    s_label = f"{c_year}/{c_year+1}" if now.month >= 8 else f"{c_year-1}/{c_year}"
+    s_label_alt = s_label.replace('/', '-')
+    
+    active_seasons = Season.objects.filter(Q(year=s_label) | Q(year=s_label_alt))
     latest_season = active_seasons.first() or Season.objects.order_by('-id').first()
 
-    # --- 3. RÉCUPÉRER LES STATS VIA TON MOTEUR ---
-    # On calcule les stats globales pour la saison en cours
+    # --- 3. RÉCUPÉRER LES STATS ---
     stats = compute_statistics(competition=None, season=latest_season)
 
-    # --- 4. CLASSEMENT GÉNÉRAL & PAR COMPÉTITION ---
+    # --- 4. CLASSEMENT GÉNÉRAL ---
     rank_general = "?"
     total_players = len(stats.detailed_ranking)
+    user_stats_row = {}
     
-    # On cherche le rang de l'user dans le classement détaillé
     for index, row in enumerate(stats.detailed_ranking):
         if row['username'] == request.user.username:
             rank_general = index + 1
+            user_stats_row = row
             break
 
-    # Classement par compétition pour l'utilisateur
-    user_comp_rankings = SeasonScore.objects.filter(
-        user=request.user, 
-        season__year=current_season_year
-    ).select_related('competition')
-
-    # --- 5. DERNIÈRE PERFORMANCE (Champions Cup J5) ---
-    # On cherche le dernier round qui a des scores
+    # --- 5. DERNIÈRE PERFORMANCE ---
     last_finished_round = Round.objects.filter(
-        season__in=active_seasons,
+        season=latest_season,
         matches__home_score__isnull=False
     ).distinct().order_by('-matches__kickoff_at').first()
 
     last_perf = None
     if last_finished_round:
-        # On récupère le score de l'user pour ce round précis via DailyScore
         ds = DailyScore.objects.filter(user=request.user, round=last_finished_round).first()
         if ds:
-            # Calcul du rang sur cette journée précise
             round_rank = DailyScore.objects.filter(round=last_finished_round, points__gt=ds.points).count() + 1
             last_perf = {
                 'round_name': str(last_finished_round),
@@ -1187,10 +1179,20 @@ def home_view(request):
                 'rank': round_rank
             }
 
-    # --- 6. METRICS (Tout-pile, Chopes, etc.) ---
-    # On extrait les données de ton objet 'stats' pour l'user précis
-    user_stats_row = next((item for item in stats.detailed_ranking if item["username"] == request.user.username), {})
-    
+    # --- 6. SÉCURISATION DES CHOPES / CUILLÈRES (LIST vs DICT) ---
+    def extract_stat(data, username):
+        if isinstance(data, dict):
+            return data.get(username, 0)
+        elif isinstance(data, list):
+            # Si c'est une liste de dicts type [{'username': '..', 'total': 2}]
+            for item in data:
+                if isinstance(item, dict) and item.get('username') == username:
+                    return item.get('total', item.get('count', 0))
+        return 0
+
+    chopes = extract_stat(stats.chopes_cumulees, request.user.username)
+    cuilleres = extract_stat(stats.cuilleres_bois, request.user.username)
+
     context = {
         'player': player,
         'next_match': next_match,
@@ -1198,12 +1200,11 @@ def home_view(request):
         'rank_general': rank_general,
         'total_players': total_players,
         'last_perf': last_perf,
-        'comp_rankings': user_comp_rankings,
-        # Données issues de compute_statistics
+        'comp_rankings': SeasonScore.objects.filter(user=request.user, season=latest_season),
         'perfects': user_stats_row.get('perfects', 0),
         'points_matchs': user_stats_row.get('points', 0),
-        'chopes_count': stats.chopes_cumulees.get(request.user.username, 0),
-        'cuilleres_count': stats.cuilleres_bois.get(request.user.username, 0),
+        'chopes_count': chopes,
+        'cuilleres_count': cuilleres,
         'GLOBAL_LAST_ROUND_ID': last_finished_round.id if last_finished_round else None,
     }
     return render(request, 'home.html', context)
