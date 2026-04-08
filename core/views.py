@@ -1129,3 +1129,59 @@ def hall_of_fame_view(request):
             entry['relative_score'] = (entry['score'] / max_score) * 100
 
     return render(request, 'hall_of_fame.html', {'all_time_ranking': ranking})
+
+@login_required
+def home_view(request):
+    # 1. Récupérer le joueur (lié à l'User)
+    player = getattr(request.user, 'player', None)
+    
+    # Si le profil player n'existe pas, on le gère
+    if not player:
+        return render(request, 'home.html', {'error': "Profil joueur non trouvé"})
+
+    # 2. Récupérer le score de la saison en cours
+    # On prend la dernière saison créée pour l'exemple
+    latest_season = Season.objects.order_by('-id').first()
+    
+    # On cherche le score du joueur pour cette saison
+    user_season_score = SeasonScore.objects.filter(
+        user=request.user, 
+        season=latest_season
+    ).first()
+
+    # 3. Calculer le rang (position par rapport aux autres SeasonScore de la même saison)
+    rank = "?"
+    total_players = 0
+    if user_season_score:
+        # On compte combien de gens ont plus de points que lui (match_points + ranking_points)
+        # Note: total_points est une @property, on ne peut pas l'utiliser en filter() directement
+        # On utilise une logique de comparaison simple ici ou on trie en Python
+        all_scores = SeasonScore.objects.filter(season=latest_season)
+        total_players = all_scores.count()
+        
+        # Tri manuel pour trouver le rang
+        sorted_scores = sorted(all_scores, key=lambda x: x.total_points, reverse=True)
+        for index, s in enumerate(sorted_scores):
+            if s.user == request.user:
+                rank = index + 1
+                break
+
+    # 4. Stats : Nombre de "Tout-pile" (Perfect Scores)
+    # Chez toi, un "tout-pile" n'a pas de booléen 'is_perfect', 
+    # mais on peut le déduire si les points sont au maximum (ex: 4 pts selon ton barème)
+    # Ou si on compare les scores réels vs pred dans la requête
+    perfect_scores_count = Prediction.objects.filter(
+        player=player,
+        match__home_score=models.F('home_score_pred'),
+        match__away_score=models.F('away_score_pred')
+    ).exclude(match__home_score__isnull=True).count()
+
+    context = {
+        'player': player,
+        'latest_season': latest_season,
+        'rank': rank,
+        'total_players': total_players,
+        'season_points': user_season_score.total_points if user_season_score else 0,
+        'perfect_scores': perfect_scores_count,
+    }
+    return render(request, 'home.html', context)
