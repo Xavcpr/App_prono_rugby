@@ -1199,6 +1199,6 @@ def home_view(request):
         'total_players': total_players,
         'season_points': season_points,
         'perfect_scores': perfect_scores_count,
-        'last_round_id': latest_round.id if latest_round else None,
+        'last_round_id': last_round.id if last_round else None,
     }
     return render(request, 'home.html', context)
