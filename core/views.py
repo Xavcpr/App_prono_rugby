@@ -1139,7 +1139,8 @@ def home_view(request):
     except AttributeError:
         # Si l'utilisateur n'a pas de profil Player associé
         return render(request, 'home.html', {'error': "Profil joueur non trouvé. Contactez l'admin."})
-
+    
+    now = timezone.now()
     # 2. Récupérer la saison la plus récente
         # On cherche la saison qui a le prochain match le plus proche dans le futur
     next_match = Match.objects.filter(kickoff_at__gt=now).order_by('kickoff_at').first()
@@ -1184,8 +1185,6 @@ def home_view(request):
             home_score_pred=F('match__home_score'),
             away_score_pred=F('match__away_score')
         ).exclude(match__home_score__isnull=True).count()
-
-    now = timezone.now()
 
     # On cherche les rounds qui ont des matchs déjà commencés
     last_round = Round.objects.filter(
