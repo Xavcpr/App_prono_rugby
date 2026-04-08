@@ -1132,57 +1132,59 @@ def hall_of_fame_view(request):
     return render(request, 'hall_of_fame.html', {'all_time_ranking': ranking})
 
 @login_required
+@login_required
 def home_view(request):
-    # 1. Récupérer le joueur (lié à l'User)
-    player = getattr(request.user, 'player', None)
-    
-    # Si le profil player n'existe pas, on le gère
-    if not player:
-        return render(request, 'home.html', {'error': "Profil joueur non trouvé"})
+    # 1. Récupérer le profil Player
+    try:
+        player = request.user.player
+    except AttributeError:
+        # Si l'utilisateur n'a pas de profil Player associé
+        return render(request, 'home.html', {'error': "Profil joueur non trouvé. Contactez l'admin."})
 
-    # 2. Récupérer le score de la saison en cours
-    # On prend la dernière saison créée pour l'exemple
+    # 2. Récupérer la saison la plus récente
     latest_season = Season.objects.order_by('-id').first()
     
-    # On cherche le score du joueur pour cette saison
-    user_season_score = SeasonScore.objects.filter(
-        user=request.user, 
-        season=latest_season
-    ).first()
-
-    # 3. Calculer le rang (position par rapport aux autres SeasonScore de la même saison)
     rank = "?"
     total_players = 0
-    if user_season_score:
-        # On compte combien de gens ont plus de points que lui (match_points + ranking_points)
-        # Note: total_points est une @property, on ne peut pas l'utiliser en filter() directement
-        # On utilise une logique de comparaison simple ici ou on trie en Python
-        all_scores = SeasonScore.objects.filter(season=latest_season)
-        total_players = all_scores.count()
-        
-        # Tri manuel pour trouver le rang
-        sorted_scores = sorted(all_scores, key=lambda x: x.total_points, reverse=True)
-        for index, s in enumerate(sorted_scores):
-            if s.user == request.user:
-                rank = index + 1
-                break
+    season_points = 0
+    perfect_scores_count = 0
 
-    # 4. Stats : Nombre de "Tout-pile" (Perfect Scores)
-    # Chez toi, un "tout-pile" n'a pas de booléen 'is_perfect', 
-    # mais on peut le déduire si les points sont au maximum (ex: 4 pts selon ton barème)
-    # Ou si on compare les scores réels vs pred dans la requête
-    perfect_scores_count = Prediction.objects.filter(
-        player=player,
-        match__home_score=models.F('home_score_pred'),
-        match__away_score=models.F('away_score_pred')
-    ).exclude(match__home_score__isnull=True).count()
+    if latest_season:
+        # 3. Récupérer le score de l'utilisateur
+        user_score_obj = SeasonScore.objects.filter(
+            user=request.user, 
+            season=latest_season
+        ).first()
+
+        if user_score_obj:
+            season_points = user_score_obj.total_points
+            
+            # 4. Calcul du rang (comparaison manuelle car total_points est une property)
+            all_scores = SeasonScore.objects.filter(season=latest_season)
+            total_players = all_scores.count()
+            
+            # On trie par la property total_points (match_points + ranking_points)
+            sorted_scores = sorted(all_scores, key=lambda x: x.total_points, reverse=True)
+            for index, s in enumerate(sorted_scores):
+                if s.user == request.user:
+                    rank = index + 1
+                    break
+
+        # 5. Calcul des Tout-piles (Perfect Scores)
+        # On compare les scores prédits aux scores réels
+        perfect_scores_count = Prediction.objects.filter(
+            player=player,
+            match__round__season=latest_season, # Limité à la saison en cours
+            home_score_pred=F('match__home_score'),
+            away_score_pred=F('match__away_score')
+        ).exclude(match__home_score__isnull=True).count()
 
     context = {
         'player': player,
         'latest_season': latest_season,
         'rank': rank,
         'total_players': total_players,
-        'season_points': user_season_score.total_points if user_season_score else 0,
+        'season_points': season_points,
         'perfect_scores': perfect_scores_count,
     }
     return render(request, 'home.html', context)
