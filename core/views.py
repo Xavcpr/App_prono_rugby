@@ -1179,6 +1179,19 @@ def home_view(request):
             away_score_pred=F('match__away_score')
         ).exclude(match__home_score__isnull=True).count()
 
+    now = timezone.now()
+
+    # On cherche les rounds qui ont des matchs déjà commencés
+    last_round = Round.objects.filter(
+        season=latest_season,
+        matches__kickoff_at__lt=now  # lt = less than (avant maintenant)
+    ).distinct().order_by('-number').first()
+
+    # Si aucun match n'a encore eu lieu dans toute la saison, 
+    # on prend par défaut la J1 pour ne pas casser le lien
+    if not last_round:
+        last_round = Round.objects.filter(season=latest_season).order_by('number').first()
+    
     context = {
         'player': player,
         'latest_season': latest_season,
@@ -1186,5 +1199,6 @@ def home_view(request):
         'total_players': total_players,
         'season_points': season_points,
         'perfect_scores': perfect_scores_count,
+        'last_round_id': latest_round.id if latest_round else None,
     }
     return render(request, 'home.html', context)
