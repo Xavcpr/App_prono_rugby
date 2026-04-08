@@ -5,7 +5,7 @@ from django.contrib.auth import logout as auth_logout, update_session_auth_hash
 from django.contrib import messages
 from django.utils import timezone
 from django.contrib.auth.forms import PasswordChangeForm
-from django.db.models import F, Prefetch, Sum, Count, Max
+from django.db.models import F, Prefetch, Sum, Count, Max, Q
 from django.contrib.admin.views.decorators import staff_member_required
 from datetime import datetime
 
@@ -1131,9 +1131,7 @@ def hall_of_fame_view(request):
 
     return render(request, 'hall_of_fame.html', {'all_time_ranking': ranking})
 
-from django.db.models import Sum, Q, F, Count
-from django.utils import timezone
-from .utils import compute_statistics # Importe ta fonction de calcul
+
 
 @login_required
 def home_view(request):
