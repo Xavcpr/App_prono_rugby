@@ -1,41 +1,88 @@
 {% extends "base.html" %}
 {% block content %}
-    <div class="container">
-        <div class="card bg-dark text-white shadow-sm mb-4 border-0">
-            <div class="card-body p-4">
-                <h2 class="h4 mb-1">Salut {{ player.name }} ! 🏉</h2>
-                <p class="text-info mb-0">
-                    Tu es <strong>{{ rank }}e</strong> au général de la {{ latest_season.competition.name }}.
-                </p>
-            </div>
-        </div>
-        <div class="row g-3 mb-4">
-            <div class="col-6">
-                <div class="card h-100 border-0 shadow-sm">
-                    <div class="card-body text-center">
-                        <div class="text-muted small">DERNIER SCORE</div>
-                        <div class="h3 fw-bold text-success">+{{ last_points|default:0 }} pts</div>
+    {% if next_match %}
+        <div class="alert alert-warning border-0 shadow-sm mb-4">
+            <div class="d-flex align-items-center">
+                <span class="fs-1 me-3">🏉</span>
+                <div>
+                    <h6 class="mb-0 fw-bold text-uppercase small text-dark">Prochain rendez-vous</h6>
+                    <div class="fs-5">
+                        Le <strong>{{ next_match.kickoff_at|date:"l" }}</strong> {{ next_match.kickoff_at|date:"d F" }} à {{ next_match.kickoff_at|date:"H:i" }}
                     </div>
-                </div>
-            </div>
-            <div class="col-6">
-                <div class="card h-100 border-0 shadow-sm">
-                    <div class="card-body text-center">
-                        <div class="text-muted small">PRÉCISION</div>
-                        <div class="h3 fw-bold text-primary">{{ perfect_scores }} 🎯</div>
-                        <div class="small text-muted">Tout-piles</div>
-                    </div>
+                    <small class="text-muted">{{ next_match.home_team }} vs {{ next_match.away_team }}</small>
                 </div>
             </div>
         </div>
-        {% if next_round %}
-            <div class="card border-primary mb-4 shadow-sm">
-                <div class="card-body">
-                    <h5 class="card-title">Prochaine étape : {{ next_round }}</h5>
-                    <p class="card-text small text-muted">N'oublie pas de valider tes pronos avant le premier coup d'envoi !</p>
-                    <a href="{% url 'pronos' %}" class="btn btn-primary w-100 fw-bold py-3">🏉 SAISIR MES PRONOS</a>
+    {% endif %}
+    <div class="card border-0 shadow-sm mb-4 text-white"
+         style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)">
+        <div class="card-body text-center py-4">
+            <p class="text-uppercase small mb-1 opacity-75">Classement Général Saison</p>
+            <div class="display-1 fw-bold">
+                {{ rank_general }}<small class="fs-3">e</small>
+            </div>
+            <p class="mb-0">sur {{ total_players }} compétiteurs</p>
+        </div>
+    </div>
+    {% if last_perf %}
+        <div class="card border-0 shadow-sm mb-4 bg-white">
+            <div class="card-body py-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted small text-uppercase">Dernier résultat</span>
+                        <h6 class="mb-0 fw-bold text-truncate" style="max-width: 180px;">{{ last_perf.round_name }}</h6>
+                    </div>
+                    <div class="text-end border-start ps-3">
+                        <div class="fw-bold text-success">{{ last_perf.points }} pts</div>
+                        <div class="badge bg-light text-dark">{{ last_perf.rank }}e de la journée</div>
+                    </div>
                 </div>
             </div>
-        {% endif %}
+        </div>
+    {% endif %}
+    <div class="row g-2 mb-4">
+        <div class="col-6">
+            <div class="card h-100 border-0 shadow-sm text-center p-3">
+                <span class="fs-3">🎯</span>
+                <div class="h4 fw-bold mb-0">{{ perfects }}</div>
+                <div class="small text-muted text-uppercase" style="font-size: 0.7rem;">Tout-piles</div>
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="card h-100 border-0 shadow-sm text-center p-3">
+                <span class="fs-3">🍺</span>
+                <div class="h4 fw-bold mb-0">{{ chopes_count }}</div>
+                <div class="small text-muted text-uppercase" style="font-size: 0.7rem;">Chopes d'Or</div>
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="card h-100 border-0 shadow-sm text-center p-3">
+                <span class="fs-3">🥄</span>
+                <div class="h4 fw-bold mb-0">{{ cuilleres_count }}</div>
+                <div class="small text-muted text-uppercase" style="font-size: 0.7rem;">Cuillères de bois</div>
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="card h-100 border-0 shadow-sm text-center p-3">
+                <span class="fs-3">🔥</span>
+                <div class="h4 fw-bold mb-0">{{ points_matchs }}</div>
+                <div class="small text-muted text-uppercase" style="font-size: 0.7rem;">Points Matchs</div>
+            </div>
+        </div>
+    </div>
+    <div class="mb-4">
+        <h6 class="fw-bold text-uppercase small text-muted mb-3">Mes Rangs par compétition</h6>
+        {% for sc in comp_rankings %}
+            <div class="card border-0 shadow-sm mb-2">
+                <div class="card-body py-2 d-flex justify-content-between align-items-center">
+                    <span class="fw-bold small">{{ sc.competition.name }}</span>
+                    <span class="badge bg-dark">Rang {{ forloop.counter }}e</span>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+    <div class="sticky-bottom pb-3">
+        <a href="{% url 'pronos' %}"
+           class="btn btn-primary btn-lg w-100 shadow-lg fw-bold py-3">✍️ SAISIR MES PRONOS</a>
     </div>
 {% endblock %}
