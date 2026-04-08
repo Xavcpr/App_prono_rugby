@@ -1132,7 +1132,6 @@ def hall_of_fame_view(request):
     return render(request, 'hall_of_fame.html', {'all_time_ranking': ranking})
 
 @login_required
-@login_required
 def home_view(request):
     # 1. Récupérer le profil Player
     try:
@@ -1142,7 +1141,14 @@ def home_view(request):
         return render(request, 'home.html', {'error': "Profil joueur non trouvé. Contactez l'admin."})
 
     # 2. Récupérer la saison la plus récente
-    latest_season = Season.objects.order_by('-id').first()
+        # On cherche la saison qui a le prochain match le plus proche dans le futur
+    next_match = Match.objects.filter(kickoff_at__gt=now).order_by('kickoff_at').first()
+
+    if next_match:
+        latest_season = next_match.round.season
+    else:
+        # Si aucun match futur, on prend la dernière saison modifiée
+        latest_season = Season.objects.order_by('-id').first()
     
     rank = "?"
     total_players = 0
@@ -1184,8 +1190,10 @@ def home_view(request):
     # On cherche les rounds qui ont des matchs déjà commencés
     last_round = Round.objects.filter(
         season=latest_season,
-        matches__kickoff_at__lt=now  # lt = less than (avant maintenant)
-    ).distinct().order_by('-number').first()
+        matches__kickoff_at__lt=now,
+        matches__home_score__isnull=False # On s'assure qu'il y a des scores saisis !
+    ).distinct().order_by('-matches__kickoff_at').first() 
+    # On trie par la date du match le plus récent dans ce round
 
     # Si aucun match n'a encore eu lieu dans toute la saison, 
     # on prend par défaut la J1 pour ne pas casser le lien
