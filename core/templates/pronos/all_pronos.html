@@ -20,17 +20,39 @@
   
   /* --- Table Layout --- */
   .table-container { overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 30px; }
-  .rugby-board td {white-space: nowrap; vertical-align: middle; }
+  .rugby-board td { vertical-align: middle; }
   .rugby-board td span {
     display: inline-block;
     min-width: 20px;
     text-align: center;
-}
-  .rugby-board { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.95em; min-width: 1000px; }
+  }
+  /* On réduit la largeur min du tableau pour mobile */
+  .rugby-board { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.95em; min-width: 800px; }
   .rugby-board th, .rugby-board td { border: 1px solid #bdc3c7; padding: 12px; text-align: center; vertical-align: middle; }
   .header-dark { background: #34495e; color: white; }
-  .sticky-match { position: sticky; left: 0; z-index: 10; background: #f9f9f9 !important; font-weight: bold; text-align: left !important; min-width: 220px; border-right: 2px solid #34495e !important; }
-  .sticky-score { position: sticky; left: 220px; z-index: 10; background: #edf2f4 !important; font-weight: bold; min-width: 100px; border-right: 2px solid #34495e !important; }
+
+  /* MODIFICATION ICI : Colonne Match plus étroite et texte flexible */
+  .sticky-match { 
+    position: sticky; 
+    left: 0; 
+    z-index: 10; 
+    background: #f9f9f9 !important; 
+    font-weight: bold; 
+    text-align: left !important; 
+    min-width: 160px; 
+    max-width: 160px;
+    border-right: 2px solid #34495e !important; 
+    white-space: normal !important; 
+    font-size: 0.85rem;
+  }
+
+  /* MODIFICATION ICI : Le Score Réel n'est plus figé (position: static) */
+  .sticky-score { 
+    position: static; 
+    background: #edf2f4 !important; 
+    font-weight: bold; 
+    min-width: 85px; 
+  }
   
   .bg-home-win { background-color: #d4edda !important; }
   .bg-away-win { background-color: #f8d7da !important; }
