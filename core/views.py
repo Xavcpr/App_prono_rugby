@@ -1130,48 +1130,47 @@ def hall_of_fame_view(request):
             entry['relative_score'] = (entry['score'] / max_score) * 100
 
     return render(request, 'hall_of_fame.html', {'all_time_ranking': ranking})
-
 @login_required
 def home_view(request):
     player = request.user.player
     now = timezone.now()
 
-    # --- 1. PROCHAIN MATCH (Alerte) ---
+    # --- 1. PROCHAIN MATCH ---
     next_match = Match.objects.filter(kickoff_at__gt=now).order_by('kickoff_at').first()
 
     # --- 2. DÉTERMINER LA SAISON ACTIVE ---
-    # On gère les deux formats possibles (2025/2026 ou 2025-2026)
-    c_year = now.year
-    s_label = f"{c_year}/{c_year+1}" if now.month >= 8 else f"{c_year-1}/{c_year}"
-    s_label_alt = s_label.replace('/', '-')
-    
-    active_seasons = Season.objects.filter(Q(year=s_label) | Q(year=s_label_alt))
-    latest_season = active_seasons.first() or Season.objects.order_by('-id').first()
+    # On prend la saison du prochain match, ou la toute dernière créée
+    if next_match:
+        latest_season = next_match.round.season
+    else:
+        latest_season = Season.objects.order_by('-id').first()
 
-    # --- 3. RÉCUPÉRER LES STATS ---
+    # --- 3. CALCUL DES STATS (On réutilise ton moteur) ---
     stats = compute_statistics(competition=None, season=latest_season)
 
-    # --- 4. CLASSEMENT GÉNÉRAL ---
+    # --- 4. CLASSEMENT GÉNÉRAL & DATA UTILISATEUR ---
     rank_general = "?"
     total_players = len(stats.detailed_ranking)
     user_stats_row = {}
     
+    # On cherche l'utilisateur dans le classement calculé par ton moteur
     for index, row in enumerate(stats.detailed_ranking):
         if row['username'] == request.user.username:
             rank_general = index + 1
             user_stats_row = row
             break
 
-    # --- 5. DERNIÈRE PERFORMANCE ---
+    # --- 5. DERNIÈRE PERFORMANCE (Le vrai dernier round avec des scores) ---
     last_finished_round = Round.objects.filter(
         season=latest_season,
         matches__home_score__isnull=False
-    ).distinct().order_by('-matches__kickoff_at').first()
+    ).distinct().order_by('-number').first() # On prend le numéro le plus grand
 
     last_perf = None
     if last_finished_round:
         ds = DailyScore.objects.filter(user=request.user, round=last_finished_round).first()
         if ds:
+            # Rang sur la journée (plus précis que l'ID)
             round_rank = DailyScore.objects.filter(round=last_finished_round, points__gt=ds.points).count() + 1
             last_perf = {
                 'round_name': str(last_finished_round),
@@ -1179,19 +1178,25 @@ def home_view(request):
                 'rank': round_rank
             }
 
-    # --- 6. SÉCURISATION DES CHOPES / CUILLÈRES (LIST vs DICT) ---
-    def extract_stat(data, username):
-        if isinstance(data, dict):
-            return data.get(username, 0)
-        elif isinstance(data, list):
-            # Si c'est une liste de dicts type [{'username': '..', 'total': 2}]
-            for item in data:
-                if isinstance(item, dict) and item.get('username') == username:
-                    return item.get('total', item.get('count', 0))
-        return 0
+    # --- 6. RÉCUPÉRATION DES CHOPES / CUILLÈRES ---
+    # On regarde dans les dictionnaires de ton moteur de stats
+    chopes = 0
+    cuilleres = 0
+    if hasattr(stats, 'chopes_cumulees'):
+        # On teste si c'est un dict ou une liste
+        data = stats.chopes_cumulees
+        chopes = data.get(request.user.username, 0) if isinstance(data, dict) else 0
+        
+    if hasattr(stats, 'cuilleres_bois'):
+        data = stats.cuilleres_bois
+        cuilleres = data.get(request.user.username, 0) if isinstance(data, dict) else 0
 
-    chopes = extract_stat(stats.chopes_cumulees, request.user.username)
-    cuilleres = extract_stat(stats.cuilleres_bois, request.user.username)
+    # --- 7. RANGS PAR COMPÉTITION (SÉCURISÉ) ---
+    # On récupère tous les scores de l'utilisateur pour les saisons de la même année
+    comp_rankings = SeasonScore.objects.filter(
+        user=request.user, 
+        season__year=latest_season.year
+    ).select_related('competition', 'season')
 
     context = {
         'player': player,
@@ -1200,7 +1205,7 @@ def home_view(request):
         'rank_general': rank_general,
         'total_players': total_players,
         'last_perf': last_perf,
-        'comp_rankings': SeasonScore.objects.filter(user=request.user, season=latest_season),
+        'comp_rankings': comp_rankings,
         'perfects': user_stats_row.get('perfects', 0),
         'points_matchs': user_stats_row.get('points', 0),
         'chopes_count': chopes,
