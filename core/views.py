@@ -1130,86 +1130,96 @@ def hall_of_fame_view(request):
             entry['relative_score'] = (entry['score'] / max_score) * 100
 
     return render(request, 'hall_of_fame.html', {'all_time_ranking': ranking})
+
 @login_required
 def home_view(request):
     player = request.user.player
     now = timezone.now()
 
-    # --- 1. PROCHAIN MATCH ---
+    # 1. PROCHAIN MATCH (Alerte temporelle)
     next_match = Match.objects.filter(kickoff_at__gt=now).order_by('kickoff_at').first()
 
-    # --- 2. DÉTERMINER LA SAISON ACTIVE ---
-    # On prend la saison du prochain match, ou la toute dernière créée
-    if next_match:
-        latest_season = next_match.round.season
+    # 2. LOGIQUE SAISON (Août à Août)
+    if now.month <= 7:
+        current_year_label = f"{now.year - 1}/{now.year}"
     else:
-        latest_season = Season.objects.order_by('-id').first()
+        current_year_label = f"{now.year}/{now.year + 1}"
 
-    # --- 3. CALCUL DES STATS (On réutilise ton moteur) ---
-    stats = compute_statistics(competition=None, season=latest_season)
+    # On récupère toutes les compétitions de cette période (Top 14, 6 Nations, CC...)
+    active_seasons = Season.objects.filter(year=current_year_label)
 
-    # --- 4. CLASSEMENT GÉNÉRAL & DATA UTILISATEUR ---
+    # 3. STATS VIA TON MOTEUR (Global pour l'année)
+    # On passe None en compétition pour avoir le général
+    stats = compute_statistics(competition=None, season=None)
+
+    # 4. EXTRACTION DES DONNÉES UTILISATEUR
     rank_general = "?"
+    user_row = {}
     total_players = len(stats.detailed_ranking)
-    user_stats_row = {}
     
-    # On cherche l'utilisateur dans le classement calculé par ton moteur
     for index, row in enumerate(stats.detailed_ranking):
         if row['username'] == request.user.username:
             rank_general = index + 1
-            user_stats_row = row
+            user_row = row
             break
 
-    # --- 5. DERNIÈRE PERFORMANCE (Le vrai dernier round avec des scores) ---
+    # 5. DERNIÈRE PERFORMANCE (Toutes compétitions confondues)
     last_finished_round = Round.objects.filter(
-        season=latest_season,
+        season__in=active_seasons,
         matches__home_score__isnull=False
-    ).distinct().order_by('-number').first() # On prend le numéro le plus grand
+    ).distinct().order_by('-matches__kickoff_at').first()
 
     last_perf = None
     if last_finished_round:
         ds = DailyScore.objects.filter(user=request.user, round=last_finished_round).first()
         if ds:
-            # Rang sur la journée (plus précis que l'ID)
-            round_rank = DailyScore.objects.filter(round=last_finished_round, points__gt=ds.points).count() + 1
-            last_perf = {
-                'round_name': str(last_finished_round),
-                'points': ds.points,
-                'rank': round_rank
-            }
+            r_rank = DailyScore.objects.filter(round=last_finished_round, points__gt=ds.points).count() + 1
+            last_perf = {'name': str(last_finished_round), 'points': ds.points, 'rank': r_rank}
 
-    # --- 6. RÉCUPÉRATION DES CHOPES / CUILLÈRES ---
-    # On regarde dans les dictionnaires de ton moteur de stats
-    chopes = 0
-    cuilleres = 0
-    if hasattr(stats, 'chopes_cumulees'):
-        # On teste si c'est un dict ou une liste
-        data = stats.chopes_cumulees
-        chopes = data.get(request.user.username, 0) if isinstance(data, dict) else 0
+    # 6. CALCULS TECHNIQUES (Bonus, Ratio, Demi-tout-pile)
+    user_preds = Prediction.objects.filter(
+        player=player, 
+        match__round__season__in=active_seasons
+    ).exclude(match__home_score__isnull=True)
+    
+    total_p = user_preds.count()
+    bons_vainqueurs = 0
+    demi_tout_pile = 0
+    
+    for p in user_preds:
+        # Vainqueur
+        real_h, real_a = p.match.home_score, p.match.away_score
+        pred_h, pred_a = p.home_score_pred, p.away_score_pred
         
-    if hasattr(stats, 'cuilleres_bois'):
-        data = stats.cuilleres_bois
-        cuilleres = data.get(request.user.username, 0) if isinstance(data, dict) else 0
+        if (pred_h > pred_a and real_h > real_a) or \
+           (pred_h < pred_a and real_h < real_a) or \
+           (pred_h == pred_a and real_h == real_a):
+            bons_vainqueurs += 1
+            
+        # Demi-Tout-Pile
+        if (pred_h == real_h or pred_a == real_a) and not (pred_h == real_h and pred_a == real_a):
+            demi_tout_pile += 1
 
-    # --- 7. RANGS PAR COMPÉTITION (SÉCURISÉ) ---
-    # On récupère tous les scores de l'utilisateur pour les saisons de la même année
-    comp_rankings = SeasonScore.objects.filter(
-        user=request.user, 
-        season__year=latest_season.year
-    ).select_related('competition', 'season')
+    # 7. CHOPES ET CUILLÈRES (Depuis ton objet stats car pas en BDD)
+    # Ton moteur compute_statistics renvoie généralement ces dicts {username: count}
+    chopes = stats.chopes_cumulees.get(request.user.username, 0) if isinstance(stats.chopes_cumulees, dict) else 0
+    cuilleres = stats.cuilleres_bois.get(request.user.username, 0) if isinstance(stats.cuilleres_bois, dict) else 0
 
     context = {
         'player': player,
         'next_match': next_match,
-        'latest_season': latest_season,
         'rank_general': rank_general,
         'total_players': total_players,
         'last_perf': last_perf,
-        'comp_rankings': comp_rankings,
-        'perfects': user_stats_row.get('perfects', 0),
-        'points_matchs': user_stats_row.get('points', 0),
+        'comp_rankings': SeasonScore.objects.filter(user=request.user, season__in=active_seasons).order_by('-total_points'),
+        'perfects': user_row.get('perfects', 0),
+        'points_matchs': user_row.get('points', 0),
         'chopes_count': chopes,
         'cuilleres_count': cuilleres,
+        'win_ratio': round((bons_vainqueurs / total_p * 100), 1) if total_p > 0 else 0,
+        'demi_tout_pile': demi_tout_pile,
+        'bonus_off_prono': user_preds.filter(bonus_off_pred=True).count(),
+        'bonus_def_prono': user_preds.filter(bonus_def_pred=True).count(),
         'GLOBAL_LAST_ROUND_ID': last_finished_round.id if last_finished_round else None,
     }
     return render(request, 'home.html', context)
