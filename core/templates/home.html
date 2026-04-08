@@ -1,31 +1,54 @@
 {% extends "base.html" %}
 {% block content %}
-    <div class="container mt-4">
-        <div class="text-center mb-4">
-            <h2>Bonjour, {{ player.name }} ! 👋</h2>
-            <p class="text-muted">Ravi de te revoir pour la suite de la compétition.</p>
-        </div>
-        <div class="row g-3">
-            <div class="col-6 col-md-4">
-                <div class="card text-center border-primary shadow-sm h-100">
-                    <div class="card-body">
-                        <h6 class="text-uppercase small text-muted">Général</h6>
-                        <div class="h2 fw-bold text-primary">{{ rank }}e</div>
-                        <small>sur {{ total_players }}</small>
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-0 bg-transparent mb-4 text-center">
+                <h1 class="display-6 fw-bold">Salut {{ player.name }} ! 🏉</h1>
+                <p class="text-muted">Prêt pour la prochaine journée de {{ latest_season.competition.name }} ?</p>
+            </div>
+            <div class="row g-3 mb-4">
+                <div class="col-6">
+                    <div class="card h-100 border-0 shadow-sm text-center p-3">
+                        <span class="text-muted small text-uppercase fw-bold">Classement</span>
+                        <div class="h2 mb-0 fw-bold text-primary">
+                            {{ rank }}<small class="fs-6">/{{ total_players }}</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="card h-100 border-0 shadow-sm text-center p-3">
+                        <span class="text-muted small text-uppercase fw-bold">Points Totaux</span>
+                        <div class="h2 mb-0 fw-bold text-success">{{ season_points }}</div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm text-center p-3">
+                        <div class="d-flex justify-content-around align-items-center">
+                            <div>
+                                <span class="text-muted small text-uppercase d-block">🎯 Tout-piles</span>
+                                <span class="h4 fw-bold">{{ perfect_scores }}</span>
+                            </div>
+                            <div class="vr"></div>
+                            <div>
+                                <span class="text-muted small text-uppercase d-block">Saison</span>
+                                <span class="h6 fw-bold text-truncate" style="max-width: 100px;">{{ latest_season.year }}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-6 col-md-4">
-                <div class="card text-center border-success shadow-sm h-100">
-                    <div class="card-body">
-                        <h6 class="text-uppercase small text-muted">Tout-Pile</h6>
-                        <div class="h2 fw-bold text-success">🎯 {{ perfect_scores }}</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 mt-4">
+            <div class="d-grid gap-3">
                 <a href="{% url 'pronos' %}"
-                   class="btn btn-primary btn-lg w-100 py-3 shadow">🏉 PRONOSTIQUER LES MATCHS</a>
+                   class="btn btn-primary btn-lg shadow-sm py-3 fw-bold">✍️ SAISIR MES PRONOS</a>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <a href="{% url 'all_pronos' %}" class="btn btn-dark w-100 py-2">👁️ Voir les autres</a>
+                    </div>
+                    <div class="col-6">
+                        <a href="{% url 'classement_prediction' %}"
+                           class="btn btn-outline-dark w-100 py-2">🏆 Classement</a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

@@ -1,7 +1,9 @@
 from django.urls import path 
-from .views import hall_of_fame_view, bareme_view, charte_view, admin_saisie_resultats, declencher_calcul_points, recap_pronos_classement, debug_scores_view, statistics_view, statistiques_view, all_pronos_view, compute_round_view, pronos_view, logout_view, round_results_board, settings_view, competition_ranking_view, classement_prediction
+from .views import home_view, hall_of_fame_view, bareme_view, charte_view, admin_saisie_resultats, declencher_calcul_points, recap_pronos_classement, debug_scores_view, statistics_view, statistiques_view, all_pronos_view, compute_round_view, pronos_view, logout_view, round_results_board, settings_view, competition_ranking_view, classement_prediction
 
 urlpatterns = [
+    # Page d'accueil (peut rediriger vers les pronos ou une page d'info)
+    path("", home_view, name="home"),
     # Page principale des pronos
     path("pronos/", pronos_view, name="pronos"),
 
