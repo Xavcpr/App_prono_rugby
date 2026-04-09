@@ -1211,7 +1211,7 @@ def home_view(request):
         'rank_general': rank_general,
         'total_players': total_players,
         'last_perf': last_perf,
-        'comp_rankings': SeasonScore.objects.filter(user=request.user, season__in=active_seasons).order_by('-total_points'),
+        'comp_rankings': SeasonScore.objects.filter(user=request.user, season__in=active_seasons).select_related('competition', 'season').order_by('-match_points'),
         'perfects': user_row.get('perfects', 0),
         'points_matchs': user_row.get('points', 0),
         'chopes_count': chopes,

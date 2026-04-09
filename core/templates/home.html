@@ -73,8 +73,12 @@
         {% for sc in comp_rankings %}
             <div class="card border-0 shadow-sm mb-2">
                 <div class="card-body py-2 d-flex justify-content-between align-items-center">
-                    <span class="fw-bold small">{{ sc.competition.name }}</span>
-                    <span class="badge bg-dark">Score: {{ sc.total_points }}</span>
+                    <div>
+                        <span class="fw-bold small">{{ sc.competition.name }}</span>
+                        <br>
+                        <small class="text-muted" style="font-size: 0.7rem;">Matchs: {{ sc.match_points }} | Flair: {{ sc.ranking_points }}</small>
+                    </div>
+                    <span class="badge bg-dark">Total: {{ sc.match_points|add:sc.ranking_points }}</span>
                 </div>
             </div>
         {% endfor %}
