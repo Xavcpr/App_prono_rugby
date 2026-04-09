@@ -8,6 +8,7 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.db.models import F, Prefetch, Sum, Count, Max, Q
 from django.contrib.admin.views.decorators import staff_member_required
 from datetime import datetime
+from django.contrib.auth.models import User
 
 # Modèles conservés
 from .models import (
@@ -1131,8 +1132,6 @@ def hall_of_fame_view(request):
 
     return render(request, 'hall_of_fame.html', {'all_time_ranking': ranking})
 
-from django.db.models import Q
-
 @login_required
 def home_view(request):
     player = request.user.player
@@ -1240,9 +1239,32 @@ def home_view(request):
     user_row = next((row for row in stats.detailed_ranking if row['username'] == request.user.username), {})
     rank_general = next((i+1 for i, r in enumerate(stats.detailed_ranking) if r['username'] == request.user.username), "?")
 
-    # 3. HALL OF FAME (Discret)
-    # On récupère le rang historique si l'objet existe, sinon "?"
-    hall_of_fame_rank = getattr(player, 'hof_rank', "?") 
+    # 3. CALCUL DU RANG HALL OF FAME (Dynamique)
+    current_year_val = now.year
+    histories = SeasonHistory.objects.all()
+    hof_data = {}
+
+    for record in histories:
+        name = record.display_name
+        n = current_year_val - record.season_year
+        # Même calcul que dans ta vue HOF
+        perf = ((record.total_players + 1 - record.rank) * 100) / record.total_players
+        score_annee = perf * (0.9 ** n)
+        
+        if name not in hof_data:
+            hof_data[name] = 0
+        hof_data[name] += score_annee
+
+    # Tri pour obtenir le classement
+    hof_ranking = sorted(hof_data.items(), key=lambda x: x[1], reverse=True)
+    
+    # On cherche la position de l'utilisateur actuel (via son display_name ou son name)
+    # On utilise player.name car c'est ce qui semble correspondre à display_name
+    hof_rank = "?"
+    for index, (name, score) in enumerate(hof_ranking):
+        if name == player.name:
+            hof_rank = index + 1
+            break
 
     # 4. CALCUL DES TROPHÉES ET LEURS CLASSEMENTS
     all_scores = DailyScore.objects.filter(round__season__in=active_seasons)
