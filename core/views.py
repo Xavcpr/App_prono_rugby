@@ -1333,7 +1333,7 @@ def home_view(request):
     context = {
         'rank_general': rank_general,
         'total_players': len(stats.detailed_ranking),
-        'hof_rank': hall_of_fame_rank,
+        'hof_rank': hof_rank,
         'total_points_all': user_row.get('points', 0) + user_row.get('ranking_points', 0),
         'perfects': user_row.get('perfects', 0),
         'rank_perfects': rank_perfects,
