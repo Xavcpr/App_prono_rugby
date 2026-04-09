@@ -1233,7 +1233,7 @@ def home_view(request):
     # 1. FILTRE SAISON
     active_seasons = Season.objects.filter(Q(year__icontains="2025") | Q(year__icontains="2026")).distinct()
 
-    # 2. PROCHAIN MATCH (La ligne qui manquait !)
+    # 2. PROCHAIN MATCH
     next_match = Match.objects.filter(kickoff_at__gt=now).order_by('kickoff_at').first()
 
     # 3. STATS GÉNÉRALES
@@ -1241,11 +1241,10 @@ def home_view(request):
     user_row = next((row for row in stats.detailed_ranking if row['username'] == user.username), {})
     rank_general = next((i+1 for i, r in enumerate(stats.detailed_ranking) if r['username'] == user.username), "?")
 
-    # 4. HALL OF FAME (Xav vs Xavier)
+    # 4. HALL OF FAME
     histories = SeasonHistory.objects.all()
     hof_data = {}
     target_names = [user.username.lower().strip(), player.name.lower().strip()]
-
     for record in histories:
         name_db = record.display_name.strip()
         n = now.year - record.season_year
@@ -1260,8 +1259,10 @@ def home_view(request):
             hof_rank = index + 1
             break
 
-    # 5. TROPHÉES ET RANGS
+    # 5. TROPHÉES ET RANGS (Calcul des Chopes/Cuillères)
     user_counts = {u.id: {'chopes': 0, 'cuilleres': 0, 'perfects': 0} for u in User.objects.all()}
+    
+    # On peuple les perfects via stats
     for row in stats.detailed_ranking:
         try:
             u_obj = User.objects.get(username=row['username'])
@@ -1274,8 +1275,7 @@ def home_view(request):
         if day_scores:
             max_p, min_p = day_scores[0].points, day_scores[-1].points
             for ds in day_scores:
-                if ds.points == max_p: user_counts[ds.user.id]['chopes'] += 3
-                elif len(day_scores) > 1 and ds == day_scores[1]: user_counts[ds.user.id]['chopes'] += 2
+                if ds.points == max_p: user_counts[ds.user.id]['chopes'] += 1 # 1 chope par victoire de journée
                 if len(day_scores) >= 3 and ds.points == min_p: user_counts[ds.user.id]['cuilleres'] += 1
 
     my_stats = user_counts.get(user.id, {'chopes': 0, 'cuilleres': 0, 'perfects': 0})
@@ -1283,81 +1283,76 @@ def home_view(request):
     rank_cuilleres = sum(1 for v in user_counts.values() if v['cuilleres'] > my_stats['cuilleres']) + 1
     rank_perfects = sum(1 for v in user_counts.values() if v['perfects'] > my_stats['perfects']) + 1
 
-    # 6. ANALYSE TECHNIQUE & NO-SHOW
+    # 6. ANALYSE TECHNIQUE (L'endroit où on répare tout !)
     all_past_matches = Match.objects.filter(round__season__in=active_seasons, kickoff_at__lt=now)
     preds_done = Prediction.objects.filter(player=player, match__in=all_past_matches)
     no_show_count = all_past_matches.count() - preds_done.count()
 
-    global_demi, global_off, global_def = 0, 0, 0
+    # Initialisation des compteurs précis
+    perfect_count = 0
+    demi_pile_count = 0
+    bo_prono, bo_ok = 0, 0
+    bd_prono, bd_ok = 0, 0
+
     for p in preds_done.filter(match__home_score__isnull=False):
         rh, ra = p.match.home_score, p.match.away_score
         ph, pa = p.home_score_pred, p.away_score_pred
-        if (ph == rh or pa == ra) and not (ph == rh and pa == ra): global_demi += 1
-        if p.bonus_home_pred and getattr(p.match, 'home_bonus_off', False): global_off += 1
-        if p.bonus_away_pred and getattr(p.match, 'away_bonus_def', False): global_def += 1
+        
+        # 1. Tout-pile
+        if ph == rh and pa == ra:
+            perfect_count += 1
+        # 2. Demi-pile (Uniquement si pas tout-pile)
+        elif ph == rh or pa == ra:
+            demi_pile_count += 1
+            
+        # 3. Bonus Offensifs (Format Prono / Réussi)
+        if p.bonus_home_pred: # Tu as pronostiqué un BO
+            bo_prono += 1
+            if getattr(p.match, 'home_bonus_off', False): # Il y a eu BO
+                bo_ok += 1
+                
+        # 4. Bonus Défensifs (Format Prono / Réussi)
+        if p.bonus_away_pred: # Tu as pronostiqué un BD
+            bd_prono += 1
+            if getattr(p.match, 'away_bonus_def', False): # Il y a eu BD
+                bd_ok += 1
 
-    # 7. COMPÉTITIONS DÉTAILLÉES (Points Matchs + Bonus Flair + Rang Réel)
+    # 7. COMPÉTITIONS DÉTAILLÉES (Déjà validé, on ne touche plus !)
     comp_analysis = []
     for season in active_seasons:
-        # 1. Tes points à toi (Sécurité DailyScore)
         u_sscore = SeasonScore.objects.filter(user=user, season=season).first()
         match_pts_daily = DailyScore.objects.filter(user=user, round__season=season).aggregate(Sum('points'))['points__sum'] or 0
-        
         m_pts = u_sscore.match_points if (u_sscore and u_sscore.match_points > 0) else match_pts_daily
         f_pts = u_sscore.ranking_points if u_sscore else 0
         total_pts = m_pts + f_pts
-        
-        # 2. Stats de réussite
         s_preds = preds_done.filter(match__round__season=season, match__home_score__isnull=False)
-        
         if u_sscore or s_preds.exists() or match_pts_daily > 0:
             s_bons = sum(1 for p in s_preds if (p.home_score_pred > p.away_score_pred and p.match.home_score > p.match.away_score) or (p.home_score_pred < p.away_score_pred and p.match.home_score < p.match.away_score) or (p.home_score_pred == p.away_score_pred and p.match.home_score == p.match.away_score))
-
-            # 3. CALCUL DU RANG RÉEL
-            # On simule le classement de la saison en agrégeant les DailyScores de TOUT LE MONDE
-            # C'est la seule façon d'avoir un rang juste si SeasonScore n'est pas à jour
-            leaderboard = DailyScore.objects.filter(round__season=season).values('user').annotate(
-                total_m=Sum('points')
-            ).order_by('-total_m')
-
-            # On ajoute le flair potentiel des autres joueurs (si existant) dans le calcul du rang
-            # Pour faire simple et performant, on compare d'abord sur les points de matchs
+            leaderboard = DailyScore.objects.filter(round__season=season).values('user').annotate(total_m=Sum('points')).order_by('-total_m')
             s_rank = 1
             for entry in leaderboard:
-                # On récupère le flair de cet adversaire pour être précis
                 adv_sscore = SeasonScore.objects.filter(user_id=entry['user'], season=season).first()
                 adv_flair = adv_sscore.ranking_points if adv_sscore else 0
-                adv_total = entry['total_m'] + adv_flair
-                
-                if adv_total > total_pts:
-                    s_rank += 1
-                # Pas de else/break ici car le leaderboard est trié par total_m, 
-                # mais le flair pourrait changer l'ordre final
-
+                if (entry['total_m'] + adv_flair) > total_pts: s_rank += 1
             comp_analysis.append({
-                'name': season.competition.name,
-                'bons': s_bons,
-                'total': s_preds.count(),
+                'name': season.competition.name, 'bons': s_bons, 'total': s_preds.count(),
                 'ratio': round((s_bons / s_preds.count() * 100), 1) if s_preds.count() > 0 else 0,
-                'rank': s_rank,
-                'pts': total_pts,
-                'flair': f_pts
+                'rank': s_rank, 'pts': total_pts, 'flair': f_pts
             })
 
-    # Tri final par points
-    comp_analysis = sorted(comp_analysis, key=lambda x: x['pts'], reverse=True)
-    
     context = {
         'rank_general': rank_general, 'total_players': len(stats.detailed_ranking),
         'hof_rank': hof_rank, 'total_points_all': user_row.get('points', 0) + user_row.get('ranking_points', 0),
-        'perfects': my_stats['perfects'], 'rank_perfects': rank_perfects,
+        'perfects': perfect_count, 'rank_perfects': rank_perfects,
         'chopes_count': my_stats['chopes'], 'rank_chopes': rank_chopes,
         'cuilleres_count': my_stats['cuilleres'], 'rank_cuilleres': rank_cuilleres,
         'comp_analysis': sorted(comp_analysis, key=lambda x: x['pts'], reverse=True),
         'global_bons': sum(c['bons'] for c in comp_analysis), 
         'global_total': sum(c['total'] for c in comp_analysis),
         'global_ratio': round((sum(c['bons'] for c in comp_analysis) / sum(c['total'] for c in comp_analysis) * 100), 1) if sum(c['total'] for c in comp_analysis) > 0 else 0,
-        'global_demi': global_demi, 'bonus_off': global_off, 'bonus_def': global_def,
+        'global_demi': demi_pile_count, 
+        'bonus_off_ok': bo_ok, 'bonus_off_prono': bo_prono,
+        'bonus_def_ok': bd_ok, 'bonus_def_prono': bd_prono,
         'no_show': no_show_count, 'next_match': next_match,
     }
     return render(request, 'home.html', context)
