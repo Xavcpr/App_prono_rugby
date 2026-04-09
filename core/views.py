@@ -1261,8 +1261,11 @@ def home_view(request):
     # On cherche la position de l'utilisateur actuel (via son display_name ou son name)
     # On utilise player.name car c'est ce qui semble correspondre à display_name
     hof_rank = "?"
+    # On nettoie le nom pour la comparaison
+    current_player_name = player.name.strip().lower() 
+    
     for index, (name, score) in enumerate(hof_ranking):
-        if name == player.name:
+        if name.strip().lower() == current_player_name:
             hof_rank = index + 1
             break
 
@@ -1300,6 +1303,10 @@ def home_view(request):
     # Important : On vérifie bien que active_seasons inclut le 6 nations
     user_preds = Prediction.objects.filter(player=player, match__round__season__in=active_seasons).exclude(match__home_score__isnull=True)
     
+    # À mettre juste après le calcul de user_preds
+    missing = Prediction.objects.filter(player=player, match__round__season__in=active_seasons, match__home_score__isnull=True).values_list('match__home_team__name', 'match__away_team__name')
+    print(f"Matchs sans scores : {missing}")
+    
     global_demi = 0
     global_off, global_def = 0, 0
     for p in user_preds:
@@ -1319,15 +1326,24 @@ def home_view(request):
         preds = user_preds.filter(match__round__season=season)
         if preds.exists():
             s_bons = sum(1 for p in preds if (p.home_score_pred > p.away_score_pred and p.match.home_score > p.match.away_score) or (p.home_score_pred < p.away_score_pred and p.match.home_score < p.match.away_score) or (p.home_score_pred == p.away_score_pred and p.match.home_score == p.match.away_score))
-            u_score = SeasonScore.objects.filter(user=request.user, season=season).first()
+            
+            # AUTO-RÉPARATION : On récupère ou on crée l'objet SeasonScore
+            u_score, created = SeasonScore.objects.get_or_create(
+                user=request.user, 
+                season=season,
+                defaults={'match_points': 0, 'ranking_points': 0}
+            )
+
+            # Si l'objet vient d'être créé ou est à 0, on peut essayer de le remplir avec les points de user_row
+            # (si ton user_row contient déjà les points par saison, sinon il faudra lancer ton script global)
             
             comp_analysis.append({
                 'name': season.competition.name,
                 'bons': s_bons,
                 'total': preds.count(),
                 'ratio': round((s_bons / preds.count() * 100), 1) if preds.count() > 0 else 0,
-                'rank': SeasonScore.objects.filter(season=season, match_points__gt=u_score.match_points).count() + 1 if u_score else "?",
-                'pts': (u_score.match_points + u_score.ranking_points) if u_score else 0
+                'rank': SeasonScore.objects.filter(season=season, match_points__gt=u_score.match_points).count() + 1 if u_score.match_points > 0 else "?",
+                'pts': (u_score.match_points + u_score.ranking_points)
             })
 
     context = {
