@@ -1296,37 +1296,43 @@ def home_view(request):
         if p.bonus_home_pred and getattr(p.match, 'home_bonus_off', False): global_off += 1
         if p.bonus_away_pred and getattr(p.match, 'away_bonus_def', False): global_def += 1
 
-    # 7. COMPÉTITIONS DÉTAILLÉES (Points Matchs + Bonus Flair)
+    # 7. COMPÉTITIONS DÉTAILLÉES (Points Matchs + Bonus Flair + Rang Réel)
     comp_analysis = []
     for season in active_seasons:
-        # On récupère les scores agrégés
+        # 1. Tes points à toi (Sécurité DailyScore)
         u_sscore = SeasonScore.objects.filter(user=user, season=season).first()
-        # On récupère les scores par journée (notre sécurité)
         match_pts_daily = DailyScore.objects.filter(user=user, round__season=season).aggregate(Sum('points'))['points__sum'] or 0
         
-        # On récupère les prédictions pour les stats de ratio
+        m_pts = u_sscore.match_points if (u_sscore and u_sscore.match_points > 0) else match_pts_daily
+        f_pts = u_sscore.ranking_points if u_sscore else 0
+        total_pts = m_pts + f_pts
+        
+        # 2. Stats de réussite
         s_preds = preds_done.filter(match__round__season=season, match__home_score__isnull=False)
         
         if u_sscore or s_preds.exists() or match_pts_daily > 0:
-            # SÉCURITÉ : Si SeasonScore est à 0 ou inexistant, on utilise les points quotidiens
-            m_pts = u_sscore.match_points if (u_sscore and u_sscore.match_points > 0) else match_pts_daily
-            f_pts = u_sscore.ranking_points if u_sscore else 0
-            total_pts = m_pts + f_pts
-            
-            # Stats de réussite
             s_bons = sum(1 for p in s_preds if (p.home_score_pred > p.away_score_pred and p.match.home_score > p.match.away_score) or (p.home_score_pred < p.away_score_pred and p.match.home_score < p.match.away_score) or (p.home_score_pred == p.away_score_pred and p.match.home_score == p.match.away_score))
 
-            # Calcul du Rang
-            # Pour le rang, on reste sur la table SeasonScore qui est la référence du classement officiel
-            all_season_scores = SeasonScore.objects.filter(season=season)
+            # 3. CALCUL DU RANG RÉEL
+            # On simule le classement de la saison en agrégeant les DailyScores de TOUT LE MONDE
+            # C'est la seule façon d'avoir un rang juste si SeasonScore n'est pas à jour
+            leaderboard = DailyScore.objects.filter(round__season=season).values('user').annotate(
+                total_m=Sum('points')
+            ).order_by('-total_m')
+
+            # On ajoute le flair potentiel des autres joueurs (si existant) dans le calcul du rang
+            # Pour faire simple et performant, on compare d'abord sur les points de matchs
             s_rank = 1
-            if all_season_scores.exists():
-                for score_entry in all_season_scores:
-                    entry_total = score_entry.match_points + score_entry.ranking_points
-                    if entry_total > total_pts:
-                        s_rank += 1
-            else:
-                s_rank = "?" # Si pas de table de score globale encore calculée
+            for entry in leaderboard:
+                # On récupère le flair de cet adversaire pour être précis
+                adv_sscore = SeasonScore.objects.filter(user_id=entry['user'], season=season).first()
+                adv_flair = adv_sscore.ranking_points if adv_sscore else 0
+                adv_total = entry['total_m'] + adv_flair
+                
+                if adv_total > total_pts:
+                    s_rank += 1
+                # Pas de else/break ici car le leaderboard est trié par total_m, 
+                # mais le flair pourrait changer l'ordre final
 
             comp_analysis.append({
                 'name': season.competition.name,
@@ -1338,7 +1344,7 @@ def home_view(request):
                 'flair': f_pts
             })
 
-    # Tri final
+    # Tri final par points
     comp_analysis = sorted(comp_analysis, key=lambda x: x['pts'], reverse=True)
     
     context = {
