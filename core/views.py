@@ -1136,91 +1136,111 @@ def home_view(request):
     player = request.user.player
     now = timezone.now()
 
-    # 1. PROCHAIN MATCH
-    next_match = Match.objects.filter(kickoff_at__gt=now).order_by('kickoff_at').first()
-
-    # 2. LOGIQUE SAISON (Août à Août)
+    # 1. SAISON & PÉRIODE
     if now.month <= 7:
         current_year_label = f"{now.year - 1}/{now.year}"
     else:
         current_year_label = f"{now.year}/{now.year + 1}"
-
+    
     active_seasons = Season.objects.filter(year=current_year_label)
 
-    # 3. STATS GLOBALES
-    stats = compute_statistics(competition=None, season=None)
-
-    # 4. EXTRACTION DONNÉES USER
-    rank_general = "?"
-    user_row = {}
-    total_players = len(stats.detailed_ranking)
-    
-    for index, row in enumerate(stats.detailed_ranking):
-        if row['username'] == request.user.username:
-            rank_general = index + 1
-            user_row = row
-            break
-
-    # 5. DERNIÈRE PERFORMANCE
+    # 2. PROCHAIN MATCH & DERNIER RÉSULTAT
+    next_match = Match.objects.filter(kickoff_at__gt=now).order_by('kickoff_at').first()
     last_finished_round = Round.objects.filter(
         season__in=active_seasons,
         matches__home_score__isnull=False
     ).distinct().order_by('-matches__kickoff_at').first()
 
-    last_perf = None
-    if last_finished_round:
-        ds = DailyScore.objects.filter(user=request.user, round=last_finished_round).first()
-        if ds:
-            r_rank = DailyScore.objects.filter(round=last_finished_round, points__gt=ds.points).count() + 1
-            last_perf = {'name': str(last_finished_round), 'points': ds.points, 'rank': r_rank}
+    # 3. STATS GLOBALES (Moteur)
+    stats = compute_statistics(competition=None, season=None)
+    
+    # 4. CLASSEMENT GÉNÉRAL & POINTS TOTAUX
+    rank_general = "?"
+    user_row = {}
+    for index, row in enumerate(stats.detailed_ranking):
+        if row['username'] == request.user.username:
+            rank_general = index + 1
+            user_row = row
+            break
+            
+    total_points_all = user_row.get('points', 0) + user_row.get('ranking_points', 0)
 
-    # --- 6. CALCULS TECHNIQUES (La partie manquante était ici) ---
+    # 5. CHOPES ET CUILLÈRES (Méthode Directe via DailyScore)
+    # On définit une chope comme étant 1er de la journée
+    # On définit une cuillère comme étant dernier (avec au moins 1 prono fait)
+    all_scores_season = DailyScore.objects.filter(round__season__in=active_seasons)
+    
+    chopes = 0
+    cuilleres = 0
+    rounds_played = all_scores_season.values_list('round', flat=True).distinct()
+    
+    for r_id in rounds_played:
+        round_scores = all_scores_season.filter(round_id=r_id).order_by('-points')
+        if round_scores.exists():
+            if round_scores.first().user == request.user: chopes += 1
+            if round_scores.last().user == request.user: cuilleres += 1
+
+    # 6. ANALYSE TECHNIQUE DÉTAILLÉE (Toute l'année)
     user_preds = Prediction.objects.filter(
         player=player, 
         match__round__season__in=active_seasons
     ).exclude(match__home_score__isnull=True)
     
-    total_p = user_preds.count()
+    count_preds = user_preds.count()
     bons_vainqueurs = 0
     demi_tout_pile = 0
-    bonus_pronostiques = 0
+    bonus_off_ok = 0
+    bonus_def_ok = 0
     
     for p in user_preds:
-        # Vainqueur
         real_h, real_a = p.match.home_score, p.match.away_score
         pred_h, pred_a = p.home_score_pred, p.away_score_pred
         
-        if (pred_h > pred_a and real_h > real_a) or \
-           (pred_h < pred_a and real_h < real_a) or \
-           (pred_h == pred_a and real_h == real_a):
+        # Vainqueur
+        if (pred_h > pred_a and real_h > real_a) or (pred_h < pred_a and real_h < real_a) or (pred_h == pred_a and real_h == real_a):
             bons_vainqueurs += 1
-            
+        # Demi-Tout-Pile
         if (pred_h == real_h or pred_a == real_a) and not (pred_h == real_h and pred_a == real_a):
             demi_tout_pile += 1
-            
-        if p.bonus_home_pred: bonus_pronostiques += 1
-        if p.bonus_away_pred: bonus_pronostiques += 1
+        # Bonus (On compare si le prono bonus match le bonus réel)
+        # Note: Cette logique dépend de tes champs bonus réels dans Match
+        if hasattr(p.match, 'home_bonus_off') and p.bonus_home_pred and p.match.home_bonus_off: bonus_off_ok += 1
 
-    win_ratio = round((bons_vainqueurs / total_p * 100), 1) if total_p > 0 else 0
-
-    # 7. CHOPES ET CUILLÈRES
-    chopes = stats.chopes_cumulees.get(request.user.username, 0) if isinstance(stats.chopes_cumulees, dict) else 0
-    cuilleres = stats.cuilleres_bois.get(request.user.username, 0) if isinstance(stats.cuilleres_bois, dict) else 0
+    # 7. RANGS PAR COMPÉTITION (Avec le Rang !)
+    comp_data = []
+    for season in active_seasons:
+        # On récupère le score de l'user
+        user_score = SeasonScore.objects.filter(user=request.user, season=season).first()
+        if user_score:
+            # On calcule son rang dans cette saison précise
+            rank = SeasonScore.objects.filter(
+                season=season, 
+                match_points__gt=user_score.match_points
+            ).count() + 1
+            comp_data.append({
+                'name': season.competition.name,
+                'match_points': user_score.match_points,
+                'ranking_points': user_score.ranking_points,
+                'total': user_score.match_points + user_score.ranking_points,
+                'rank': rank
+            })
 
     context = {
-        'player': player,
-        'next_match': next_match,
         'rank_general': rank_general,
-        'total_players': total_players,
-        'last_perf': last_perf,
-        'comp_rankings': SeasonScore.objects.filter(user=request.user, season__in=active_seasons).select_related('competition', 'season').order_by('-match_points'),
+        'total_players': len(stats.detailed_ranking),
+        'total_points_all': total_points_all,
         'perfects': user_row.get('perfects', 0),
-        'points_matchs': user_row.get('points', 0),
         'chopes_count': chopes,
         'cuilleres_count': cuilleres,
-        'win_ratio': win_ratio,
+        # Expertise
+        'count_preds': count_preds,
+        'bons_vainqueurs': bons_vainqueurs,
+        'win_ratio': round((bons_vainqueurs / count_preds * 100), 1) if count_preds > 0 else 0,
         'demi_tout_pile': demi_tout_pile,
-        'bonus_count_prono': bonus_pronostiques,
-        'GLOBAL_LAST_ROUND_ID': last_finished_round.id if last_finished_round else None,
+        'bonus_off': bonus_off_ok,
+        'bonus_def': bonus_def_ok,
+        # Listes
+        'comp_data': comp_data,
+        'next_match': next_match,
     }
     return render(request, 'home.html', context)

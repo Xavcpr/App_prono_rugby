@@ -21,23 +21,10 @@
             <div class="display-1 fw-bold">
                 {{ rank_general }}<small class="fs-3">e</small>
             </div>
-            <p class="mb-0">sur {{ total_players }} compétiteurs</p>
+            <p class="mb-2">sur {{ total_players }} compétiteurs</p>
+            <div class="badge bg-white text-primary px-3 py-2 rounded-pill mt-2">Total : {{ total_points_all }} pts</div>
         </div>
     </div>
-    {% if last_perf %}
-        <div class="card border-0 shadow-sm mb-4 bg-white">
-            <div class="card-body py-3 d-flex justify-content-between align-items-center">
-                <div style="max-width: 60%;">
-                    <span class="text-muted small text-uppercase">Dernier résultat</span>
-                    <h6 class="mb-0 fw-bold text-truncate">{{ last_perf.name }}</h6>
-                </div>
-                <div class="text-end border-start ps-3">
-                    <div class="fw-bold text-success">+{{ last_perf.points }} pts</div>
-                    <div class="badge bg-light text-dark">{{ last_perf.rank }}e de la J.</div>
-                </div>
-            </div>
-        </div>
-    {% endif %}
     <div class="row g-2 mb-4">
         <div class="col-6">
             <div class="card h-100 border-0 shadow-sm text-center p-3">
@@ -55,65 +42,80 @@
         </div>
         <div class="col-6">
             <div class="card h-100 border-0 shadow-sm text-center p-3">
-                <span class="fs-3">Spoon 🥄</span>
+                <span class="fs-3">🥄</span>
                 <div class="h4 fw-bold mb-0">{{ cuilleres_count }}</div>
                 <div class="small text-muted text-uppercase" style="font-size: 0.7rem;">Cuillères de bois</div>
             </div>
         </div>
         <div class="col-6">
-            <div class="card h-100 border-0 shadow-sm text-center p-3">
-                <span class="fs-3">🔥</span>
-                <div class="h4 fw-bold mb-0">{{ points_matchs }}</div>
-                <div class="small text-muted text-uppercase" style="font-size: 0.7rem;">Pts Matchs</div>
+            <div class="card h-100 border-0 shadow-sm text-center p-3 bg-light">
+                <span class="fs-3">📈</span>
+                <div class="h4 fw-bold mb-0">{{ demi_tout_pile }}</div>
+                <div class="small text-muted text-uppercase" style="font-size: 0.7rem;">Demi-Piles</div>
             </div>
         </div>
     </div>
-    <h6 class="fw-bold text-uppercase small text-muted mb-3">Analyse Technique</h6>
-    <div class="row g-2 mb-4">
-        <div class="col-6">
-            <div class="card h-100 border-0 shadow-sm p-3 text-center">
-                <div class="small text-muted text-uppercase" style="font-size: 0.65rem;">Ratio Succès</div>
-                <div class="h5 fw-bold mb-1 text-primary">{{ win_ratio }}%</div>
-                <div class="progress" style="height: 4px;">
-                    <div class="progress-bar"
-                         role="progressbar"
-                         style="width: {{ win_ratio }}%"></div>
-                </div>
+    <h6 class="fw-bold text-uppercase small text-muted mb-3">Expertise Pronos</h6>
+    <div class="card border-0 shadow-sm p-3 mb-4">
+        <div class="d-flex justify-content-between align-items-end mb-2">
+            <div>
+                <span class="small text-muted text-uppercase d-block"
+                      style="font-size: 0.65rem">Ratio de réussite</span>
+                <span class="h4 fw-bold mb-0 text-primary">{{ win_ratio }}%</span>
+            </div>
+            <div class="text-end">
+                <span class="badge bg-soft-primary text-primary"
+                      style="background-color: #e7f1ff">{{ bons_vainqueurs }} / {{ count_preds }} bons scores</span>
             </div>
         </div>
-        <div class="col-6">
-            <div class="card h-100 border-0 shadow-sm p-3 text-center">
-                <div class="small text-muted text-uppercase" style="font-size: 0.65rem;">Demi Tout-pile</div>
-                <div class="h5 fw-bold mb-0 text-info">{{ demi_tout_pile }}</div>
-            </div>
+        <div class="progress" style="height: 8px;">
+            <div class="progress-bar bg-primary"
+                 role="progressbar"
+                 style="width: {{ win_ratio }}%"></div>
         </div>
-        <div class="col-12">
-            <div class="card border-0 shadow-sm p-3 d-flex flex-row justify-content-between align-items-center">
-                <div class="small text-muted text-uppercase" style="font-size: 0.65rem;">Bonus Pronostiqués (H+A)</div>
-                <div class="h5 fw-bold mb-0 text-warning">{{ bonus_count_prono }}</div>
+        <div class="row mt-3 pt-3 border-top g-0 text-center">
+            <div class="col-6 border-end">
+                <small class="text-muted d-block small-caps" style="font-size: 0.6rem;">BONUS OFF. OK</small>
+                <span class="fw-bold">{{ bonus_off }}</span>
+            </div>
+            <div class="col-6">
+                <small class="text-muted d-block small-caps" style="font-size: 0.6rem;">BONUS DÉF. OK</small>
+                <span class="fw-bold">{{ bonus_def }}</span>
             </div>
         </div>
     </div>
     <div class="mb-5">
-        <h6 class="fw-bold text-uppercase small text-muted mb-3">Mes Rangs par compétition</h6>
-        {% for sc in comp_rankings %}
+        <h6 class="fw-bold text-uppercase small text-muted mb-3">Détail par Compétition</h6>
+        {% for comp in comp_data %}
             <div class="card border-0 shadow-sm mb-2">
                 <div class="card-body py-2 d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="fw-bold small">{{ sc.competition.name }}</span>
-                        <br>
-                        <small class="text-muted" style="font-size: 0.7rem;">Matchs: {{ sc.match_points }} | Flair: {{ sc.ranking_points }}</small>
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-dark text-white d-flex align-items-center justify-content-center me-3"
+                             style="width: 32px;
+                                    height: 32px;
+                                    font-size: 0.8rem;
+                                    font-weight: bold">{{ comp.rank }}</div>
+                        <div>
+                            <span class="fw-bold small d-block">{{ comp.name }}</span>
+                            <small class="text-muted" style="font-size: 0.65rem;">
+                                {{ comp.match_points }} pts matchs | {{ comp.ranking_points }} flair
+                            </small>
+                        </div>
                     </div>
-                    <span class="badge bg-dark">Total: {{ sc.match_points|add:sc.ranking_points }}</span>
+                    <div class="text-end">
+                        <span class="fw-bold text-primary">{{ comp.total }} pts</span>
+                    </div>
                 </div>
             </div>
         {% empty %}
-            <p class="text-muted small">Aucun score enregistré pour cette saison.</p>
+            <div class="text-center py-4 bg-white rounded shadow-sm">
+                <p class="text-muted small mb-0">Aucun score disponible pour le moment.</p>
+            </div>
         {% endfor %}
     </div>
-    <div class="fixed-bottom p-3 bg-light border-top">
+    <div class="fixed-bottom p-3 bg-white border-top shadow-lg">
         <a href="{% url 'pronos' %}"
-           class="btn btn-primary btn-lg w-100 shadow fw-bold">✍️ SAISIR MES PRONOS</a>
+           class="btn btn-primary btn-lg w-100 shadow-sm fw-bold py-3">✍️ SAISIR MES PRONOS</a>
     </div>
-    <div style="height: 100px;"></div>
+    <div style="height: 110px;"></div>
 {% endblock %}
