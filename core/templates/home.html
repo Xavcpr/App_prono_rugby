@@ -7,7 +7,7 @@
                 <div>
                     <h6 class="mb-0 fw-bold text-uppercase small">Prochain rendez-vous</h6>
                     <div class="fs-5 text-dark">
-                        Le <strong>{{ next_match.kickoff_at|date:"l" }}</strong> {{ next_match.kickoff_at|date:"d F" }} à {{ next_match.kickoff_at|date:"H:i" }}
+                        Le <strong>{{ next_match.kickoff_at|date:"l" }}</strong> {{ next_match.kickoff_at|date:"d F" }}
                     </div>
                     <small class="text-muted">{{ next_match.home_team }} vs {{ next_match.away_team }}</small>
                 </div>
@@ -34,89 +34,70 @@
             </div>
         </div>
         <div class="col-6">
-            <div class="card h-100 border-0 shadow-sm text-center p-3 border-warning"
-                 style="border-width: 2px !important">
+            <div class="card h-100 border-0 shadow-sm text-center p-3">
                 <span class="fs-3">🍺</span>
                 <div class="h4 fw-bold mb-0">{{ chopes_count }}</div>
-                <div class="small text-muted text-uppercase" style="font-size: 0.6rem;">Cumul Chopes (3-2-1)</div>
+                <div class="small text-muted text-uppercase" style="font-size: 0.6rem;">Chopes (3-2-1)</div>
             </div>
         </div>
         <div class="col-6">
             <div class="card h-100 border-0 shadow-sm text-center p-3">
                 <span class="fs-3">🥄</span>
                 <div class="h4 fw-bold mb-0">{{ cuilleres_count }}</div>
-                <div class="small text-muted text-uppercase" style="font-size: 0.7rem;">Cuillères de bois</div>
+                <div class="small text-muted text-uppercase" style="font-size: 0.6rem;">Cuillères</div>
             </div>
         </div>
         <div class="col-6">
             <div class="card h-100 border-0 shadow-sm text-center p-3 bg-light">
-                <span class="fs-3">📈</span>
-                <div class="h4 fw-bold mb-0">{{ demi_tout_pile }}</div>
-                <div class="small text-muted text-uppercase" style="font-size: 0.7rem;">Demi-Piles</div>
+                <span class="fs-3">📉</span>
+                <div class="h4 fw-bold mb-0">{{ global_demi }}</div>
+                <div class="small text-muted text-uppercase" style="font-size: 0.6rem;">Demi-piles</div>
             </div>
         </div>
     </div>
-    <h6 class="fw-bold text-uppercase small text-muted mb-3">Expertise Pronos</h6>
-    <div class="card border-0 shadow-sm p-3 mb-4">
-        <div class="d-flex justify-content-between align-items-end mb-2">
-            <div>
-                <span class="small text-muted text-uppercase d-block"
-                      style="font-size: 0.65rem">Ratio de réussite</span>
-                <span class="h4 fw-bold mb-0 text-primary">{{ win_ratio }}%</span>
-            </div>
-            <div class="text-end">
-                <span class="badge bg-soft-primary text-primary"
-                      style="background-color: #e7f1ff">{{ bons_vainqueurs }} / {{ count_preds }} bons scores</span>
-            </div>
+    <h6 class="fw-bold text-uppercase small text-muted mb-3">Expertise Saison</h6>
+    <div class="card border-0 shadow-sm p-3 mb-4 bg-dark text-white">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="small opacity-75 text-uppercase">Taux de réussite global</span>
+            <span class="fw-bold">{{ global_bons }} / {{ global_total }}</span>
         </div>
-        <div class="progress" style="height: 8px;">
-            <div class="progress-bar bg-primary"
-                 role="progressbar"
-                 style="width: {{ win_ratio }}%"></div>
+        <div class="progress mb-3"
+             style="height: 10px;
+                    background-color: rgba(255,255,255,0.2)">
+            <div class="progress-bar bg-info" style="width: {{ global_ratio }}%"></div>
         </div>
-        <div class="row mt-3 pt-3 border-top g-0 text-center">
+        <div class="row g-0 text-center border-top pt-2">
             <div class="col-6 border-end">
-                <small class="text-muted d-block small-caps" style="font-size: 0.6rem;">BONUS OFF. OK</small>
-                <span class="fw-bold">{{ bonus_off }}</span>
+                <small class="d-block opacity-75" style="font-size: 0.6rem;">BONUS OFF.</small><span class="fw-bold text-success">{{ bonus_off }}</span>
             </div>
             <div class="col-6">
-                <small class="text-muted d-block small-caps" style="font-size: 0.6rem;">BONUS DÉF. OK</small>
-                <span class="fw-bold">{{ bonus_def }}</span>
+                <small class="d-block opacity-75" style="font-size: 0.6rem;">BONUS DÉF.</small><span class="fw-bold text-danger">{{ bonus_def }}</span>
             </div>
         </div>
     </div>
-    <div class="mb-5">
-        <h6 class="fw-bold text-uppercase small text-muted mb-3">Détail par Compétition</h6>
-        {% for comp in comp_data %}
-            <div class="card border-0 shadow-sm mb-2">
-                <div class="card-body py-2 d-flex justify-content-between align-items-center">
-                    <div class="d-flex align-items-center">
-                        <div class="rounded-circle bg-dark text-white d-flex align-items-center justify-content-center me-3"
-                             style="width: 32px;
-                                    height: 32px;
-                                    font-size: 0.8rem;
-                                    font-weight: bold">{{ comp.rank }}</div>
-                        <div>
-                            <span class="fw-bold small d-block">{{ comp.name }}</span>
-                            <small class="text-muted" style="font-size: 0.65rem;">
-                                {{ comp.match_points }} pts matchs | {{ comp.ranking_points }} flair
-                            </small>
-                        </div>
-                    </div>
-                    <div class="text-end">
-                        <span class="fw-bold text-primary">{{ comp.total }} pts</span>
-                    </div>
+    <h6 class="fw-bold text-uppercase small text-muted mb-3">Détail par Compétition</h6>
+    {% for comp in comp_analysis %}
+        <div class="card border-0 shadow-sm p-3 mb-2">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-dark me-2">{{ comp.rank }}e</span>
+                    <span class="fw-bold small">{{ comp.name }}</span>
                 </div>
+                <span class="fw-bold text-primary">{{ comp.pts }} pts</span>
             </div>
-        {% empty %}
-            <div class="text-center py-4 bg-white rounded shadow-sm">
-                <p class="text-muted small mb-0">Aucun score disponible pour le moment.</p>
+            <div class="progress" style="height: 6px;">
+                <div class="progress-bar bg-primary" style="width: {{ comp.ratio }}%"></div>
             </div>
-        {% endfor %}
-    </div>
+            <div class="d-flex justify-content-between mt-1"
+                 style="font-size: 0.65rem">
+                <span class="text-muted">{{ comp.bons }} / {{ comp.total }} pronos</span>
+                <span class="text-muted">{{ comp.ratio }}%</span>
+            </div>
+        </div>
+    {% endfor %}
     <div class="fixed-bottom p-3 bg-white border-top shadow-lg">
         <a href="{% url 'pronos' %}"
            class="btn btn-primary btn-lg w-100 shadow-sm fw-bold py-3">✍️ SAISIR MES PRONOS</a>
     </div>
-    <div style="height: 110px;"></div>
+    <div style="height: 100px;"></div>
 {% endblock %}

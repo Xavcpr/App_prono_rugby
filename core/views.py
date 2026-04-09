@@ -1224,3 +1224,94 @@ def home_view(request):
         'next_match': next_match,
     }
     return render(request, 'home.html', context)
+
+@login_required
+def home_view(request):
+    player = request.user.player
+    now = timezone.now()
+
+    # 1. FILTRE STRICT 2026
+    active_seasons = Season.objects.filter(year__icontains="2026").exclude(year__icontains="2027")
+
+    # 2. PROCHAIN MATCH & STATS GÉNÉRALES
+    next_match = Match.objects.filter(kickoff_at__gt=now).order_by('kickoff_at').first()
+    stats = compute_statistics(competition=None, season=None)
+    
+    user_row = next((row for row in stats.detailed_ranking if row['username'] == request.user.username), {})
+    rank_general = next((i+1 for i, r in enumerate(stats.detailed_ranking) if r['username'] == request.user.username), "?")
+
+    # 3. CALCUL DES CHOPES ET CUILLÈRES (Gestion ex-aequo)
+    all_scores = DailyScore.objects.filter(round__season__in=active_seasons)
+    chopes_total = 0
+    cuilleres_count = 0
+    rounds_played = all_scores.values_list('round', flat=True).distinct()
+    
+    for r_id in rounds_played:
+        day_scores = all_scores.filter(round_id=r_id).order_by('-points')
+        if day_scores.exists():
+            scores_list = list(day_scores)
+            max_pts = scores_list[0].points
+            min_pts = scores_list[-1].points
+            
+            # Chopes
+            if day_scores.filter(user=request.user, points=max_pts).exists(): chopes_total += 3
+            elif len(scores_list) > 1 and scores_list[1].user == request.user: chopes_total += 2
+            elif len(scores_list) > 2 and scores_list[2].user == request.user: chopes_total += 1
+            
+            # Cuillères (Tous ceux qui ont le score minimum, si min 3 joueurs)
+            if len(scores_list) >= 3 and day_scores.filter(user=request.user, points=min_pts).exists():
+                cuilleres_count += 1
+
+    # 4. ANALYSE TECHNIQUE & BARRES
+    comp_analysis = []
+    global_bons, global_total = 0, 0
+    global_off, global_def, global_demi = 0, 0, 0
+
+    for season in active_seasons:
+        preds = Prediction.objects.filter(player=player, match__round__season=season).exclude(match__home_score__isnull=True)
+        if preds.exists():
+            s_bons = 0
+            for p in preds:
+                real_h, real_a = p.match.home_score, p.match.away_score
+                pred_h, pred_a = p.home_score_pred, p.away_score_pred
+                # Vainqueur
+                if (pred_h > pred_a and real_h > real_a) or (pred_h < pred_a and real_h < real_a) or (pred_h == pred_a and real_h == real_a):
+                    s_bons += 1
+                # Demi-Tout-Pile
+                if (pred_h == real_h or pred_a == real_a) and not (pred_h == real_h and pred_a == real_a):
+                    global_demi += 1
+                # Bonus
+                if p.bonus_home_pred and getattr(p.match, 'home_bonus_off', False): global_off += 1
+                if p.bonus_away_pred and getattr(p.match, 'away_bonus_def', False): global_def += 1
+
+            u_score = SeasonScore.objects.filter(user=request.user, season=season).first()
+            s_rank = SeasonScore.objects.filter(season=season, match_points__gt=u_score.match_points).count() + 1 if u_score else "?"
+
+            comp_analysis.append({
+                'name': season.competition.name,
+                'bons': s_bons,
+                'total': preds.count(),
+                'ratio': round((s_bons / preds.count() * 100), 1),
+                'rank': s_rank,
+                'pts': (u_score.match_points + u_score.ranking_points) if u_score else 0
+            })
+            global_bons += s_bons
+            global_total += preds.count()
+
+    context = {
+        'rank_general': rank_general,
+        'total_players': len(stats.detailed_ranking),
+        'total_points_all': user_row.get('points', 0) + user_row.get('ranking_points', 0),
+        'perfects': user_row.get('perfects', 0),
+        'chopes_count': chopes_total,
+        'cuilleres_count': cuilleres_count,
+        'comp_analysis': comp_analysis,
+        'global_ratio': round((global_bons / global_total * 100), 1) if global_total > 0 else 0,
+        'global_bons': global_bons,
+        'global_total': global_total,
+        'global_demi': global_demi,
+        'bonus_off': global_off,
+        'bonus_def': global_def,
+        'next_match': next_match,
+    }
+    return render(request, 'home.html', context)
