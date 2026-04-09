@@ -7,7 +7,7 @@
                 <div>
                     <h6 class="mb-0 fw-bold text-uppercase small">Prochain rendez-vous</h6>
                     <div class="fs-5 text-dark">
-                        Le <strong>{{ next_match.kickoff_at|date:"l" }}</strong> {{ next_match.kickoff_at|date:"d F" }}
+                        Le <strong>{{ next_match.kickoff_at|date:"l d F" }}</strong>
                     </div>
                     <small class="text-muted">{{ next_match.home_team }} vs {{ next_match.away_team }}</small>
                 </div>
@@ -22,33 +22,40 @@
                 {{ rank_general }}<small class="fs-3">e</small>
             </div>
             <p class="mb-2">sur {{ total_players }} compétiteurs</p>
-            <div class="badge bg-white text-primary px-3 py-2 rounded-pill mt-2">Total : {{ total_points_all }} pts</div>
+            <div class="d-flex justify-content-center gap-2 mt-2">
+                <span class="badge bg-white text-primary px-3 py-2 rounded-pill">Saison : {{ total_points_all }} pts</span>
+                <span class="badge bg-soft-light text-white px-3 py-2 rounded-pill border border-light"
+                      style="background: rgba(255,255,255,0.1)">🏆 HOF : {{ hof_rank }}e</span>
+            </div>
         </div>
     </div>
     <div class="row g-2 mb-4">
         <div class="col-6">
-            <div class="card h-100 border-0 shadow-sm text-center p-3">
+            <div class="card h-100 border-0 shadow-sm p-3 position-relative">
+                <span class="badge bg-light text-dark position-absolute top-0 end-0 m-2">{{ rank_perfects }}e</span>
                 <span class="fs-3">🎯</span>
                 <div class="h4 fw-bold mb-0">{{ perfects }}</div>
                 <div class="small text-muted text-uppercase" style="font-size: 0.6rem;">Tout-piles</div>
             </div>
         </div>
         <div class="col-6">
-            <div class="card h-100 border-0 shadow-sm text-center p-3">
+            <div class="card h-100 border-0 shadow-sm p-3 position-relative">
+                <span class="badge bg-light text-dark position-absolute top-0 end-0 m-2">{{ rank_chopes }}e</span>
                 <span class="fs-3">🍺</span>
                 <div class="h4 fw-bold mb-0">{{ chopes_count }}</div>
                 <div class="small text-muted text-uppercase" style="font-size: 0.6rem;">Chopes (3-2-1)</div>
             </div>
         </div>
         <div class="col-6">
-            <div class="card h-100 border-0 shadow-sm text-center p-3">
+            <div class="card h-100 border-0 shadow-sm p-3 position-relative">
+                <span class="badge bg-light text-dark position-absolute top-0 end-0 m-2">{{ rank_cuilleres }}e</span>
                 <span class="fs-3">🥄</span>
                 <div class="h4 fw-bold mb-0">{{ cuilleres_count }}</div>
                 <div class="small text-muted text-uppercase" style="font-size: 0.6rem;">Cuillères</div>
             </div>
         </div>
         <div class="col-6">
-            <div class="card h-100 border-0 shadow-sm text-center p-3 bg-light">
+            <div class="card h-100 border-0 shadow-sm p-3 bg-light">
                 <span class="fs-3">📉</span>
                 <div class="h4 fw-bold mb-0">{{ global_demi }}</div>
                 <div class="small text-muted text-uppercase" style="font-size: 0.6rem;">Demi-piles</div>
@@ -58,20 +65,20 @@
     <h6 class="fw-bold text-uppercase small text-muted mb-3">Expertise Saison</h6>
     <div class="card border-0 shadow-sm p-3 mb-4 bg-dark text-white">
         <div class="d-flex justify-content-between align-items-center mb-2">
-            <span class="small opacity-75 text-uppercase">Taux de réussite global</span>
-            <span class="fw-bold">{{ global_bons }} / {{ global_total }}</span>
+            <span class="small opacity-75">PRONOS VAINQUEURS</span>
+            <span class="fw-bold text-info">{{ global_bons }} / {{ global_total }}</span>
         </div>
         <div class="progress mb-3"
              style="height: 10px;
-                    background-color: rgba(255,255,255,0.2)">
+                    background: rgba(255,255,255,0.1)">
             <div class="progress-bar bg-info" style="width: {{ global_ratio }}%"></div>
         </div>
         <div class="row g-0 text-center border-top pt-2">
-            <div class="col-6 border-end">
-                <small class="d-block opacity-75" style="font-size: 0.6rem;">BONUS OFF.</small><span class="fw-bold text-success">{{ bonus_off }}</span>
+            <div class="col-6 border-end text-success">
+                <small class="d-block opacity-75" style="font-size: 0.6rem;">BONUS OFF.</small><strong>{{ bonus_off }}</strong>
             </div>
-            <div class="col-6">
-                <small class="d-block opacity-75" style="font-size: 0.6rem;">BONUS DÉF.</small><span class="fw-bold text-danger">{{ bonus_def }}</span>
+            <div class="col-6 text-danger">
+                <small class="d-block opacity-75" style="font-size: 0.6rem;">BONUS DÉF.</small><strong>{{ bonus_def }}</strong>
             </div>
         </div>
     </div>
@@ -80,7 +87,7 @@
         <div class="card border-0 shadow-sm p-3 mb-2">
             <div class="d-flex justify-content-between align-items-center mb-1">
                 <div class="d-flex align-items-center">
-                    <span class="badge bg-dark me-2">{{ comp.rank }}e</span>
+                    <span class="badge {% if comp.rank == '?' %}bg-secondary{% else %}bg-dark{% endif %} me-2">{{ comp.rank }}e</span>
                     <span class="fw-bold small">{{ comp.name }}</span>
                 </div>
                 <span class="fw-bold text-primary">{{ comp.pts }} pts</span>
@@ -88,10 +95,10 @@
             <div class="progress" style="height: 6px;">
                 <div class="progress-bar bg-primary" style="width: {{ comp.ratio }}%"></div>
             </div>
-            <div class="d-flex justify-content-between mt-1"
+            <div class="d-flex justify-content-between mt-1 opacity-75"
                  style="font-size: 0.65rem">
-                <span class="text-muted">{{ comp.bons }} / {{ comp.total }} pronos</span>
-                <span class="text-muted">{{ comp.ratio }}%</span>
+                <span>{{ comp.bons }}/{{ comp.total }} pronos</span>
+                <span>{{ comp.ratio }}%</span>
             </div>
         </div>
     {% endfor %}
@@ -99,5 +106,5 @@
         <a href="{% url 'pronos' %}"
            class="btn btn-primary btn-lg w-100 shadow-sm fw-bold py-3">✍️ SAISIR MES PRONOS</a>
     </div>
-    <div style="height: 100px;"></div>
+    <div style="height: 110px;"></div>
 {% endblock %}
