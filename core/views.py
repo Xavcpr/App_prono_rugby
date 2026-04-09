@@ -1327,15 +1327,13 @@ def home_view(request):
         if preds.exists():
             s_bons = sum(1 for p in preds if (p.home_score_pred > p.away_score_pred and p.match.home_score > p.match.away_score) or (p.home_score_pred < p.away_score_pred and p.match.home_score < p.match.away_score) or (p.home_score_pred == p.away_score_pred and p.match.home_score == p.match.away_score))
             
-            # AUTO-RÉPARATION : On récupère ou on crée l'objet SeasonScore
+            # RÉPARATION : On ajoute la compétition pour éviter l'IntegrityError
             u_score, created = SeasonScore.objects.get_or_create(
                 user=request.user, 
                 season=season,
+                competition=season.competition,  # <-- C'était l'oubli ici
                 defaults={'match_points': 0, 'ranking_points': 0}
             )
-
-            # Si l'objet vient d'être créé ou est à 0, on peut essayer de le remplir avec les points de user_row
-            # (si ton user_row contient déjà les points par saison, sinon il faudra lancer ton script global)
             
             comp_analysis.append({
                 'name': season.competition.name,
@@ -1345,7 +1343,7 @@ def home_view(request):
                 'rank': SeasonScore.objects.filter(season=season, match_points__gt=u_score.match_points).count() + 1 if u_score.match_points > 0 else "?",
                 'pts': (u_score.match_points + u_score.ranking_points)
             })
-
+            
     context = {
         'rank_general': rank_general,
         'total_players': len(stats.detailed_ranking),
