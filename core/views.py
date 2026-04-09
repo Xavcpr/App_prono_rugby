@@ -1295,21 +1295,28 @@ def home_view(request):
         if p.bonus_home_pred and getattr(p.match, 'home_bonus_off', False): global_off += 1
         if p.bonus_away_pred and getattr(p.match, 'away_bonus_def', False): global_def += 1
 
-    # --- 6. DÉTAIL COMPÉTITIONS ---
+    # 6. COMPÉTITIONS DÉTAILLÉES (AVEC RÉCUPÉRATION DE POINTS DYNAMIQUE)
     comp_analysis = []
     for season in active_seasons:
         s_preds = preds_done.filter(match__round__season=season)
+        # On vérifie s'il y a des pronos OU des scores de journée
         if s_preds.exists() or DailyScore.objects.filter(user=request.user, round__season=season).exists():
             s_bons = sum(1 for p in s_preds if (p.home_score_pred > p.away_score_pred and p.match.home_score > p.match.away_score) or (p.home_score_pred < p.away_score_pred and p.match.home_score < p.match.away_score))
             
-            # Récupération des points via DailyScore (plus fiable que SeasonScore si ce dernier n'est pas à jour)
+            # Récupération des points via DailyScore
             current_pts = DailyScore.objects.filter(user=request.user, round__season=season).aggregate(Sum('points'))['points__sum'] or 0
             
-            # Calcul du rang dynamique basé sur les DailyScores
+            # Calcul du rang dynamique (On compare avec la somme des points de chaque joueur)
             season_rank = "?"
             if current_pts > 0:
-                all_season_scores = DailyScore.objects.filter(round__season=season).values('user').annotate(total=Sum('points')).order_with_respect_to('user')
-                season_rank = sum(1 for s in all_season_scores if s['total'] > current_pts) + 1
+                # On groupe par utilisateur et on calcule le total
+                leaderboard = DailyScore.objects.filter(round__season=season).values('user').annotate(total=Sum('points')).order_by('-total')
+                season_rank = 1
+                for entry in leaderboard:
+                    if entry['total'] > current_pts:
+                        season_rank += 1
+                    else:
+                        break # Comme c'est trié, on peut s'arrêter
 
             comp_analysis.append({
                 'name': season.competition.name,
@@ -1319,7 +1326,8 @@ def home_view(request):
                 'rank': season_rank,
                 'pts': current_pts
             })
-
+    
+    
     context = {
         'rank_general': rank_general,
         'hof_rank': hof_rank,
