@@ -1131,116 +1131,96 @@ def hall_of_fame_view(request):
 
     return render(request, 'hall_of_fame.html', {'all_time_ranking': ranking})
 
+from django.db.models import Q
+
 @login_required
 def home_view(request):
     player = request.user.player
     now = timezone.now()
 
-    # 1. SAISON & PÉRIODE
-    if now.month <= 7:
-        current_year_label = f"{now.year - 1}/{now.year}"
-    else:
-        current_year_label = f"{now.year}/{now.year + 1}"
-    
-    active_seasons = Season.objects.filter(year=current_year_label)
+    # 1. FILTRE STRICT SUR L'ANNÉE 2026
+    # On prend tout ce qui mentionne 2026 mais qui ne contient pas 2027
+    active_seasons = Season.objects.filter(
+        year__icontains="2026"
+    ).exclude(year__icontains="2027")
 
-    # 2. PROCHAIN MATCH & DERNIER RÉSULTAT
+    # 2. PROCHAIN MATCH & STATS GÉNÉRALES
     next_match = Match.objects.filter(kickoff_at__gt=now).order_by('kickoff_at').first()
-    last_finished_round = Round.objects.filter(
-        season__in=active_seasons,
-        matches__home_score__isnull=False
-    ).distinct().order_by('-matches__kickoff_at').first()
-
-    # 3. STATS GLOBALES (Moteur)
     stats = compute_statistics(competition=None, season=None)
     
-    # 4. CLASSEMENT GÉNÉRAL & POINTS TOTAUX
-    rank_general = "?"
-    user_row = {}
-    for index, row in enumerate(stats.detailed_ranking):
-        if row['username'] == request.user.username:
-            rank_general = index + 1
-            user_row = row
-            break
-            
-    total_points_all = user_row.get('points', 0) + user_row.get('ranking_points', 0)
+    user_row = next((row for row in stats.detailed_ranking if row['username'] == request.user.username), {})
+    rank_general = next((i+1 for i, r in enumerate(stats.detailed_ranking) if r['username'] == request.user.username), "?")
 
-    # 5. CHOPES ET CUILLÈRES (Méthode Directe via DailyScore)
-    # On définit une chope comme étant 1er de la journée
-    # On définit une cuillère comme étant dernier (avec au moins 1 prono fait)
-    all_scores_season = DailyScore.objects.filter(round__season__in=active_seasons)
-    
-    chopes = 0
-    cuilleres = 0
-    rounds_played = all_scores_season.values_list('round', flat=True).distinct()
+    # 3. CALCUL DES CHOPES (PODIUM 3-2-1) ET CUILLÈRES
+    all_scores = DailyScore.objects.filter(round__season__in=active_seasons)
+    chopes_total = 0
+    cuilleres_count = 0
+    rounds_played = all_scores.values_list('round', flat=True).distinct()
     
     for r_id in rounds_played:
-        round_scores = all_scores_season.filter(round_id=r_id).order_by('-points')
-        if round_scores.exists():
-            if round_scores.first().user == request.user: chopes += 1
-            if round_scores.last().user == request.user: cuilleres += 1
-
-    # 6. ANALYSE TECHNIQUE DÉTAILLÉE (Toute l'année)
-    user_preds = Prediction.objects.filter(
-        player=player, 
-        match__round__season__in=active_seasons
-    ).exclude(match__home_score__isnull=True)
-    
-    count_preds = user_preds.count()
-    bons_vainqueurs = 0
-    demi_tout_pile = 0
-    bonus_off_ok = 0
-    bonus_def_ok = 0
-    
-    for p in user_preds:
-        real_h, real_a = p.match.home_score, p.match.away_score
-        pred_h, pred_a = p.home_score_pred, p.away_score_pred
+        # On récupère tous les scores de la journée triés par points décroissants
+        day_scores = list(all_scores.filter(round_id=r_id).order_by('-points'))
         
-        # Vainqueur
-        if (pred_h > pred_a and real_h > real_a) or (pred_h < pred_a and real_h < real_a) or (pred_h == pred_a and real_h == real_a):
-            bons_vainqueurs += 1
-        # Demi-Tout-Pile
-        if (pred_h == real_h or pred_a == real_a) and not (pred_h == real_h and pred_a == real_a):
-            demi_tout_pile += 1
-        # Bonus (On compare si le prono bonus match le bonus réel)
-        # Note: Cette logique dépend de tes champs bonus réels dans Match
-        if hasattr(p.match, 'home_bonus_off') and p.bonus_home_pred and p.match.home_bonus_off: bonus_off_ok += 1
+        if len(day_scores) > 0:
+            # Attribution des chopes (Podium)
+            if day_scores[0].user == request.user:
+                chopes_total += 3  # 1er
+            elif len(day_scores) > 1 and day_scores[1].user == request.user:
+                chopes_total += 2  # 2e
+            elif len(day_scores) > 2 and day_scores[2].user == request.user:
+                chopes_total += 1  # 3e
+            
+            # Attribution cuillère (Dernier - min 3 joueurs)
+            if len(day_scores) >= 3 and day_scores[-1].user == request.user:
+                cuilleres_count += 1
 
-    # 7. RANGS PAR COMPÉTITION (Avec le Rang !)
-    comp_data = []
+    # 4. STATS TECHNIQUES & BARRES PAR COMPÉTITION
+    comp_analysis = []
+    global_bons, global_total = 0, 0
+    global_off, global_def = 0, 0
+
     for season in active_seasons:
-        # On récupère le score de l'user
-        user_score = SeasonScore.objects.filter(user=request.user, season=season).first()
-        if user_score:
-            # On calcule son rang dans cette saison précise
-            rank = SeasonScore.objects.filter(
-                season=season, 
-                match_points__gt=user_score.match_points
-            ).count() + 1
-            comp_data.append({
+        preds = Prediction.objects.filter(player=player, match__round__season=season).exclude(match__home_score__isnull=True)
+        
+        if preds.exists():
+            s_bons = 0
+            for p in preds:
+                # Calcul victoire
+                real_res = 1 if p.match.home_score > p.match.away_score else (2 if p.match.home_score < p.match.away_score else 0)
+                pred_res = 1 if p.home_score_pred > p.away_score_pred else (2 if p.home_score_pred < p.away_score_pred else 0)
+                if real_res == pred_res: s_bons += 1
+                
+                # Bonus (Adapté à tes champs réels Match)
+                if p.bonus_home_pred and getattr(p.match, 'home_bonus_off', False): global_off += 1
+                if p.bonus_away_pred and getattr(p.match, 'away_bonus_def', False): global_def += 1
+
+            u_score = SeasonScore.objects.filter(user=request.user, season=season).first()
+            s_rank = SeasonScore.objects.filter(season=season, match_points__gt=u_score.match_points).count() + 1 if u_score else "?"
+
+            comp_analysis.append({
                 'name': season.competition.name,
-                'match_points': user_score.match_points,
-                'ranking_points': user_score.ranking_points,
-                'total': user_score.match_points + user_score.ranking_points,
-                'rank': rank
+                'bons': s_bons,
+                'total': preds.count(),
+                'ratio': round((s_bons / preds.count() * 100), 1),
+                'rank': s_rank,
+                'pts': (u_score.match_points + u_score.ranking_points) if u_score else 0
             })
+            global_bons += s_bons
+            global_total += preds.count()
 
     context = {
         'rank_general': rank_general,
         'total_players': len(stats.detailed_ranking),
-        'total_points_all': total_points_all,
+        'total_points_all': user_row.get('points', 0) + user_row.get('ranking_points', 0),
         'perfects': user_row.get('perfects', 0),
-        'chopes_count': chopes,
-        'cuilleres_count': cuilleres,
-        # Expertise
-        'count_preds': count_preds,
-        'bons_vainqueurs': bons_vainqueurs,
-        'win_ratio': round((bons_vainqueurs / count_preds * 100), 1) if count_preds > 0 else 0,
-        'demi_tout_pile': demi_tout_pile,
-        'bonus_off': bonus_off_ok,
-        'bonus_def': bonus_def_ok,
-        # Listes
-        'comp_data': comp_data,
+        'chopes_count': chopes_total,
+        'cuilleres_count': cuilleres_count,
+        'comp_analysis': comp_analysis,
+        'global_ratio': round((global_bons / global_total * 100), 1) if global_total > 0 else 0,
+        'global_bons': global_bons,
+        'global_total': global_total,
+        'bonus_off': global_off,
+        'bonus_def': global_def,
         'next_match': next_match,
     }
     return render(request, 'home.html', context)
