@@ -1296,26 +1296,55 @@ def home_view(request):
         if p.bonus_home_pred and getattr(p.match, 'home_bonus_off', False): global_off += 1
         if p.bonus_away_pred and getattr(p.match, 'away_bonus_def', False): global_def += 1
 
-    # 7. COMPÉTITIONS DÉTAILLÉES
+    # 7. COMPÉTITIONS DÉTAILLÉES (Points Matchs + Bonus Flair)
     comp_analysis = []
     for season in active_seasons:
+        # On récupère les prédictions terminées pour cette saison
         s_preds = preds_done.filter(match__round__season=season, match__home_score__isnull=False)
-        if s_preds.exists():
-            s_bons = sum(1 for p in s_preds if (p.home_score_pred > p.away_score_pred and p.match.home_score > p.match.away_score) or (p.home_score_pred < p.away_score_pred and p.match.home_score < p.match.away_score) or (p.home_score_pred == p.away_score_pred and p.match.home_score == p.match.away_score))
-            u_sscore = SeasonScore.objects.filter(user=user, season=season).first()
+        
+        # On ne traite la saison que si l'utilisateur y a participé
+        u_sscore = SeasonScore.objects.filter(user=user, season=season).first()
+        
+        if s_preds.exists() or u_sscore:
+            # 1. Calcul des points de matchs (via DailyScore)
             match_pts = DailyScore.objects.filter(user=user, round__season=season).aggregate(Sum('points'))['points__sum'] or 0
-            total_pts = match_pts + (u_sscore.ranking_points if u_sscore else 0)
             
-            # Rang
-            leaderboard = DailyScore.objects.filter(round__season=season).values('user').annotate(total=Sum('points')).order_by('-total')
-            s_rank = sum(1 for entry in leaderboard if entry['total'] > match_pts) + 1
+            # 2. Calcul des points de Flair (Ranking / Winner)
+            flair_pts = u_sscore.ranking_points if u_sscore else 0
+            
+            # 3. Total combiné
+            total_pts = match_pts + flair_pts
+            
+            # 4. Stats de réussite (Matchs uniquement)
+            s_bons = sum(1 for p in s_preds if (p.home_score_pred > p.away_score_pred and p.match.home_score > p.match.away_score) or (p.home_score_pred < p.away_score_pred and p.match.home_score < p.match.away_score) or (p.home_score_pred == p.away_score_pred and p.match.home_score == p.match.away_score))
+
+            # 5. Calcul du Rang (Basé sur le total points_match + ranking_points de la table SeasonScore)
+            # On récupère tous les scores de la saison pour classer Xavier
+            all_season_scores = SeasonScore.objects.filter(season=season).order_by('-points', '-ranking_points')
+            
+            s_rank = "?"
+            count = 1
+            for score_entry in all_season_scores:
+                entry_total = score_entry.points + score_entry.ranking_points
+                if entry_total > total_pts:
+                    count += 1
+                else:
+                    s_rank = count
+                    break
 
             comp_analysis.append({
-                'name': season.competition.name, 'bons': s_bons, 'total': s_preds.count(),
+                'name': season.competition.name,
+                'bons': s_bons,
+                'total': s_preds.count(),
                 'ratio': round((s_bons / s_preds.count() * 100), 1) if s_preds.count() > 0 else 0,
-                'rank': s_rank, 'pts': total_pts
+                'rank': s_rank,
+                'pts': total_pts,
+                'flair': flair_pts # Optionnel : pour l'afficher dans le template si tu veux
             })
 
+    # Tri par points décroissants
+    comp_analysis = sorted(comp_analysis, key=lambda x: x['pts'], reverse=True)
+    
     context = {
         'rank_general': rank_general, 'total_players': len(stats.detailed_ranking),
         'hof_rank': hof_rank, 'total_points_all': user_row.get('points', 0) + user_row.get('ranking_points', 0),
