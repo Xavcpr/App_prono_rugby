@@ -55,7 +55,7 @@
             </div>
         </div>
         <div class="col-6">
-            <div class="card h-100 border-0 shadow-sm p-3 bg-light">
+            <div class="card h-100 border-0 shadow-sm p-3 bg-light text-center">
                 <span class="fs-3">📉</span>
                 <div class="h4 fw-bold mb-0">{{ global_demi }}</div>
                 <div class="small text-muted text-uppercase" style="font-size: 0.6rem;">Demi-piles</div>
@@ -65,7 +65,7 @@
     <h6 class="fw-bold text-uppercase small text-muted mb-3">Expertise Saison</h6>
     <div class="card border-0 shadow-sm p-3 mb-4 bg-dark text-white">
         <div class="d-flex justify-content-between align-items-center mb-2">
-            <span class="small opacity-75">PRONOS VAINQUEURS</span>
+            <span class="small opacity-75 text-uppercase">Taux de réussite</span>
             <span class="fw-bold text-info">{{ global_bons }} / {{ global_total }}</span>
         </div>
         <div class="progress mb-3"
@@ -87,7 +87,9 @@
         <div class="card border-0 shadow-sm p-3 mb-2">
             <div class="d-flex justify-content-between align-items-center mb-1">
                 <div class="d-flex align-items-center">
-                    <span class="badge {% if comp.rank == '?' %}bg-secondary{% else %}bg-dark{% endif %} me-2">{{ comp.rank }}e</span>
+                    <span class="badge {% if comp.rank == '?' %}bg-secondary{% else %}bg-dark{% endif %} me-2">{{ comp.rank }}
+                        {% if comp.rank != '?' %}e{% endif %}
+                    </span>
                     <span class="fw-bold small">{{ comp.name }}</span>
                 </div>
                 <span class="fw-bold text-primary">{{ comp.pts }} pts</span>
@@ -102,9 +104,33 @@
             </div>
         </div>
     {% endfor %}
+    <div class="mt-5 mb-5 p-3 bg-light border rounded shadow-sm"
+         style="font-family: monospace;
+                font-size: 0.75rem">
+        <h6 class="text-danger fw-bold border-bottom pb-2">🛠 Diagnostics Système</h6>
+        <p class="mb-1">
+            <strong>Nom Player :</strong> "{{ debug_player_name }}"
+        </p>
+        <p class="mt-2 mb-1">
+            <strong>Matches sans scores (Passés) :</strong>
+        </p>
+        <ul class="mb-2">
+            {% for p in debug_ghost_matches %}
+                <li class="text-danger">{{ p.match.home_team }} vs {{ p.match.away_team }} ({{ p.match.kickoff_at|date:"d/m" }})</li>
+            {% empty %}
+                <li class="text-success small">✅ Aucun match fantôme détecté.</li>
+            {% endfor %}
+        </ul>
+        <p class="mb-1">
+            <strong>Flux Saisons (DailyScore trouvé pour) :</strong>
+        </p>
+        <ul class="mb-0">
+            {% for comp in comp_analysis %}<li>{{ comp.name }} : {{ comp.pts }} pts (Rang: {{ comp.rank }})</li>{% endfor %}
+        </ul>
+    </div>
     <div class="fixed-bottom p-3 bg-white border-top shadow-lg">
         <a href="{% url 'pronos' %}"
            class="btn btn-primary btn-lg w-100 shadow-sm fw-bold py-3">✍️ SAISIR MES PRONOS</a>
     </div>
-    <div style="height: 110px;"></div>
+    <div style="height: 120px;"></div>
 {% endblock %}

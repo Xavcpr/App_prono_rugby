@@ -1229,139 +1229,114 @@ def home_view(request):
     player = request.user.player
     now = timezone.now()
 
-    # 1. FILTRE SAISON
-    active_seasons = Season.objects.filter(year__icontains="2026").exclude(year__icontains="2027")
+    # --- 1. FILTRE SAISON (On élargit pour être SÛR de prendre le 6 Nations) ---
+    # Si ton 6 nations s'appelle "6 Nations 2026", il doit remonter ici.
+    active_seasons = Season.objects.filter(year__icontains="2026")
 
-    # 2. PROCHAIN MATCH & STATS GÉNÉRALES
+    # --- 2. PROCHAIN MATCH & STATS ---
     next_match = Match.objects.filter(kickoff_at__gt=now).order_by('kickoff_at').first()
     stats = compute_statistics(competition=None, season=None)
-    
     user_row = next((row for row in stats.detailed_ranking if row['username'] == request.user.username), {})
     rank_general = next((i+1 for i, r in enumerate(stats.detailed_ranking) if r['username'] == request.user.username), "?")
 
-    # 3. CALCUL DU RANG HALL OF FAME (Dynamique)
-    current_year_val = now.year
+    # --- 3. HALL OF FAME (On va chercher par display_name EXACT) ---
     histories = SeasonHistory.objects.all()
     hof_data = {}
-
     for record in histories:
-        name = record.display_name
-        n = current_year_val - record.season_year
-        # Même calcul que dans ta vue HOF
+        name = record.display_name.strip() # On nettoie les espaces invisibles
+        n = now.year - record.season_year
         perf = ((record.total_players + 1 - record.rank) * 100) / record.total_players
         score_annee = perf * (0.9 ** n)
-        
-        if name not in hof_data:
-            hof_data[name] = 0
-        hof_data[name] += score_annee
+        hof_data[name] = hof_data.get(name, 0) + score_annee
 
-    # Tri pour obtenir le classement
     hof_ranking = sorted(hof_data.items(), key=lambda x: x[1], reverse=True)
     
-    # On cherche la position de l'utilisateur actuel (via son display_name ou son name)
-    # On utilise player.name car c'est ce qui semble correspondre à display_name
+    # DEBUG HOF : On cherche le rang
     hof_rank = "?"
-    # On nettoie le nom pour la comparaison
-    current_player_name = player.name.strip().lower() 
-    
+    target_name = player.name.strip()
     for index, (name, score) in enumerate(hof_ranking):
-        if name.strip().lower() == current_player_name:
+        if name == target_name:
             hof_rank = index + 1
             break
 
-    # 4. CALCUL DES TROPHÉES ET LEURS CLASSEMENTS
+    # --- 4. TROPHÉES ---
     all_scores = DailyScore.objects.filter(round__season__in=active_seasons)
-    chopes_total, cuilleres_count = 0, 0
-    
-    # On calcule les chopes/cuillères pour TOUS les joueurs pour pouvoir classer
     user_counts = {u.id: {'chopes': 0, 'cuilleres': 0} for u in User.objects.all()}
-    rounds_played = all_scores.values_list('round', flat=True).distinct()
-    
-    for r_id in rounds_played:
-        day_scores = all_scores.filter(round_id=r_id).order_by('-points')
-        if day_scores.exists():
-            scores_list = list(day_scores)
-            max_p, min_p = scores_list[0].points, scores_list[-1].points
-            
-            # Distribution pour classement
-            for ds in scores_list:
+    for r_id in all_scores.values_list('round', flat=True).distinct():
+        day_scores = list(all_scores.filter(round_id=r_id).order_by('-points'))
+        if day_scores:
+            max_p, min_p = day_scores[0].points, day_scores[-1].points
+            for ds in day_scores:
                 if ds.points == max_p: user_counts[ds.user.id]['chopes'] += 3
-                elif len(scores_list) > 1 and ds == scores_list[1]: user_counts[ds.user.id]['chopes'] += 2
-                elif len(scores_list) > 2 and ds == scores_list[2]: user_counts[ds.user.id]['chopes'] += 1
-                
-                if len(scores_list) >= 3 and ds.points == min_p:
-                    user_counts[ds.user.id]['cuilleres'] += 1
+                elif len(day_scores) > 1 and ds == day_scores[1]: user_counts[ds.user.id]['chopes'] += 2
+                elif len(day_scores) > 2 and ds == day_scores[2]: user_counts[ds.user.id]['chopes'] += 1
+                if len(day_scores) >= 3 and ds.points == min_p: user_counts[ds.user.id]['cuilleres'] += 1
 
-    chopes_total = user_counts[request.user.id]['chopes']
-    cuilleres_count = user_counts[request.user.id]['cuilleres']
-    
-    # Rangs Trophées
-    rank_chopes = sum(1 for v in user_counts.values() if v['chopes'] > chopes_total) + 1
-    rank_cuilleres = sum(1 for v in user_counts.values() if v['cuilleres'] > cuilleres_count) + 1
+    chopes_total = user_counts.get(request.user.id, {}).get('chopes', 0)
+    cuilleres_count = user_counts.get(request.user.id, {}).get('cuilleres', 0)
 
-    # 5. ANALYSE TECHNIQUE (Incluant 6 Nations)
-    # Important : On vérifie bien que active_seasons inclut le 6 nations
-    user_preds = Prediction.objects.filter(player=player, match__round__season__in=active_seasons).exclude(match__home_score__isnull=True)
+    # --- 5. ANALYSE TECHNIQUE & MATCH FANTÔME ---
+    # Ici, on prend TOUTES les prédictions des saisons 2026
+    user_preds = Prediction.objects.filter(player=player, match__round__season__in=active_seasons)
     
-    # À mettre juste après le calcul de user_preds
-    missing = Prediction.objects.filter(player=player, match__round__season__in=active_seasons, match__home_score__isnull=True).values_list('match__home_team__name', 'match__away_team__name')
-    print(f"Matchs sans scores : {missing}")
-    
+    # On sépare : terminés vs non-terminés (pour le fantôme)
+    preds_done = user_preds.exclude(match__home_score__isnull=True)
+    preds_missing_score = user_preds.filter(match__home_score__isnull=True, match__kickoff_at__lt=now)
+
     global_demi = 0
     global_off, global_def = 0, 0
-    for p in user_preds:
+    for p in preds_done:
         rh, ra = p.match.home_score, p.match.away_score
         ph, pa = p.home_score_pred, p.away_score_pred
+        # Demi-piles
         if (ph == rh or pa == ra) and not (ph == rh and pa == ra):
             global_demi += 1
+        # Bonus
         if p.bonus_home_pred and getattr(p.match, 'home_bonus_off', False): global_off += 1
         if p.bonus_away_pred and getattr(p.match, 'away_bonus_def', False): global_def += 1
 
-    # Rangs Techniques (via detailed_ranking de compute_statistics)
-    rank_perfects = next((i+1 for i, r in enumerate(sorted(stats.detailed_ranking, key=lambda x: x.get('perfects', 0), reverse=True)) if r['username'] == request.user.username), "?")
-
-    # 6. COMPÉTITIONS DÉTAILLÉES
+    # --- 6. DÉTAIL COMPÉTITIONS ---
     comp_analysis = []
     for season in active_seasons:
-        preds = user_preds.filter(match__round__season=season)
-        if preds.exists():
-            s_bons = sum(1 for p in preds if (p.home_score_pred > p.away_score_pred and p.match.home_score > p.match.away_score) or (p.home_score_pred < p.away_score_pred and p.match.home_score < p.match.away_score) or (p.home_score_pred == p.away_score_pred and p.match.home_score == p.match.away_score))
+        s_preds = preds_done.filter(match__round__season=season)
+        if s_preds.exists() or DailyScore.objects.filter(user=request.user, round__season=season).exists():
+            s_bons = sum(1 for p in s_preds if (p.home_score_pred > p.away_score_pred and p.match.home_score > p.match.away_score) or (p.home_score_pred < p.away_score_pred and p.match.home_score < p.match.away_score))
             
-            # RÉPARATION : On ajoute la compétition pour éviter l'IntegrityError
-            u_score, created = SeasonScore.objects.get_or_create(
-                user=request.user, 
-                season=season,
-                competition=season.competition,  # <-- C'était l'oubli ici
-                defaults={'match_points': 0, 'ranking_points': 0}
-            )
+            # Récupération des points via DailyScore (plus fiable que SeasonScore si ce dernier n'est pas à jour)
+            current_pts = DailyScore.objects.filter(user=request.user, round__season=season).aggregate(Sum('points'))['points__sum'] or 0
             
+            # Calcul du rang dynamique basé sur les DailyScores
+            season_rank = "?"
+            if current_pts > 0:
+                all_season_scores = DailyScore.objects.filter(round__season=season).values('user').annotate(total=Sum('points')).order_with_respect_to('user')
+                season_rank = sum(1 for s in all_season_scores if s['total'] > current_pts) + 1
+
             comp_analysis.append({
                 'name': season.competition.name,
                 'bons': s_bons,
-                'total': preds.count(),
-                'ratio': round((s_bons / preds.count() * 100), 1) if preds.count() > 0 else 0,
-                'rank': SeasonScore.objects.filter(season=season, match_points__gt=u_score.match_points).count() + 1 if u_score.match_points > 0 else "?",
-                'pts': (u_score.match_points + u_score.ranking_points)
+                'total': s_preds.count(),
+                'ratio': round((s_bons / s_preds.count() * 100), 1) if s_preds.count() > 0 else 0,
+                'rank': season_rank,
+                'pts': current_pts
             })
-            
+
     context = {
         'rank_general': rank_general,
-        'total_players': len(stats.detailed_ranking),
         'hof_rank': hof_rank,
         'total_points_all': user_row.get('points', 0) + user_row.get('ranking_points', 0),
         'perfects': user_row.get('perfects', 0),
-        'rank_perfects': rank_perfects,
         'chopes_count': chopes_total,
-        'rank_chopes': rank_chopes,
         'cuilleres_count': cuilleres_count,
-        'rank_cuilleres': rank_cuilleres,
         'comp_analysis': comp_analysis,
-        'global_ratio': round((sum(c['bons'] for c in comp_analysis) / user_preds.count() * 100), 1) if user_preds.count() > 0 else 0,
+        'global_ratio': round((sum(c['bons'] for c in comp_analysis) / preds_done.count() * 100), 1) if preds_done.count() > 0 else 0,
         'global_bons': sum(c['bons'] for c in comp_analysis),
-        'global_total': user_preds.count(),
+        'global_total': preds_done.count(),
         'global_demi': global_demi,
         'bonus_off': global_off,
         'bonus_def': global_def,
         'next_match': next_match,
+        # DEBUG POUR TOI :
+        'debug_ghost_matches': preds_missing_score,
+        'debug_player_name': player.name,
     }
     return render(request, 'home.html', context)
