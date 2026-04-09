@@ -29,7 +29,7 @@
             <div class="card-body py-3 d-flex justify-content-between align-items-center">
                 <div style="max-width: 60%;">
                     <span class="text-muted small text-uppercase">Dernier résultat</span>
-                    <h6 class="mb-0 fw-bold text-truncate">{{ last_perf.round_name }}</h6>
+                    <h6 class="mb-0 fw-bold text-truncate">{{ last_perf.name }}</h6>
                 </div>
                 <div class="text-end border-start ps-3">
                     <div class="fw-bold text-success">+{{ last_perf.points }} pts</div>
@@ -55,7 +55,7 @@
         </div>
         <div class="col-6">
             <div class="card h-100 border-0 shadow-sm text-center p-3">
-                <span class="fs-3">🥄</span>
+                <span class="fs-3">Spoon 🥄</span>
                 <div class="h4 fw-bold mb-0">{{ cuilleres_count }}</div>
                 <div class="small text-muted text-uppercase" style="font-size: 0.7rem;">Cuillères de bois</div>
             </div>
@@ -65,6 +65,32 @@
                 <span class="fs-3">🔥</span>
                 <div class="h4 fw-bold mb-0">{{ points_matchs }}</div>
                 <div class="small text-muted text-uppercase" style="font-size: 0.7rem;">Pts Matchs</div>
+            </div>
+        </div>
+    </div>
+    <h6 class="fw-bold text-uppercase small text-muted mb-3">Analyse Technique</h6>
+    <div class="row g-2 mb-4">
+        <div class="col-6">
+            <div class="card h-100 border-0 shadow-sm p-3 text-center">
+                <div class="small text-muted text-uppercase" style="font-size: 0.65rem;">Ratio Succès</div>
+                <div class="h5 fw-bold mb-1 text-primary">{{ win_ratio }}%</div>
+                <div class="progress" style="height: 4px;">
+                    <div class="progress-bar"
+                         role="progressbar"
+                         style="width: {{ win_ratio }}%"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="card h-100 border-0 shadow-sm p-3 text-center">
+                <div class="small text-muted text-uppercase" style="font-size: 0.65rem;">Demi Tout-pile</div>
+                <div class="h5 fw-bold mb-0 text-info">{{ demi_tout_pile }}</div>
+            </div>
+        </div>
+        <div class="col-12">
+            <div class="card border-0 shadow-sm p-3 d-flex flex-row justify-content-between align-items-center">
+                <div class="small text-muted text-uppercase" style="font-size: 0.65rem;">Bonus Pronostiqués (H+A)</div>
+                <div class="h5 fw-bold mb-0 text-warning">{{ bonus_count_prono }}</div>
             </div>
         </div>
     </div>
@@ -81,11 +107,13 @@
                     <span class="badge bg-dark">Total: {{ sc.match_points|add:sc.ranking_points }}</span>
                 </div>
             </div>
+        {% empty %}
+            <p class="text-muted small">Aucun score enregistré pour cette saison.</p>
         {% endfor %}
     </div>
     <div class="fixed-bottom p-3 bg-light border-top">
         <a href="{% url 'pronos' %}"
            class="btn btn-primary btn-lg w-100 shadow fw-bold">✍️ SAISIR MES PRONOS</a>
     </div>
-    <div style="height: 80px;"></div>
+    <div style="height: 100px;"></div>
 {% endblock %}

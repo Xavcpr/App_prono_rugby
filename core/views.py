@@ -1136,7 +1136,7 @@ def home_view(request):
     player = request.user.player
     now = timezone.now()
 
-    # 1. PROCHAIN MATCH (Alerte temporelle)
+    # 1. PROCHAIN MATCH
     next_match = Match.objects.filter(kickoff_at__gt=now).order_by('kickoff_at').first()
 
     # 2. LOGIQUE SAISON (Août à Août)
@@ -1145,14 +1145,12 @@ def home_view(request):
     else:
         current_year_label = f"{now.year}/{now.year + 1}"
 
-    # On récupère toutes les compétitions de cette période (Top 14, 6 Nations, CC...)
     active_seasons = Season.objects.filter(year=current_year_label)
 
-    # 3. STATS VIA TON MOTEUR (Global pour l'année)
-    # On passe None en compétition pour avoir le général
+    # 3. STATS GLOBALES
     stats = compute_statistics(competition=None, season=None)
 
-    # 4. EXTRACTION DES DONNÉES UTILISATEUR
+    # 4. EXTRACTION DONNÉES USER
     rank_general = "?"
     user_row = {}
     total_players = len(stats.detailed_ranking)
@@ -1163,7 +1161,7 @@ def home_view(request):
             user_row = row
             break
 
-    # 5. DERNIÈRE PERFORMANCE (Toutes compétitions confondues)
+    # 5. DERNIÈRE PERFORMANCE
     last_finished_round = Round.objects.filter(
         season__in=active_seasons,
         matches__home_score__isnull=False
@@ -1176,7 +1174,7 @@ def home_view(request):
             r_rank = DailyScore.objects.filter(round=last_finished_round, points__gt=ds.points).count() + 1
             last_perf = {'name': str(last_finished_round), 'points': ds.points, 'rank': r_rank}
 
-    # 6. CALCULS TECHNIQUES (Bonus, Ratio, Demi-tout-pile)
+    # --- 6. CALCULS TECHNIQUES (La partie manquante était ici) ---
     user_preds = Prediction.objects.filter(
         player=player, 
         match__round__season__in=active_seasons
@@ -1185,6 +1183,7 @@ def home_view(request):
     total_p = user_preds.count()
     bons_vainqueurs = 0
     demi_tout_pile = 0
+    bonus_pronostiques = 0
     
     for p in user_preds:
         # Vainqueur
@@ -1196,12 +1195,15 @@ def home_view(request):
            (pred_h == pred_a and real_h == real_a):
             bons_vainqueurs += 1
             
-        # Demi-Tout-Pile
         if (pred_h == real_h or pred_a == real_a) and not (pred_h == real_h and pred_a == real_a):
             demi_tout_pile += 1
+            
+        if p.bonus_home_pred: bonus_pronostiques += 1
+        if p.bonus_away_pred: bonus_pronostiques += 1
 
-    # 7. CHOPES ET CUILLÈRES (Depuis ton objet stats car pas en BDD)
-    # Ton moteur compute_statistics renvoie généralement ces dicts {username: count}
+    win_ratio = round((bons_vainqueurs / total_p * 100), 1) if total_p > 0 else 0
+
+    # 7. CHOPES ET CUILLÈRES
     chopes = stats.chopes_cumulees.get(request.user.username, 0) if isinstance(stats.chopes_cumulees, dict) else 0
     cuilleres = stats.cuilleres_bois.get(request.user.username, 0) if isinstance(stats.cuilleres_bois, dict) else 0
 
@@ -1216,10 +1218,9 @@ def home_view(request):
         'points_matchs': user_row.get('points', 0),
         'chopes_count': chopes,
         'cuilleres_count': cuilleres,
-        'win_ratio': round((bons_vainqueurs / total_p * 100), 1) if total_p > 0 else 0,
+        'win_ratio': win_ratio,
         'demi_tout_pile': demi_tout_pile,
-        'bonus_off_prono': user_preds.filter(bonus_off_pred=True).count(),
-        'bonus_def_prono': user_preds.filter(bonus_def_pred=True).count(),
+        'bonus_count_prono': bonus_pronostiques,
         'GLOBAL_LAST_ROUND_ID': last_finished_round.id if last_finished_round else None,
     }
     return render(request, 'home.html', context)
