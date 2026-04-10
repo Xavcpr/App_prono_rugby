@@ -1224,7 +1224,6 @@ def home_view(request):
     }
     return render(request, 'home.html', context)
 
-
 @login_required
 def home_view(request):
     player = request.user.player
