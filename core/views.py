@@ -1259,64 +1259,64 @@ def home_view(request):
             hof_rank = index + 1
             break
 
-    # 5. TROPHÉES ET RANGS (Calcul des Chopes/Cuillères)
+    # --- 5. TROPHÉES ET RANGS (Règle 3-2-1 pour les Chopes) ---
     user_counts = {u.id: {'chopes': 0, 'cuilleres': 0, 'perfects': 0} for u in User.objects.all()}
     
-    # On peuple les perfects via stats
-    for row in stats.detailed_ranking:
-        try:
-            u_obj = User.objects.get(username=row['username'])
-            user_counts[u_obj.id]['perfects'] = row.get('perfects', 0)
-        except User.DoesNotExist: continue
-
+    # On calcule sur les rounds des saisons actives
     all_scores = DailyScore.objects.filter(round__season__in=active_seasons)
     for r_id in all_scores.values_list('round', flat=True).distinct():
         day_scores = list(all_scores.filter(round_id=r_id).order_by('-points'))
         if day_scores:
-            max_p, min_p = day_scores[0].points, day_scores[-1].points
-            for ds in day_scores:
-                if ds.points == max_p: user_counts[ds.user.id]['chopes'] += 1 # 1 chope par victoire de journée
-                if len(day_scores) >= 3 and ds.points == min_p: user_counts[ds.user.id]['cuilleres'] += 1
+            max_p = day_scores[0].points
+            min_p = day_scores[-1].points
+            
+            for index, ds in enumerate(day_scores):
+                # Règle des Chopes : 1er(3), 2e(2), 3e(1)
+                if ds.points == max_p: 
+                    user_counts[ds.user.id]['chopes'] += 3
+                elif len(day_scores) > 1 and index == 1 and ds.points > 0:
+                    user_counts[ds.user.id]['chopes'] += 2
+                elif len(day_scores) > 2 and index == 2 and ds.points > 0:
+                    user_counts[ds.user.id]['chopes'] += 1
+                
+                # Cuillère : Uniquement le dernier, et seulement s'il y a au moins 3 joueurs
+                if len(day_scores) >= 3 and ds.points == min_p:
+                    user_counts[ds.user.id]['cuilleres'] += 1
 
     my_stats = user_counts.get(user.id, {'chopes': 0, 'cuilleres': 0, 'perfects': 0})
-    rank_chopes = sum(1 for v in user_counts.values() if v['chopes'] > my_stats['chopes']) + 1
-    rank_cuilleres = sum(1 for v in user_counts.values() if v['cuilleres'] > my_stats['cuilleres']) + 1
-    rank_perfects = sum(1 for v in user_counts.values() if v['perfects'] > my_stats['perfects']) + 1
 
-    # 6. ANALYSE TECHNIQUE (L'endroit où on répare tout !)
-    all_past_matches = Match.objects.filter(round__season__in=active_seasons, kickoff_at__lt=now)
-    preds_done = Prediction.objects.filter(player=player, match__in=all_past_matches)
-    no_show_count = all_past_matches.count() - preds_done.count()
-
-    # Initialisation des compteurs précis
+    # --- 6. ANALYSE TECHNIQUE (Tout-piles, Demi, Bonus) ---
+    # On récupère TOUTES les prédictions terminées
+    preds_done_all = Prediction.objects.filter(player=player, match__home_score__isnull=False)
+    
     perfect_count = 0
     demi_pile_count = 0
     bo_prono, bo_ok = 0, 0
     bd_prono, bd_ok = 0, 0
 
-    for p in preds_done.filter(match__home_score__isnull=False):
+    for p in preds_done_all:
         rh, ra = p.match.home_score, p.match.away_score
         ph, pa = p.home_score_pred, p.away_score_pred
         
-        # 1. Tout-pile
-        if ph == rh and pa == ra:
+        # Tout-pile
+        if int(ph) == int(rh) and int(pa) == int(ra):
             perfect_count += 1
-        # 2. Demi-pile (Uniquement si pas tout-pile)
-        elif ph == rh or pa == ra:
+        # Demi-pile
+        elif int(ph) == int(rh) or int(pa) == int(ra):
             demi_pile_count += 1
             
-        # 3. Bonus Offensifs (Format Prono / Réussi)
-        if p.bonus_home_pred: # Tu as pronostiqué un BO
+        # Bonus : On vérifie si le champ existe et vaut True ou 1
+        # Bonus Offensif
+        if getattr(p, 'bonus_home_pred', False):
             bo_prono += 1
-            if getattr(p.match, 'home_bonus_off', False): # Il y a eu BO
+            if getattr(p.match, 'home_bonus_off', False):
                 bo_ok += 1
                 
-        # 4. Bonus Défensifs (Format Prono / Réussi)
-        if p.bonus_away_pred: # Tu as pronostiqué un BD
+        # Bonus Défensif
+        if getattr(p, 'bonus_away_pred', False):
             bd_prono += 1
-            if getattr(p.match, 'away_bonus_def', False): # Il y a eu BD
+            if getattr(p.match, 'away_bonus_def', False):
                 bd_ok += 1
-
     # 7. COMPÉTITIONS DÉTAILLÉES (Déjà validé, on ne touche plus !)
     comp_analysis = []
     for season in active_seasons:
