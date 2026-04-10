@@ -1274,7 +1274,7 @@ def home_view(request):
     hof_rank = next((i + 1 for i, (name, _) in enumerate(hof_ranking) if name.lower().strip() in target_names), "?")
 
     # --- 5. TROPHÉES ET RANGS (Tout-piles, Demi-piles, Chopes, Cuillères) ---
-    all_users = User.objects.all()
+    all_users = User.objects.filter(player__isnull=False).distinct()
     user_counts = {u.id: {'chopes': 0, 'cuilleres': 0, 'perfects': 0, 'demis': 0} for u in all_users}
     
     for u in all_users:
@@ -1384,6 +1384,7 @@ def home_view(request):
 
     context = {
         'rank_general': rank_general, 'total_players': len(all_users),
+        'total_players': all_users.count(),
         'evolution': evolution,
         'hof_rank': hof_rank, 'total_points_all': user_row.get('points', 0) + user_row.get('ranking_points', 0),
         'perfects': my_stats['perfects'], 'rank_perfects': rank_perfects,
