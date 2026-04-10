@@ -1285,38 +1285,44 @@ def home_view(request):
 
     my_stats = user_counts.get(user.id, {'chopes': 0, 'cuilleres': 0, 'perfects': 0})
 
-    # --- 6. ANALYSE TECHNIQUE (Tout-piles, Demi, Bonus) ---
-    # On récupère TOUTES les prédictions terminées
-    preds_done_all = Prediction.objects.filter(player=player, match__home_score__isnull=False)
+    # --- 6. ANALYSE TECHNIQUE (Tout-piles, Demi, Bonus & No-Show) ---
+    all_past_matches = Match.objects.filter(round__season__in=active_seasons, kickoff_at__lt=now)
     
+    # On définit preds_done (utilisé par la suite pour les compétitions)
+    preds_done = Prediction.objects.filter(player=player, match__in=all_past_matches)
+    
+    no_show_count = all_past_matches.count() - preds_done.count()
+
+    # Initialisation des compteurs
     perfect_count = 0
     demi_pile_count = 0
     bo_prono, bo_ok = 0, 0
     bd_prono, bd_ok = 0, 0
 
-    for p in preds_done_all:
+    # On boucle sur les prédictions qui ont un score de match saisi
+    for p in preds_done.filter(match__home_score__isnull=False):
         rh, ra = p.match.home_score, p.match.away_score
         ph, pa = p.home_score_pred, p.away_score_pred
         
-        # Tout-pile
+        # Tout-pile (avec conversion int pour être sûr)
         if int(ph) == int(rh) and int(pa) == int(ra):
             perfect_count += 1
         # Demi-pile
         elif int(ph) == int(rh) or int(pa) == int(ra):
             demi_pile_count += 1
             
-        # Bonus : On vérifie si le champ existe et vaut True ou 1
-        # Bonus Offensif
+        # Bonus Offensifs (Vérifie bien que les noms de champs sont exacts dans ton modèle)
         if getattr(p, 'bonus_home_pred', False):
             bo_prono += 1
             if getattr(p.match, 'home_bonus_off', False):
                 bo_ok += 1
                 
-        # Bonus Défensif
+        # Bonus Défensifs
         if getattr(p, 'bonus_away_pred', False):
             bd_prono += 1
             if getattr(p.match, 'away_bonus_def', False):
                 bd_ok += 1
+                
     # 7. COMPÉTITIONS DÉTAILLÉES (Déjà validé, on ne touche plus !)
     comp_analysis = []
     for season in active_seasons:
