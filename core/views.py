@@ -1259,71 +1259,71 @@ def home_view(request):
             hof_rank = index + 1
             break
 
-    # --- 5. TROPHÉES ET RANGS (Règle 3-2-1 pour les Chopes) ---
+    # --- 5. TROPHÉES ET RANGS (Chopes 3-2-1 & Cuillères) ---
     user_counts = {u.id: {'chopes': 0, 'cuilleres': 0, 'perfects': 0} for u in User.objects.all()}
     
-    # On calcule sur les rounds des saisons actives
+    for row in stats.detailed_ranking:
+        try:
+            u_obj = User.objects.get(username=row['username'])
+            user_counts[u_obj.id]['perfects'] = row.get('perfects', 0)
+        except User.DoesNotExist: continue
+
     all_scores = DailyScore.objects.filter(round__season__in=active_seasons)
     for r_id in all_scores.values_list('round', flat=True).distinct():
         day_scores = list(all_scores.filter(round_id=r_id).order_by('-points'))
         if day_scores:
             max_p = day_scores[0].points
             min_p = day_scores[-1].points
-            
             for index, ds in enumerate(day_scores):
-                # Règle des Chopes : 1er(3), 2e(2), 3e(1)
-                if ds.points == max_p: 
-                    user_counts[ds.user.id]['chopes'] += 3
-                elif len(day_scores) > 1 and index == 1 and ds.points > 0:
-                    user_counts[ds.user.id]['chopes'] += 2
-                elif len(day_scores) > 2 and index == 2 and ds.points > 0:
-                    user_counts[ds.user.id]['chopes'] += 1
-                
-                # Cuillère : Uniquement le dernier, et seulement s'il y a au moins 3 joueurs
+                if ds.points == max_p: user_counts[ds.user.id]['chopes'] += 3
+                elif len(day_scores) > 1 and index == 1 and ds.points > 0: user_counts[ds.user.id]['chopes'] += 2
+                elif len(day_scores) > 2 and index == 2 and ds.points > 0: user_counts[ds.user.id]['chopes'] += 1
                 if len(day_scores) >= 3 and ds.points == min_p:
                     user_counts[ds.user.id]['cuilleres'] += 1
 
     my_stats = user_counts.get(user.id, {'chopes': 0, 'cuilleres': 0, 'perfects': 0})
+    rank_chopes = sum(1 for v in user_counts.values() if v['chopes'] > my_stats['chopes']) + 1
+    rank_cuilleres = sum(1 for v in user_counts.values() if v['cuilleres'] > my_stats['cuilleres']) + 1
+    rank_perfects = sum(1 for v in user_counts.values() if v['perfects'] > my_stats['perfects']) + 1
 
     # --- 6. ANALYSE TECHNIQUE (Tout-piles, Demi, Bonus & No-Show) ---
     all_past_matches = Match.objects.filter(round__season__in=active_seasons, kickoff_at__lt=now)
-    
-    # On définit preds_done (utilisé par la suite pour les compétitions)
     preds_done = Prediction.objects.filter(player=player, match__in=all_past_matches)
-    
     no_show_count = all_past_matches.count() - preds_done.count()
 
-    # Initialisation des compteurs
-    perfect_count = 0
-    demi_pile_count = 0
+    perfect_count, demi_pile_count = 0, 0
     bo_prono, bo_ok = 0, 0
     bd_prono, bd_ok = 0, 0
 
-    # On boucle sur les prédictions qui ont un score de match saisi
     for p in preds_done.filter(match__home_score__isnull=False):
         rh, ra = p.match.home_score, p.match.away_score
         ph, pa = p.home_score_pred, p.away_score_pred
         
-        # Tout-pile (avec conversion int pour être sûr)
+        # Récupération dynamique du seuil de bonus défensif
+        threshold = p.match.round.season.competition.bonus_defense_threshold
+        
+        # Tout-pile & Demi-pile
         if int(ph) == int(rh) and int(pa) == int(ra):
             perfect_count += 1
-        # Demi-pile
         elif int(ph) == int(rh) or int(pa) == int(ra):
             demi_pile_count += 1
             
-        # Bonus Offensifs (Vérifie bien que les noms de champs sont exacts dans ton modèle)
-        if getattr(p, 'bonus_home_pred', False):
+        # Bonus Offensif (case cochée)
+        if getattr(p, 'bonus_offense_home', False):
             bo_prono += 1
             if getattr(p.match, 'home_bonus_off', False):
                 bo_ok += 1
                 
-        # Bonus Défensifs
-        if getattr(p, 'bonus_away_pred', False):
+        # Bonus Défensif (Calculé selon l'écart et le threshold de la compétition)
+        diff_pred = abs(int(ph) - int(pa))
+        # On prono un BD si l'écart est entre 1 et le seuil (inclus)
+        if 1 <= diff_pred <= threshold:
             bd_prono += 1
-            if getattr(p.match, 'away_bonus_def', False):
+            # On vérifie si un BD a été accordé au perdant réel
+            if getattr(p.match, 'home_bonus_def', False) or getattr(p.match, 'away_bonus_def', False):
                 bd_ok += 1
-                
-    # 7. COMPÉTITIONS DÉTAILLÉES (Déjà validé, on ne touche plus !)
+
+    # --- 7. COMPÉTITIONS DÉTAILLÉES ---
     comp_analysis = []
     for season in active_seasons:
         u_sscore = SeasonScore.objects.filter(user=user, season=season).first()
@@ -1332,6 +1332,7 @@ def home_view(request):
         f_pts = u_sscore.ranking_points if u_sscore else 0
         total_pts = m_pts + f_pts
         s_preds = preds_done.filter(match__round__season=season, match__home_score__isnull=False)
+        
         if u_sscore or s_preds.exists() or match_pts_daily > 0:
             s_bons = sum(1 for p in s_preds if (p.home_score_pred > p.away_score_pred and p.match.home_score > p.match.away_score) or (p.home_score_pred < p.away_score_pred and p.match.home_score < p.match.away_score) or (p.home_score_pred == p.away_score_pred and p.match.home_score == p.match.away_score))
             leaderboard = DailyScore.objects.filter(round__season=season).values('user').annotate(total_m=Sum('points')).order_by('-total_m')
