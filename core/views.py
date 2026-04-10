@@ -1268,7 +1268,6 @@ def home_view(request):
     all_users = User.objects.all()
     user_counts = {u.id: {'chopes': 0, 'cuilleres': 0, 'perfects': 0, 'demis': 0} for u in all_users}
     
-    # Calcul des Piles/Demis pour TOUS les joueurs (pour le classement)
     for u in all_users:
         u_preds = Prediction.objects.filter(
             player__user=u, 
@@ -1283,7 +1282,6 @@ def home_view(request):
             elif ph == rh or pa == ra:
                 user_counts[u.id]['demis'] += 1
 
-    # Chopes et Cuillères + Debug par Journée
     relevant_rounds = Round.objects.filter(date__range=(start_date, end_date))
     debug_log = []
     for r in relevant_rounds:
@@ -1293,15 +1291,12 @@ def home_view(request):
             s_bo_p, s_bo_ok, s_bd_p, s_bd_ok = 0, 0, 0, 0
             
             for index, ds in enumerate(day_scores):
-                # Attribution Chopes
                 if ds.points == max_p and max_p > 0: user_counts[ds.user.id]['chopes'] += 3
                 elif len(day_scores) > 1 and index == 1 and ds.points > 0: user_counts[ds.user.id]['chopes'] += 2
                 elif len(day_scores) > 2 and index == 2 and ds.points > 0: user_counts[ds.user.id]['chopes'] += 1
-                # Attribution Cuillères
                 if len(day_scores) >= 3 and ds.points == min_p:
                     user_counts[ds.user.id]['cuilleres'] += 1
 
-                # Analyse Bonus Xavier pour le Debug
                 if ds.user == user:
                     r_preds = Prediction.objects.filter(player=player, match__round=r, match__home_score__isnull=False)
                     for p in r_preds:
@@ -1370,6 +1365,14 @@ def home_view(request):
             'rank': s_rank, 'pts': total_pts, 'bo': f"{s_bo_ok}/{s_bo_p}", 'bd': f"{s_bd_ok}/{s_bd_p}"
         })
 
+    # --- 7. DÉTECTION NO-SHOW (Nouveau bloc Debug) ---
+    match_ids_with_preds = set(preds_done.values_list('match_id', flat=True))
+    no_show_list = []
+    for m in all_past_matches:
+        if m.id not in match_ids_with_preds:
+            no_show_list.append(m)
+            debug_log.append(f"❌ NO-SHOW : {m.home_team} vs {m.away_team} ({m.kickoff_at.strftime('%d/%m %H:%i')})")
+
     context = {
         'rank_general': rank_general, 'total_players': len(all_users),
         'hof_rank': hof_rank, 'total_points_all': user_row.get('points', 0) + user_row.get('ranking_points', 0),
@@ -1383,7 +1386,7 @@ def home_view(request):
         'global_ratio': round((sum(c['bons'] for c in comp_analysis) / sum(c['total'] for c in comp_analysis) * 100), 1) if sum(c['total'] for c in comp_analysis) > 0 else 0,
         'bonus_off_ok': global_bo_ok, 'bonus_off_prono': global_bo_prono,
         'bonus_def_ok': global_bd_ok, 'bonus_def_prono': global_bd_prono,
-        'no_show': all_past_matches.count() - preds_done.count(),
+        'no_show': len(no_show_list), # On utilise la longueur de notre nouvelle liste
         'next_match': next_match, 'debug_log': debug_log
     }
     return render(request, 'home.html', context)
