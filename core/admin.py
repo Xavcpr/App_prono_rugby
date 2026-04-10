@@ -1,40 +1,28 @@
 from django.contrib import admin, messages
+from django.db.models import Sum, F
+from django import forms
+from datetime import datetime, time
 
 from .services.scoring import compute_season_ranking_points
 from .models import (
     CompetitionResult, CompetitionTeam, Season, Team, Player, Competition, Round, Match, ScoringConfig,
     Prediction, DailyScore, SeasonScore, CompetitionBonusPrediction, CompetitionTeamPrediction
 )
-from django.db.models import Sum
-from django import forms
-from datetime import datetime, time
-
-# --- Modèles supprimés de l'admin car ils faisaient doublon ou étaient inutilisés ---
-# DailyBonus, CompetitionBonus, CompetitionRankingPrediction, TeamRankingPrediction
+from .views import compute_statistics
 
 # ---------------------
 # Actions générales
 # ---------------------
 @admin.action(description="Recalculer tous les points de la compétition")
 def recalc_scores(modeladmin, request, queryset):
-    # Note : Cette fonction devra être mise à jour pour utiliser 'season' 
-    # au lieu de juste 'competition' à l'avenir.
     messages.warning(request, "L'action de recalcul global doit être mise à jour pour la nouvelle structure par saison.")
 
 # ---------------------
-# Formulaire Round (pour gérer Saison et Compétition proprement)
+# Formulaire Round
 # ---------------------
 class RoundForm(forms.ModelForm):
-    competition = forms.ModelChoiceField(
-        queryset=Competition.objects.all(),
-        required=True,
-        label="Compétition"
-    )
-    season = forms.ModelChoiceField(
-        queryset=Season.objects.all(),
-        required=True,
-        label="Saison"
-    )
+    competition = forms.ModelChoiceField(queryset=Competition.objects.all(), required=True, label="Compétition")
+    season = forms.ModelChoiceField(queryset=Season.objects.all(), required=True, label="Saison")
 
     class Meta:
         model = Round
@@ -60,11 +48,8 @@ class RoundForm(forms.ModelForm):
 @admin.register(Round)
 class RoundAdmin(admin.ModelAdmin):
     form = RoundForm
-    # Ajoute les colonnes pour y voir clair dans la liste globale
     list_display = ("__str__", "season", "number", "phase", "date") 
     list_filter = ("season__competition", "season", "phase")
-    
-    # Ajoute les champs pour qu'ils apparaissent dans la page "Ajouter un round"
     fields = ("competition", "season", "number", "phase", "name_override", "date")
 
 @admin.register(Season)
@@ -89,15 +74,30 @@ class DailyScoreAdmin(admin.ModelAdmin):
     list_filter = ("round__season", "round")
     ordering = ("-points",)
 
+# --- CLASSE UNIQUE ET NETTOYÉE POUR SEASONSCORE ---
 @admin.register(SeasonScore)
 class SeasonScoreAdmin(admin.ModelAdmin):
-    list_display = ('user', 'competition', 'season', 'match_points', 'ranking_points', 'get_total')
+    list_display = ('user', 'competition', 'season', 'match_points', 'ranking_points', 'last_rank', 'get_total')
     list_filter = ('season', 'competition')
     ordering = ('-match_points',) 
+    actions = ['snapshot_ranking']
 
     def get_total(self, obj):
         return obj.total_points
     get_total.short_description = 'Total'
+
+    @admin.action(description="Figer le classement pour l'évolution (Lundi)")
+    def snapshot_ranking(self, request, queryset):
+        stats = compute_statistics(competition=None, season=None)
+        updated_count = 0
+        for row in stats.detailed_ranking:
+            # On cherche le SeasonScore correspondant au joueur
+            ss = SeasonScore.objects.filter(user__username=row['username']).first()
+            if ss:
+                ss.last_rank = row['rank']
+                ss.save()
+                updated_count += 1
+        self.message_user(request, f"Succès : Le rang de {updated_count} joueurs a été figé.")
 
 @admin.register(Prediction)
 class PredictionAdmin(admin.ModelAdmin):
@@ -118,23 +118,14 @@ class CompetitionBonusPredictionAdmin(admin.ModelAdmin):
 class CompetitionTeamPredictionAdmin(admin.ModelAdmin):
     list_display = ("player", "competition", "season", "team", "position")
     list_filter = ("season", "competition", "player")
-    ordering = ("player", "season", "competition", "position")  
-
-
-
-# --- DÉFINITION DE L'ACTION ADMIN ---
+    ordering = ("player", "season", "competition", "position")
 
 @admin.register(CompetitionResult)
 class CompetitionResultAdmin(admin.ModelAdmin):
-    # Les colonnes affichées dans la liste
     list_display = ("season", "get_competition_name", "get_season_year", "real_winner")
     list_filter = ("season__competition", "season")
-    
-    # L'action personnalisée à ajouter au menu déroulant
     actions = ['recalculate_season_points']
 
-    # --- MÉTHODES D'AFFICHAGE ---
-    
     @admin.display(description="Compétition")
     def get_competition_name(self, obj):
         return obj.season.competition.name
@@ -143,35 +134,17 @@ class CompetitionResultAdmin(admin.ModelAdmin):
     def get_season_year(self, obj):
         return obj.season.year
 
-    # --- LA LOGIQUE DE L'ACTION ---
-
     @admin.action(description="🔥 Calculer/Rafraîchir les points de fin de saison 🔥")
     def recalculate_season_points(self, request, queryset):
-        """
-        Cette méthode est appelée quand tu coches un CompetitionResult
-        et que tu choisis l'action dans le menu déroulant.
-        """
         if queryset.count() > 1:
-            self.message_user(request, "Erreur : Veuillez sélectionner une seule saison à la fois.", messages.ERROR)
+            self.message_user(request, "Erreur : Sélectionnez une seule saison.", messages.ERROR)
             return
-
-        # On récupère le résultat sélectionné
         result_obj = queryset.first()
-        season_to_compute = result_obj.season
-
         try:
-            # On lance le gros calcul que l'on a mis au point
-            msg = compute_season_ranking_points(season_to_compute)
-            
-            # On affiche un message de succès vert en haut de l'admin
+            msg = compute_season_ranking_points(result_obj.season)
             self.message_user(request, f"Succès : {msg}", messages.SUCCESS)
-            
         except Exception as e:
-            # En cas d'erreur technique, on affiche un message rouge
-            self.message_user(request, f"Erreur lors du calcul : {str(e)}", messages.ERROR)
-
-
-
+            self.message_user(request, f"Erreur : {str(e)}", messages.ERROR)
 
 # Modèles simples
 admin.site.register(Team)

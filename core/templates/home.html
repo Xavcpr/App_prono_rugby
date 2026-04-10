@@ -20,6 +20,15 @@
             <p class="text-uppercase small mb-1 opacity-75">Classement Général Saison</p>
             <div class="display-1 fw-bold">
                 {{ rank_general }}<small class="fs-3">e</small>
+                {% if evolution != 0 %}
+                    <span class="fs-4 ms-2 {% if evolution > 0 %}text-success{% else %}text-danger{% endif %}">
+                        {% if evolution > 0 %}
+                            ▲ <small>+{{ evolution }}</small>
+                        {% else %}
+                            ▼ <small>{{ evolution }}</small>
+                        {% endif %}
+                    </span>
+                {% endif %}
             </div>
             <p class="mb-2">sur {{ total_players }} compétiteurs</p>
             <div class="d-flex justify-content-center gap-2 mt-2">

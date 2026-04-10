@@ -234,6 +234,7 @@ class SeasonScore(models.Model):
     
     match_points = models.IntegerField(default=0, verbose_name="Points Matchs")
     ranking_points = models.IntegerField(default=0, verbose_name="Points Classement")
+    last_rank = models.IntegerField(null=True, blank=True)
 
     class Meta:
         # On met à jour l'unicité : un score par utilisateur par saison par compétition

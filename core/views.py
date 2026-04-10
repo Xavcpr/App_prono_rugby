@@ -1251,6 +1251,15 @@ def home_view(request):
     user_row = next((row for row in stats.detailed_ranking if row['username'] == user.username), {})
     rank_general = next((i+1 for i, r in enumerate(stats.detailed_ranking) if r['username'] == user.username), "?")
 
+    evolution = 0
+    if user_row:
+        # On récupère le score de saison pour l'utilisateur
+        # Note : Adapte la requête selon comment tu lies SeasonScore et User
+        ss = SeasonScore.objects.filter(user=user).first() 
+        if ss and ss.last_rank:
+            # Si last_rank = 11 et rank_general = 9, evolution = +2 (positif = vert)
+            evolution = ss.last_rank - rank_general
+
     # --- 4. HALL OF FAME ---
     histories = SeasonHistory.objects.all()
     hof_data = {}
@@ -1375,6 +1384,7 @@ def home_view(request):
 
     context = {
         'rank_general': rank_general, 'total_players': len(all_users),
+        'evolution': evolution,
         'hof_rank': hof_rank, 'total_points_all': user_row.get('points', 0) + user_row.get('ranking_points', 0),
         'perfects': my_stats['perfects'], 'rank_perfects': rank_perfects,
         'chopes_count': my_stats['chopes'], 'rank_chopes': rank_chopes,
