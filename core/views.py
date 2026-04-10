@@ -1224,6 +1224,7 @@ def home_view(request):
     }
     return render(request, 'home.html', context)
 
+
 @login_required
 def home_view(request):
     player = request.user.player
@@ -1231,7 +1232,6 @@ def home_view(request):
     now = timezone.now()
 
     # --- 1. FILTRE SAISON GLISSANTE (1er Août au 1er Août) ---
-    # Si on est avant Août, la saison a commencé l'année précédente.
     current_year = now.year
     if now.month < 8:
         start_date = timezone.datetime(current_year - 1, 8, 1, tzinfo=timezone.get_current_timezone())
@@ -1251,7 +1251,6 @@ def home_view(request):
     rank_general = next((i+1 for i, r in enumerate(stats.detailed_ranking) if r['username'] == user.username), "?")
 
     # --- 4. HALL OF FAME ---
-    # (Logique inchangée car elle gère déjà l'historique)
     histories = SeasonHistory.objects.all()
     hof_data = {}
     for record in histories:
@@ -1263,27 +1262,31 @@ def home_view(request):
     hof_ranking = sorted(hof_data.items(), key=lambda x: x[1], reverse=True)
     hof_rank = next((i + 1 for i, (name, _) in enumerate(hof_ranking) if name.lower().strip() in [user.username.lower(), player.name.lower()]), "?")
 
-    # --- 5. TROPHÉES ET RANGS (Filtrés par date glissante) ---
+    # --- 5. TROPHÉES ET RANGS ---
     user_counts = {u.id: {'chopes': 0, 'cuilleres': 0, 'perfects': 0} for u in User.objects.all()}
-    
-    # On peuple les perfects pour tout le monde (pour le classement)
     for row in stats.detailed_ranking:
         u_obj = User.objects.filter(username=row['username']).first()
         if u_obj: user_counts[u_obj.id]['perfects'] = row.get('perfects', 0)
 
-    # Chopes et Cuillères sur les matchs de la saison glissante uniquement
     relevant_rounds = Round.objects.filter(date__range=(start_date, end_date))
+    debug_log = []
     for r in relevant_rounds:
         day_scores = list(DailyScore.objects.filter(round=r).order_by('-points'))
         if day_scores:
             max_p = day_scores[0].points
             min_p = day_scores[-1].points
             for index, ds in enumerate(day_scores):
-                if ds.points == max_p and max_p > 0: user_counts[ds.user.id]['chopes'] += 3
-                elif len(day_scores) > 1 and index == 1 and ds.points > 0: user_counts[ds.user.id]['chopes'] += 2
-                elif len(day_scores) > 2 and index == 2 and ds.points > 0: user_counts[ds.user.id]['chopes'] += 1
-                if len(day_scores) >= 3 and ds.points == min_p:
-                    user_counts[ds.user.id]['cuilleres'] += 1
+                pts_added = 0
+                is_cuillere = False
+                if ds.points == max_p and max_p > 0: pts_added = 3
+                elif len(day_scores) > 1 and index == 1 and ds.points > 0: pts_added = 2
+                elif len(day_scores) > 2 and index == 2 and ds.points > 0: pts_added = 1
+                if len(day_scores) >= 3 and ds.points == min_p: is_cuillere = True
+
+                user_counts[ds.user.id]['chopes'] += pts_added
+                if is_cuillere: user_counts[ds.user.id]['cuilleres'] += 1
+                if ds.user == user and (pts_added > 0 or is_cuillere):
+                    debug_log.append(f"🏆 {str(r)} : +{pts_added} chopes, Cuillère: {is_cuillere}")
 
     my_stats = user_counts.get(user.id, {'chopes': 0, 'cuilleres': 0, 'perfects': 0})
     rank_chopes = sum(1 for v in user_counts.values() if v['chopes'] > my_stats['chopes']) + 1
@@ -1307,35 +1310,26 @@ def home_view(request):
         s_perf, s_demi, s_bons = 0, 0, 0
 
         for p in s_preds:
-            # Logique de base (Piles et Bons résultats)
             rh, ra = p.match.home_score, p.match.away_score
             ph, pa = p.home_score_pred, p.away_score_pred
             
-            # Bon résultat (Vainqueur ou Nul)
             if (ph > pa and rh > ra) or (ph < pa and rh < ra) or (ph == pa and rh == ra):
                 s_bons += 1
+            if ph == rh and pa == ra: s_perf += 1
+            elif ph == rh or pa == ra: s_demi += 1
 
-            # Tout-pile / Demi-pile
-            if ph == rh and pa == ra: 
-                s_perf += 1
-            elif ph == rh or pa == ra: 
-                s_demi += 1
-
-            # BONUS (Uniquement en POOL)
-            if p.match.phase == MatchPhase.POOL:
-                # Offensif
+            # UTILISATION DE Match.MatchPhase (pour éviter le NameError)
+            if p.match.phase == Match.MatchPhase.POOL:
                 if p.bonus_home_pred or p.bonus_away_pred:
                     s_bo_p += 1
                     if (p.bonus_home_pred and p.match.bonus_offense_home) or (p.bonus_away_pred and p.match.bonus_offense_away):
                         s_bo_ok += 1
-                # Défensif
                 threshold = season.competition.bonus_defense_threshold
                 if 1 <= abs(ph - pa) <= threshold:
                     s_bd_p += 1
                     if p.match.get_defense_bonus() is not None:
                         s_bd_ok += 1
 
-        # Cumul Global
         global_perfects += s_perf
         global_demi += s_demi
         global_bo_prono += s_bo_p
@@ -1343,13 +1337,10 @@ def home_view(request):
         global_bd_prono += s_bd_p
         global_bd_ok += s_bd_ok
 
-        # Calcul points et rang (récupération de ta logique précédente)
         u_sscore = SeasonScore.objects.filter(user=user, season=season).first()
         match_pts = DailyScore.objects.filter(user=user, round__season=season).aggregate(Sum('points'))['points__sum'] or 0
-        f_pts = u_sscore.ranking_points if u_sscore else 0
-        total_pts = match_pts + f_pts
+        total_pts = match_pts + (u_sscore.ranking_points if u_sscore else 0)
         
-        # Rang spécifique saison
         leaderboard = DailyScore.objects.filter(round__season=season).values('user').annotate(total_m=Sum('points'))
         s_rank = 1
         for entry in leaderboard:
@@ -1377,6 +1368,6 @@ def home_view(request):
         'bonus_off_ok': global_bo_ok, 'bonus_off_prono': global_bo_prono,
         'bonus_def_ok': global_bd_ok, 'bonus_def_prono': global_bd_prono,
         'no_show': all_past_matches.count() - preds_done.count(),
-        'next_match': next_match,
+        'next_match': next_match, 'debug_log': debug_log
     }
     return render(request, 'home.html', context)
