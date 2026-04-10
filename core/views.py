@@ -1236,7 +1236,7 @@ def home_view(request):
     # 2. PROCHAIN MATCH
     next_match = Match.objects.filter(kickoff_at__gt=now).order_by('kickoff_at').first()
 
-    # 3. STATS GÉNÉRALES (Source pour le classement général et perfects globaux)
+    # 3. STATS GÉNÉRALES
     stats = compute_statistics(competition=None, season=None)
     user_row = next((row for row in stats.detailed_ranking if row['username'] == user.username), {})
     rank_general = next((i+1 for i, r in enumerate(stats.detailed_ranking) if r['username'] == user.username), "?")
@@ -1259,11 +1259,10 @@ def home_view(request):
             hof_rank = index + 1
             break
 
-    # --- 5. TROPHÉES ET RANGS (Chopes 3-2-1 & Cuillères avec DEBUG) ---
+    # --- 5. TROPHÉES ET RANGS (Chopes 3-2-1 & Cuillères avec LOG) ---
     user_counts = {u.id: {'chopes': 0, 'cuilleres': 0, 'perfects': 0} for u in User.objects.all()}
     debug_log = []
 
-    # On peuple d'abord les perfects depuis les stats globales pour le rang
     for row in stats.detailed_ranking:
         try:
             u_obj = User.objects.get(username=row['username'])
@@ -1271,7 +1270,6 @@ def home_view(request):
         except User.DoesNotExist: continue
 
     all_scores = DailyScore.objects.filter(round__season__in=active_seasons)
-    # On itère sur les rounds pour attribuer chopes et cuillères
     for r in Round.objects.filter(season__in=active_seasons).distinct():
         day_scores = list(DailyScore.objects.filter(round=r).order_by('-points'))
         if day_scores:
@@ -1280,22 +1278,18 @@ def home_view(request):
             for index, ds in enumerate(day_scores):
                 pts_added = 0
                 is_cuillere = False
-                
-                # Règle des Chopes
                 if ds.points == max_p and max_p > 0: pts_added = 3
                 elif len(day_scores) > 1 and index == 1 and ds.points > 0: pts_added = 2
                 elif len(day_scores) > 2 and index == 2 and ds.points > 0: pts_added = 1
                 
-                # Cuillère : Dernier ou égalité dernier (si au moins 3 joueurs)
-                if len(day_scores) >= 3 and ds.points == min_p:
-                    is_cuillere = True
+                if len(day_scores) >= 3 and ds.points == min_p: is_cuillere = True
 
                 user_counts[ds.user.id]['chopes'] += pts_added
                 if is_cuillere: user_counts[ds.user.id]['cuilleres'] += 1
 
-                # Log pour Xavier uniquement
                 if ds.user == user and (pts_added > 0 or is_cuillere):
-                    debug_log.append(f"🏆 Round {r.name} ({r.season.competition.name}): +{pts_added} chopes, Cuillère: {is_cuillere}")
+                    # Correction ici : on utilise str(r) au lieu de r.name
+                    debug_log.append(f"🏆 {str(r)} : +{pts_added} chopes, Cuillère: {is_cuillere}")
 
     my_stats = user_counts.get(user.id, {'chopes': 0, 'cuilleres': 0, 'perfects': 0})
     rank_chopes = sum(1 for v in user_counts.values() if v['chopes'] > my_stats['chopes']) + 1
@@ -1323,21 +1317,24 @@ def home_view(request):
         if is_perfect: perfect_count += 1
         if is_demi: demi_pile_count += 1
 
-        # Bonus Offensif
-        has_bo_prono = getattr(p, 'bonus_offense_home', False)
+        # BONUS OFFENSIF (Selon ton modèle Prediction: bonus_home_pred / bonus_away_pred)
+        # On vérifie si tu as prono un bonus pour l'un ou l'autre
+        has_bo_prono = p.bonus_home_pred or p.bonus_away_pred
         if has_bo_prono:
             bo_prono += 1
-            if getattr(p.match, 'home_bonus_off', False): bo_ok += 1
+            # Vérification réelle sur le Match (bonus_offense_home / bonus_offense_away)
+            if (p.bonus_home_pred and p.match.bonus_offense_home) or (p.bonus_away_pred and p.match.bonus_offense_away):
+                bo_ok += 1
 
-        # Bonus Défensif
+        # BONUS DÉFENSIF (Calculé par l'écart)
         diff_pred = abs(int(ph) - int(pa))
         is_bd_prono = (1 <= diff_pred <= threshold)
         if is_bd_prono:
             bd_prono += 1
-            if getattr(p.match, 'home_bonus_def', False) or getattr(p.match, 'away_bonus_def', False):
+            # On utilise ta méthode de modèle get_defense_bonus()
+            if p.match.get_defense_bonus() is not None:
                 bd_ok += 1
 
-        # Debug log pour les succès
         if is_perfect or is_demi or has_bo_prono or is_bd_prono:
             debug_log.append(f"🏉 {p.match}: Perf:{is_perfect}, Demi:{is_demi}, BO_Pr:{has_bo_prono}, BD_Pr:{is_bd_prono}")
 
