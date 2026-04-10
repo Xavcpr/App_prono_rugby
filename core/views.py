@@ -1312,17 +1312,26 @@ def home_view(request):
             rh, ra = p.match.home_score, p.match.away_score
             ph, pa = p.home_score_pred, p.away_score_pred
             
+            # 1. Résultat sec
             if (ph > pa and rh > ra) or (ph < pa and rh < ra) or (ph == pa and rh == ra):
                 s_bons += 1
-            if ph == rh and pa == ra: s_perf += 1
-            elif ph == rh or pa == ra: s_demi += 1
+            
+            # 2. Piles
+            if ph == rh and pa == ra: 
+                s_perf += 1
+            elif ph == rh or pa == ra: 
+                s_demi += 1
 
-            # UTILISATION DE Match.MatchPhase (pour éviter le NameError)
-            if p.match.phase == Match.MatchPhase.POOL:
+            # 3. BONUS (Uniquement si match de POOL)
+            # On utilise la string "POOL" directement pour éviter l'AttributeError
+            if p.match.phase == "POOL":
+                # Bonus Offensif
                 if p.bonus_home_pred or p.bonus_away_pred:
                     s_bo_p += 1
                     if (p.bonus_home_pred and p.match.bonus_offense_home) or (p.bonus_away_pred and p.match.bonus_offense_away):
                         s_bo_ok += 1
+                
+                # Bonus Défensif
                 threshold = season.competition.bonus_defense_threshold
                 if 1 <= abs(ph - pa) <= threshold:
                     s_bd_p += 1
@@ -1336,9 +1345,11 @@ def home_view(request):
         global_bd_prono += s_bd_p
         global_bd_ok += s_bd_ok
 
+        # Points et Rang
         u_sscore = SeasonScore.objects.filter(user=user, season=season).first()
         match_pts = DailyScore.objects.filter(user=user, round__season=season).aggregate(Sum('points'))['points__sum'] or 0
-        total_pts = match_pts + (u_sscore.ranking_points if u_sscore else 0)
+        ranking_pts = u_sscore.ranking_points if u_sscore else 0
+        total_pts = match_pts + ranking_pts
         
         leaderboard = DailyScore.objects.filter(round__season=season).values('user').annotate(total_m=Sum('points'))
         s_rank = 1
@@ -1353,7 +1364,7 @@ def home_view(request):
             'rank': s_rank, 'pts': total_pts,
             'bo': f"{s_bo_ok}/{s_bo_p}", 'bd': f"{s_bd_ok}/{s_bd_p}"
         })
-
+        
     context = {
         'rank_general': rank_general, 'total_players': len(stats.detailed_ranking),
         'hof_rank': hof_rank, 'total_points_all': user_row.get('points', 0) + user_row.get('ranking_points', 0),
