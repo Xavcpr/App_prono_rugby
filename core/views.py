@@ -1236,7 +1236,7 @@ def home_view(request):
     # 2. PROCHAIN MATCH
     next_match = Match.objects.filter(kickoff_at__gt=now).order_by('kickoff_at').first()
 
-    # 3. STATS GÉNÉRALES
+    # 3. STATS GÉNÉRALES (Source pour le classement général et perfects globaux)
     stats = compute_statistics(competition=None, season=None)
     user_row = next((row for row in stats.detailed_ranking if row['username'] == user.username), {})
     rank_general = next((i+1 for i, r in enumerate(stats.detailed_ranking) if r['username'] == user.username), "?")
@@ -1259,9 +1259,11 @@ def home_view(request):
             hof_rank = index + 1
             break
 
-    # --- 5. TROPHÉES ET RANGS (Chopes 3-2-1 & Cuillères) ---
+    # --- 5. TROPHÉES ET RANGS (Chopes 3-2-1 & Cuillères avec DEBUG) ---
     user_counts = {u.id: {'chopes': 0, 'cuilleres': 0, 'perfects': 0} for u in User.objects.all()}
-    
+    debug_log = []
+
+    # On peuple d'abord les perfects depuis les stats globales pour le rang
     for row in stats.detailed_ranking:
         try:
             u_obj = User.objects.get(username=row['username'])
@@ -1269,24 +1271,38 @@ def home_view(request):
         except User.DoesNotExist: continue
 
     all_scores = DailyScore.objects.filter(round__season__in=active_seasons)
-    for r_id in all_scores.values_list('round', flat=True).distinct():
-        day_scores = list(all_scores.filter(round_id=r_id).order_by('-points'))
+    # On itère sur les rounds pour attribuer chopes et cuillères
+    for r in Round.objects.filter(season__in=active_seasons).distinct():
+        day_scores = list(DailyScore.objects.filter(round=r).order_by('-points'))
         if day_scores:
             max_p = day_scores[0].points
             min_p = day_scores[-1].points
             for index, ds in enumerate(day_scores):
-                if ds.points == max_p: user_counts[ds.user.id]['chopes'] += 3
-                elif len(day_scores) > 1 and index == 1 and ds.points > 0: user_counts[ds.user.id]['chopes'] += 2
-                elif len(day_scores) > 2 and index == 2 and ds.points > 0: user_counts[ds.user.id]['chopes'] += 1
+                pts_added = 0
+                is_cuillere = False
+                
+                # Règle des Chopes
+                if ds.points == max_p and max_p > 0: pts_added = 3
+                elif len(day_scores) > 1 and index == 1 and ds.points > 0: pts_added = 2
+                elif len(day_scores) > 2 and index == 2 and ds.points > 0: pts_added = 1
+                
+                # Cuillère : Dernier ou égalité dernier (si au moins 3 joueurs)
                 if len(day_scores) >= 3 and ds.points == min_p:
-                    user_counts[ds.user.id]['cuilleres'] += 1
+                    is_cuillere = True
+
+                user_counts[ds.user.id]['chopes'] += pts_added
+                if is_cuillere: user_counts[ds.user.id]['cuilleres'] += 1
+
+                # Log pour Xavier uniquement
+                if ds.user == user and (pts_added > 0 or is_cuillere):
+                    debug_log.append(f"🏆 Round {r.name} ({r.season.competition.name}): +{pts_added} chopes, Cuillère: {is_cuillere}")
 
     my_stats = user_counts.get(user.id, {'chopes': 0, 'cuilleres': 0, 'perfects': 0})
     rank_chopes = sum(1 for v in user_counts.values() if v['chopes'] > my_stats['chopes']) + 1
     rank_cuilleres = sum(1 for v in user_counts.values() if v['cuilleres'] > my_stats['cuilleres']) + 1
     rank_perfects = sum(1 for v in user_counts.values() if v['perfects'] > my_stats['perfects']) + 1
 
-    # --- 6. ANALYSE TECHNIQUE (Tout-piles, Demi, Bonus & No-Show) ---
+    # --- 6. ANALYSE TECHNIQUE (Piles, Bonus & Debug Matchs) ---
     all_past_matches = Match.objects.filter(round__season__in=active_seasons, kickoff_at__lt=now)
     preds_done = Prediction.objects.filter(player=player, match__in=all_past_matches)
     no_show_count = all_past_matches.count() - preds_done.count()
@@ -1298,30 +1314,32 @@ def home_view(request):
     for p in preds_done.filter(match__home_score__isnull=False):
         rh, ra = p.match.home_score, p.match.away_score
         ph, pa = p.home_score_pred, p.away_score_pred
-        
-        # Récupération dynamique du seuil de bonus défensif
         threshold = p.match.round.season.competition.bonus_defense_threshold
         
-        # Tout-pile & Demi-pile
-        if int(ph) == int(rh) and int(pa) == int(ra):
-            perfect_count += 1
-        elif int(ph) == int(rh) or int(pa) == int(ra):
-            demi_pile_count += 1
-            
-        # Bonus Offensif (case cochée)
-        if getattr(p, 'bonus_offense_home', False):
+        # Piles
+        is_perfect = (int(ph) == int(rh) and int(pa) == int(ra))
+        is_demi = (not is_perfect and (int(ph) == int(rh) or int(pa) == int(ra)))
+        
+        if is_perfect: perfect_count += 1
+        if is_demi: demi_pile_count += 1
+
+        # Bonus Offensif
+        has_bo_prono = getattr(p, 'bonus_offense_home', False)
+        if has_bo_prono:
             bo_prono += 1
-            if getattr(p.match, 'home_bonus_off', False):
-                bo_ok += 1
-                
-        # Bonus Défensif (Calculé selon l'écart et le threshold de la compétition)
+            if getattr(p.match, 'home_bonus_off', False): bo_ok += 1
+
+        # Bonus Défensif
         diff_pred = abs(int(ph) - int(pa))
-        # On prono un BD si l'écart est entre 1 et le seuil (inclus)
-        if 1 <= diff_pred <= threshold:
+        is_bd_prono = (1 <= diff_pred <= threshold)
+        if is_bd_prono:
             bd_prono += 1
-            # On vérifie si un BD a été accordé au perdant réel
             if getattr(p.match, 'home_bonus_def', False) or getattr(p.match, 'away_bonus_def', False):
                 bd_ok += 1
+
+        # Debug log pour les succès
+        if is_perfect or is_demi or has_bo_prono or is_bd_prono:
+            debug_log.append(f"🏉 {p.match}: Perf:{is_perfect}, Demi:{is_demi}, BO_Pr:{has_bo_prono}, BD_Pr:{is_bd_prono}")
 
     # --- 7. COMPÉTITIONS DÉTAILLÉES ---
     comp_analysis = []
@@ -1361,5 +1379,6 @@ def home_view(request):
         'bonus_off_ok': bo_ok, 'bonus_off_prono': bo_prono,
         'bonus_def_ok': bd_ok, 'bonus_def_prono': bd_prono,
         'no_show': no_show_count, 'next_match': next_match,
+        'debug_log': debug_log,
     }
     return render(request, 'home.html', context)
