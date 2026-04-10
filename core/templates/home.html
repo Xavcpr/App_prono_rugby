@@ -111,6 +111,20 @@
             </div>
         </div>
     {% endfor %}
+    <div class="mt-5 p-3 bg-light border rounded"
+         style="font-family: monospace;
+                font-size: 0.7rem;
+                max-height: 400px;
+                overflow-y: scroll">
+        <h6 class="text-danger fw-bold">🛠 MODE DEBUG - ANALYSE DES POINTS XAVIER</h6>
+        <ul class="list-unstyled">
+            {% for line in debug_log %}
+                <li class="border-bottom py-1">{{ line }}</li>
+            {% empty %}
+                <li>Aucune donnée de debug trouvée.</li>
+            {% endfor %}
+        </ul>
+    </div>
     <div class="mt-5 mb-5 p-3 bg-light border rounded shadow-sm"
          style="font-family: monospace;
                 font-size: 0.75rem">
