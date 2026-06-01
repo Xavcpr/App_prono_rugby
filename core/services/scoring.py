@@ -331,17 +331,24 @@ def compute_season_ranking_points(season_obj):
         ss.ranking_points = pts_flair
         ss.save()
 
-    # --- ÉTAPE 3 : LE PODIUM ---
-    all_scores = list(SeasonScore.objects.filter(season=season_obj))
-    all_scores.sort(key=lambda x: (x.match_points + x.ranking_points, x.match_points), reverse=True)
+# --- ÉTAPE 3 : LE PODIUM (Calculé après tous les bonus individuels) ---
+    # 1. On récupère et on fige le classement basé sur (Matchs + Flair + Vainqueur + Master)
+    final_ranking = list(SeasonScore.objects.filter(season=season_obj))
+    
+    # Tri par score global décroissant. En cas d'égalité, on départage aux match_points
+    final_ranking.sort(key=lambda x: (x.match_points + x.ranking_points, x.match_points), reverse=True)
 
+    # 2. On distribue les bonus aux 3 premiers de ce classement figé
     bonus_keys = ["1st", "2nd", "3rd"]
     for i, b_key in enumerate(bonus_keys):
-        if len(all_scores) > i:
-            score_obj = all_scores[i]
+        if len(final_ranking) > i:
+            score_obj = final_ranking[i]
             val_b = cfg.get(b_key, 0)
-            score_obj.ranking_points += val_b
-            score_obj.save()
-            print(f"Podium {i+1} : {score_obj.user.username} | Total: {score_obj.total_points}")
+            
+            if val_b > 0:
+                # On ajoute le bonus de podium aux ranking_points existants
+                score_obj.ranking_points += val_b
+                score_obj.save()
+                print(f"🏆 Podium {i+1} : {score_obj.user.username} reçoit +{val_b} pts | Nouveau Total Fini: {score_obj.total_points} pts")
 
-    return "Calcul complet terminé (Matchs + Flair + Gaps + Master + Podium) !"
+    return "Calcul complet terminé (Matchs + Flair + Gaps + Master + Podium sécurisé) !"
