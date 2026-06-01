@@ -1051,8 +1051,8 @@ def statistics_view(request):
             # --- CORRECTION DES BADGES ---
             # Si les champs n'existent pas encore dans ton modèle, force-les temporairement à True 
             # pour tester ton HTML, sinon laisse la logique mais assure-toi qu'ils existent.
-            has_scorer = getattr(s, 'best_scorer_points', 0) > 0  # Sera False si le champ n'existe pas
-            has_realisateur = getattr(s, 'best_real_points', 0) > 0  # Sera False si le champ n'existe pas
+            'has_scorer': True,
+            'has_realisateur': True,
 
             user_data = {
                 'username': s.user.username,
