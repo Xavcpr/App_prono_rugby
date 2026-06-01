@@ -1024,22 +1024,40 @@ def statistics_view(request):
         if a > max_a: max_a = a
 
 
-    # --- 2. NOUVELLE LOGIQUE : CLASSEMENT DÉTAILLÉ & PODIUM POINTS ---
+    # --- 2. LOGIQUE CLASSEMENT DÉTAILLÉ & GRAPH_PIE ---
     detailed_ranking = []
     flair_ranking = []
     
-    # On ne récupère les scores des joueurs que si une saison spécifique est sélectionnée
+    total_m_season = 0
+    total_f_season = 0
+    total_p_season = 0
+    
     if season_id:
-        # Tri principal sur total_points (match_points + ranking_points + podium_points), secondaire sur match_points
         scores = SeasonScore.objects.filter(season_id=season_id).select_related('user')
+        res = CompetitionResult.objects.filter(season_id=season_id).first()
         
         for s in scores:
+            # Simulation/Vérification des bonus annexes (Winner)
+            has_winner = False
+            bonus_pred = CompetitionBonusPrediction.objects.filter(player__user=s.user, season_id=season_id).first()
+            if bonus_pred and res and bonus_pred.winner == res.real_winner:
+                has_winner = True
+            
+            # On cumule pour le camembert
+            total_m_season += s.match_points
+            total_f_season += s.ranking_points
+            total_p_season += s.podium_points
+
             user_data = {
                 'username': s.user.username,
                 'match_pts': s.match_points,
                 'ranking_pts': s.ranking_points,
-                'podium_pts': s.podium_points,          # LE NOUVEAU CHAMP ENFIN ENVOYÉ AU HTML !
-                'total_global': s.total_points,         # Utilise la propriété qui somme tout automatiquement
+                'podium_pts': s.podium_points,
+                'total_global': s.total_points,
+                'has_winner': has_winner,
+                # Variables prêtes si tu ajoutes ces champs dans ton modèle plus tard :
+                'has_scorer': getattr(s, 'best_scorer_points', 0) > 0, 
+                'has_realisateur': getattr(s, 'best_real_points', 0) > 0,
             }
             detailed_ranking.append(user_data)
             flair_ranking.append({
@@ -1047,9 +1065,12 @@ def statistics_view(request):
                 'ranking_pts': s.ranking_points
             })
         
-        # Tri des listes python pour l'affichage
         detailed_ranking.sort(key=lambda x: (x['total_global'], x['match_pts']), reverse=True)
         flair_ranking.sort(key=lambda x: x['ranking_pts'], reverse=True)
+
+    # Préparation des labels et valeurs pour le Camembert (Pie Chart)
+    pie_labels = ["Points Matchs", "Points Flair", "Points Podium"]
+    pie_values = [total_m_season, total_f_season, total_p_season] if season_id else [0, 0, 0]
 
 
     # --- 3. FILTRAGE DES SAISONS ---
@@ -1057,14 +1078,12 @@ def statistics_view(request):
     if comp_id:
         seasons = seasons.filter(competition_id=comp_id)
 
-    # Récupération de la saison ou compétition active pour le bandeau
     selected_competition = Competition.objects.filter(id=comp_id).first() if comp_id else None
     selected_season_obj = Season.objects.filter(id=season_id).first() if season_id else None
 
 
-    # --- 4. CONTEXTE GLOBAL POUR LE TEMPLATE ---
+    # --- 4. CONTEXTE GLOBAL ---
     context = {
-        # Données Matrice
         'matrix': matrix,
         'row_totals': row_totals,
         'col_totals': col_totals,
@@ -1072,28 +1091,25 @@ def statistics_view(request):
         'range_a': range(0, max_a + 1),
         'max_occurence': max_occurence,
         
-        # Données Compétitions / Filtres
         'competitions': Competition.objects.all(),
         'seasons': seasons,
         'competition': selected_competition, 
         'selected_season': selected_season_obj,
         'selected_comp': int(comp_id) if comp_id else None,
 
-        # Données Classement et Podiums (Pour alimenter ton HTML modifié)
         'detailed_ranking': detailed_ranking,
         'flair_ranking': flair_ranking,
         
-        # Bouchons/Variables optionnelles pour éviter les erreurs si tes graphiques les attendent
         'kpi': {'tout_pile': 0, 'demi_tout_pile': 0, 'bon_bonus_off': 0, 'mauvais_bonus_off': 0, 'bon_bonus_def': 0, 'mauvais_bonus_def': 0},
-        'choppes_or': [],
-        'chopes_cumulees': [],
-        'cuilleres_bois': [],
-        'victory_table': [],
-        'labels': [], 'score_series': {}, 'rank_series': {}, 'pie_labels': [], 'pie_values': []
+        'choppes_or': [], 'chopes_cumulees': [], 'cuilleres_bois': [], 'victory_table': [],
+        'labels': [], 'score_series': {}, 'rank_series': {},
+        
+        # Données du camembert enfin alimentées !
+        'pie_labels': pie_labels,
+        'pie_values': pie_values
     }
     
     return render(request, 'scores_statistics.html', context)
-
 
 
 def bareme_view(request):

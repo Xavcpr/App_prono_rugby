@@ -245,40 +245,63 @@
       <div class="col-md-4">
         <div class="card mb-4">
           <div class="card-body">
-            <h5>🥄 Cuillères de bois</h5>
-            <table class="rugby-board">
-              <thead>
-                <tr>
-                  <th class="rank-col">#</th>
-                  <th>Joueur</th>
-                  <th>🥄</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for r in cuilleres_bois %}
+            <h5>Classement détaillé</h5>
+            <div class="table-container">
+              <table class="rugby-board">
+                <thead>
                   <tr>
-                    <td>
-                      {% if forloop.first %}
-                        {{ forloop.counter }}
-                      {% else %}
-                        {% with prev=cuilleres_bois|slice:forloop.counter0|last %}
-                          {% if r.value == prev.value %}
-                            -
-                          {% else %}
-                            {{ forloop.counter }}
-                          {% endif %}
-                        {% endwith %}
-                      {% endif %}
-                    </td>
-                    <td>
-                      {{ r.username }}
-                      {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
-                    </td>
-                    <td class="fw-bold" style="color:#8b4513">{{ r.value }}</td>
+                    <th class="rank-col">#</th>
+                    <th class="text-start ps-3">Pronostiqueur</th>
+                    <th>Origine des points</th>
+                    <th class="text-end pe-3">TOTAL GLOBAL</th>
                   </tr>
-                {% endfor %}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {% for r in detailed_ranking %}
+                    <tr>
+                      <td class="rank-col">
+                        {% if forloop.first %}
+                          {{ forloop.counter }}
+                        {% else %}
+                          {% with prev=detailed_ranking|slice:forloop.counter0|last %}
+                            {% if r.total_global == prev.total_global %}
+                              -
+                            {% else %}
+                              {{ forloop.counter }}
+                            {% endif %}
+                          {% endwith %}
+                        {% endif %}
+                      </td>
+                      <td class="text-start ps-3">
+                        <strong>{{ r.username }}</strong>
+                        {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-2">Moi</span>{% endif %}
+                        {% if r.podium_pts > 0 %}<span class="badge bg-success text-white ms-1">🏆 Top Podium</span>{% endif %}
+                      </td>
+                      <td class="text-center">
+                        <span class="badge bg-primary text-white" title="Points Matchs">{{ r.match_pts|default:0 }} M</span>
+                        <span class="badge bg-info text-dark" title="Points Flair Classement">{{ r.ranking_pts|default:0 }} F</span>
+                        {% if r.podium_pts > 0 %}
+                          <span class="badge bg-success text-white" title="Points Bonus Podium">{{ r.podium_pts }} P</span>
+                        {% endif %}
+                        {% if r.has_winner %}
+                          <span class="badge bg-warning text-dark fw-bold"
+                                title="A trouvé le Vainqueur Réel !">🏅 W</span>
+                        {% endif %}
+                        {% if r.has_scorer %}
+                          <span class="badge bg-secondary text-white fw-bold"
+                                title="A trouvé le Meilleur Marqueur !">🏉 S</span>
+                        {% endif %}
+                        {% if r.has_realisateur %}
+                          <span class="badge bg-dark text-white fw-bold"
+                                title="A trouvé le Meilleur Réalisateur !">🎯 R</span>
+                        {% endif %}
+                      </td>
+                      <td class="text-end pe-3 fw-bold text-primary" style="font-size: 1.1em;">{{ r.total_global }} pts</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
