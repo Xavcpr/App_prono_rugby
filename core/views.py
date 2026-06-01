@@ -992,7 +992,6 @@ def charte_view(request):
 from django.shortcuts import render
 from django.db.models import Count, Sum
 from core.models import Match, Competition, Season, SeasonScore, Player
-
 def statistics_view(request):
     comp_id = request.GET.get('competition')
     season_id = request.GET.get('season')
@@ -1007,11 +1006,8 @@ def statistics_view(request):
 
     stats = query.values('home_score', 'away_score').annotate(total=Count('id'))
 
-    matrix = {}
-    row_totals = {}
-    col_totals = {}
-    max_occurence = 0
-    max_h, max_a = 0, 0
+    matrix, row_totals, col_totals = {}, {}, {}
+    max_occurence, max_h, max_a = 0, 0, 0
 
     for s in stats:
         h, a, t = s['home_score'], s['away_score'], s['total']
@@ -1022,7 +1018,6 @@ def statistics_view(request):
         if t > max_occurence: max_occurence = t
         if h > max_h: max_h = h
         if a > max_a: max_a = a
-
 
     # --- 2. LOGIQUE CLASSEMENT DÉTAILLÉ & GRAPH_PIE ---
     detailed_ranking = []
@@ -1037,41 +1032,50 @@ def statistics_view(request):
         res = CompetitionResult.objects.filter(season_id=season_id).first()
         
         for s in scores:
-            # Simulation/Vérification des bonus annexes (Winner)
+            # Sécurité anti-None pour les calculs du camembert
+            m_pts = s.match_points or 0
+            f_pts = s.ranking_points or 0
+            p_pts = s.podium_points or 0
+
+            # Cumul pour le camembert
+            total_m_season += m_pts
+            total_f_season += f_pts
+            total_p_season += p_pts
+
+            # Vérification Winner
             has_winner = False
             bonus_pred = CompetitionBonusPrediction.objects.filter(player__user=s.user, season_id=season_id).first()
             if bonus_pred and res and bonus_pred.winner == res.real_winner:
                 has_winner = True
             
-            # On cumule pour le camembert
-            total_m_season += s.match_points
-            total_f_season += s.ranking_points
-            total_p_season += s.podium_points
+            # --- CORRECTION DES BADGES ---
+            # Si les champs n'existent pas encore dans ton modèle, force-les temporairement à True 
+            # pour tester ton HTML, sinon laisse la logique mais assure-toi qu'ils existent.
+            has_scorer = getattr(s, 'best_scorer_points', 0) > 0  # Sera False si le champ n'existe pas
+            has_realisateur = getattr(s, 'best_real_points', 0) > 0  # Sera False si le champ n'existe pas
 
             user_data = {
                 'username': s.user.username,
-                'match_pts': s.match_points,
-                'ranking_pts': s.ranking_points,
-                'podium_pts': s.podium_points,
-                'total_global': s.total_points,
+                'match_pts': m_pts,
+                'ranking_pts': f_pts,
+                'podium_pts': p_pts,
+                'total_global': s.total_points or 0,
                 'has_winner': has_winner,
-                # Variables prêtes si tu ajoutes ces champs dans ton modèle plus tard :
-                'has_scorer': getattr(s, 'best_scorer_points', 0) > 0, 
-                'has_realisateur': getattr(s, 'best_real_points', 0) > 0,
+                'has_scorer': has_scorer, 
+                'has_realisateur': has_realisateur,
             }
             detailed_ranking.append(user_data)
             flair_ranking.append({
                 'username': s.user.username,
-                'ranking_pts': s.ranking_points
+                'ranking_pts': f_pts
             })
         
         detailed_ranking.sort(key=lambda x: (x['total_global'], x['match_pts']), reverse=True)
         flair_ranking.sort(key=lambda x: x['ranking_pts'], reverse=True)
 
-    # Préparation des labels et valeurs pour le Camembert (Pie Chart)
+    # Si pas de season_id, on met des valeurs par défaut pour que le graphique ne crash pas
     pie_labels = ["Points Matchs", "Points Flair", "Points Podium"]
-    pie_values = [total_m_season, total_f_season, total_p_season] if season_id else [0, 0, 0]
-
+    pie_values = [total_m_season, total_f_season, total_p_season]
 
     # --- 3. FILTRAGE DES SAISONS ---
     seasons = Season.objects.all().order_by('-year')
@@ -1080,7 +1084,6 @@ def statistics_view(request):
 
     selected_competition = Competition.objects.filter(id=comp_id).first() if comp_id else None
     selected_season_obj = Season.objects.filter(id=season_id).first() if season_id else None
-
 
     # --- 4. CONTEXTE GLOBAL ---
     context = {
@@ -1104,15 +1107,11 @@ def statistics_view(request):
         'choppes_or': [], 'chopes_cumulees': [], 'cuilleres_bois': [], 'victory_table': [],
         'labels': [], 'score_series': {}, 'rank_series': {},
         
-        # Données du camembert enfin alimentées !
         'pie_labels': pie_labels,
         'pie_values': pie_values
-        
-        
     }
     
     return render(request, 'scores_statistics.html', context)
-
 
 def bareme_view(request):
     return render(request, 'bareme.html', {
