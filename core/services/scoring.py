@@ -210,23 +210,42 @@ def process_round_scores(round_obj):
                 ds.points = int(final_daily_score)
                 ds.save()   
 
+from django.db.models import Sum
+from core.models import SeasonScore, CompetitionResult, CompetitionBonusPrediction, DailyScore, Player, CompetitionTeamPrediction
+
 def compute_season_ranking_points(season_obj):
 
-    # --- ÉTAPE 0 : VÉRIFICATION DU JSON ET DES DONNÉES (SOUPLE) ---
+    # --- ÉTAPE 0 : VÉRIFICATION ET DESTRUCTURATION DU JSON (POULES OU GLOBAL) ---
     res = CompetitionResult.objects.filter(season=season_obj).first()
     if not res:
         return "Erreur : Aucun résultat créé pour cette saison."
     
-    real_rankings = res.rankings_json.get('all', {})
     if not res.real_winner:
         return "Erreur : Le vainqueur réel (Winner) n'est pas renseigné."
 
-    expected_teams = season_obj.teams.all() 
-    missing_teams = [t.name for t in expected_teams if t.name not in real_rankings]
-    if missing_teams:
-        print(f"⚠️ Note : {len(missing_teams)} équipes absentes du JSON (ignorées pour le calcul).")
+    # Gestion intelligente du JSON : on s'adapte si c'est découpé en "pool1", "pool2" ou "all"
+    json_data = res.rankings_json or {}
+    real_rankings = {}
+    
+    if 'all' in json_data:
+        # Format classique (ex: Top 14 / 6 Nations)
+        for key, pos in json_data.get('all', {}).items():
+            real_rankings[str(key)] = pos
+    else:
+        # Format par poules (ex: Champions Cup avec {"pool1": {"21": 1, "2": 2...}})
+        for pool_key, pool_teams in json_data.items():
+            if isinstance(pool_teams, dict):
+                for team_id_str, position in pool_teams.items():
+                    real_rankings[str(team_id_str)] = position
 
-    # --- ÉTAPE 1 : SYNCHRONISATION DES POINTS DE MATCHS & RESET ---
+    # Vérification souple basée sur les IDs ou les noms pour ne pas bloquer l'exécution
+    expected_teams = season_obj.teams.all() 
+    missing_teams = [t.name for t in expected_teams if str(t.id) not in real_rankings and t.name not in real_rankings]
+    if missing_teams:
+        print(f"⚠️ Note : {len(missing_teams)} équipes absentes du JSON de classement (ignorées pour le Flair).")
+
+
+    # --- ÉTAPE 1 : SYNCHRONISATION DES POINTS DE MATCHS & RESET TOTAL ---
     print(f"Synchronisation pour {season_obj}...")
     players = Player.objects.filter(user__isnull=False)
     for p in players:
@@ -241,9 +260,10 @@ def compute_season_ranking_points(season_obj):
             competition=season_obj.competition
         )
         ss.match_points = total_matchs
-        ss.ranking_points = 0  # Reset Flair
-        ss.podium_points = 0   # RESET DU NOUVEAU CHAMP !
+        ss.ranking_points = 0  # Reset propre du Flair
+        ss.podium_points = 0   # Reset propre du Podium (Nouveau champ)
         ss.save()
+
 
     # --- ÉTAPE 2 : CALCUL DU FLAIR (Rangs + Gaps + Vainqueur + Master) ---
     comp_name = season_obj.competition.name
@@ -257,7 +277,9 @@ def compute_season_ranking_points(season_obj):
         # A. Rangs et Gaps
         preds = CompetitionTeamPrediction.objects.filter(player=p, season=season_obj)
         for pr in preds:
-            real_pos = real_rankings.get(pr.team.name)
+            # On cherche d'abord par ID (format Champions Cup) puis par Nom (format historique)
+            real_pos = real_rankings.get(str(pr.team.id)) or real_rankings.get(pr.team.name)
+            
             if real_pos is not None:
                 gap = abs(pr.position - real_pos)
                 if gap == 0:
@@ -314,13 +336,15 @@ def compute_season_ranking_points(season_obj):
             if bonus_master > 0:
                 pts_flair += bonus_master
 
-        # Sauvegarde du Flair (uniquement Gaps + Vainqueur + Master)
+        # Sauvegarde du Flair calculé en base
         ss = SeasonScore.objects.get(user=p.user, season=season_obj)
         ss.ranking_points = pts_flair
         ss.save()
 
-# --- ÉTAPE 3 : LE PODIUM ---
+
+    # --- ÉTAPE 3 : LE PODIUM (Calculé sur le total Matchs + Flair stabilisé) ---
     final_ranking = list(SeasonScore.objects.filter(season=season_obj))
+    # Tri principal sur les points accumulés (Matchs + Flair), départage secondaire aux Matchs
     final_ranking.sort(key=lambda x: (x.match_points + x.ranking_points, x.match_points), reverse=True)
 
     print(f"DEBUG PODIUM : Nombre de scores trouvés = {len(final_ranking)}")
@@ -335,8 +359,11 @@ def compute_season_ranking_points(season_obj):
             
             if val_b > 0:
                 score_obj = SeasonScore.objects.get(id=pre_score.id)
+                # On isole bien dans le nouveau champ dédié pour ne plus polluer le Flair
                 score_obj.podium_points = val_b
                 score_obj.save()
-                # On recharge pour vérifier l'écriture
+                
                 score_obj.refresh_from_db()
                 print(f"✅ ÉCRITURE OK -> {score_obj.user.username} a maintenant {score_obj.podium_points} pts de podium. Total_points = {score_obj.total_points}")
+
+    return "Calcul complet terminé (Matchs + Flair Dynamique + Gaps + Master + Podium Option A) !"
