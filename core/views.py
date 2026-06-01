@@ -989,9 +989,6 @@ def declencher_calcul_points(request, season_id):
 def charte_view(request):
     return render(request, "pronos/charte.html")
 
-from django.shortcuts import render
-from django.db.models import Count, Sum
-from core.models import Match, Competition, Season, SeasonScore, Player
 def statistics_view(request):
     comp_id = request.GET.get('competition')
     season_id = request.GET.get('season')
@@ -1019,63 +1016,61 @@ def statistics_view(request):
         if h > max_h: max_h = h
         if a > max_a: max_a = a
 
-    # --- 2. LOGIQUE CLASSEMENT DÉTAILLÉ & GRAPH_PIE ---
+
+    # --- 2. LOGIQUE CLASSEMENT DÉTAILLÉ & PODIUM ---
     detailed_ranking = []
     flair_ranking = []
     
-    total_m_season = 0
-    total_f_season = 0
-    total_p_season = 0
-    
     if season_id:
+        # On récupère les scores de la saison et les résultats réels
         scores = SeasonScore.objects.filter(season_id=season_id).select_related('user')
         res = CompetitionResult.objects.filter(season_id=season_id).first()
         
         for s in scores:
-            # Sécurité anti-None pour les calculs du camembert
-            m_pts = s.match_points or 0
-            f_pts = s.ranking_points or 0
-            p_pts = s.podium_points or 0
+            # Sécurité anti-None pour les points
+            m_pts = s.match_points if s.match_points is not None else 0
+            f_pts = s.ranking_points if s.ranking_points is not None else 0
+            p_pts = s.podium_points if s.podium_points is not None else 0
+            t_pts = s.total_points if s.total_points is not None else 0
 
-            # Cumul pour le camembert
-            total_m_season += m_pts
-            total_f_season += f_pts
-            total_p_season += p_pts
-
-            # Vérification Winner
+            # --- LOGIQUE DES BADGES BONUS ---
+            # 1. Le Vainqueur (W)
             has_winner = False
             bonus_pred = CompetitionBonusPrediction.objects.filter(player__user=s.user, season_id=season_id).first()
             if bonus_pred and res and bonus_pred.winner == res.real_winner:
                 has_winner = True
             
-            # --- CORRECTION DES BADGES ---
-            # Si les champs n'existent pas encore dans ton modèle, force-les temporairement à True 
-            # pour tester ton HTML, sinon laisse la logique mais assure-toi qu'ils existent.
-            has_scorer = getattr(s, 'best_scorer_points', 0) > 0  # Sera False si le champ n'existe pas
-            has_realisateur = getattr(s, 'best_real_points', 0) > 0  # Sera False si le champ n'existe pas
+            # 2. Le Meilleur Marqueur (S) et Réalisateur (R)
+            # Pour éviter que ça plante si les champs n'existent pas dans ton modèle, 
+            # on vérifie d'abord de manière sûre avec 'hasattr'
+            has_scorer = hasattr(s, 'best_scorer_points') and getattr(s, 'best_scorer_points', 0) > 0
+            has_realisateur = hasattr(s, 'best_real_points') and getattr(s, 'best_real_points', 0) > 0
+
+            # Optionnel : Si tu veux FORCER l'affichage pour tester tes badges, décommente les 2 lignes ci-dessous :
+            # has_scorer = True
+            # has_realisateur = True
 
             user_data = {
                 'username': s.user.username,
                 'match_pts': m_pts,
                 'ranking_pts': f_pts,
-                'podium_pts': p_pts,
-                'total_global': s.total_points or 0,
+                'podium_pts': p_pts,          # Tes points podium bien au chaud ici !
+                'total_global': t_pts,
                 'has_winner': has_winner,
                 'has_scorer': has_scorer, 
                 'has_realisateur': has_realisateur,
             }
             detailed_ranking.append(user_data)
+            
             flair_ranking.append({
                 'username': s.user.username,
                 'ranking_pts': f_pts
             })
         
+        # Tri : On classe par le Total Global, et en cas d'égalité, par les points Matchs
         detailed_ranking.sort(key=lambda x: (x['total_global'], x['match_pts']), reverse=True)
         flair_ranking.sort(key=lambda x: x['ranking_pts'], reverse=True)
 
-    # Si pas de season_id, on met des valeurs par défaut pour que le graphique ne crash pas
-    pie_labels = ["Points Matchs", "Points Flair", "Points Podium"]
-    pie_values = [total_m_season, total_f_season, total_p_season]
 
     # --- 3. FILTRAGE DES SAISONS ---
     seasons = Season.objects.all().order_by('-year')
@@ -1084,6 +1079,7 @@ def statistics_view(request):
 
     selected_competition = Competition.objects.filter(id=comp_id).first() if comp_id else None
     selected_season_obj = Season.objects.filter(id=season_id).first() if season_id else None
+
 
     # --- 4. CONTEXTE GLOBAL ---
     context = {
@@ -1103,15 +1099,14 @@ def statistics_view(request):
         'detailed_ranking': detailed_ranking,
         'flair_ranking': flair_ranking,
         
+        # Gardés vides pour l'instant pour éviter les erreurs d'autres tableaux manquants
         'kpi': {'tout_pile': 0, 'demi_tout_pile': 0, 'bon_bonus_off': 0, 'mauvais_bonus_off': 0, 'bon_bonus_def': 0, 'mauvais_bonus_def': 0},
         'choppes_or': [], 'chopes_cumulees': [], 'cuilleres_bois': [], 'victory_table': [],
         'labels': [], 'score_series': {}, 'rank_series': {},
-        
-        'pie_labels': pie_labels,
-        'pie_values': pie_values
     }
     
     return render(request, 'scores_statistics.html', context)
+
 
 def bareme_view(request):
     return render(request, 'bareme.html', {

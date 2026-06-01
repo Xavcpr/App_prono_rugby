@@ -14,7 +14,6 @@
     .form-select-custom { padding: 8px; border-radius: 4px; border: 1px solid #bdc3c7; background-color: white; color: #2c3e50; font-weight: 500; }
   </style>
   <div class="container-fluid py-4">
-    <!-- EN-TÊTE -->
     <div class="stats-header d-flex justify-content-between align-items-center">
       <div>
         <h1 style="margin: 0">Tableau de Bord</h1>
@@ -32,7 +31,6 @@
         <div class="small text-uppercase">Participants</div>
       </div>
     </div>
-    <!-- NAVIGATION / FILTRES -->
     <div class="navigation-zone">
       <form method="get" class="row g-3 align-items-center">
         <div class="col-12 col-md-4 d-flex align-items-center gap-2">
@@ -69,7 +67,6 @@
         </div>
       </form>
     </div>
-    <!-- BLOCS KPI -->
     <div class="row g-3 mb-4">
       <div class="col-md-3">
         <div class="card h-100 text-center">
@@ -110,7 +107,6 @@
         </div>
       </div>
     </div>
-    <!-- 1. GRAND TABLEAU DU CLASSEMENT DÉTAILLÉ -->
     <div class="card mb-4">
       <div class="card-body">
         <h5>Classement détaillé</h5>
@@ -183,7 +179,6 @@
         </div>
       </div>
     </div>
-    <!-- 2. LES PETITS TABLEAUX ANNEXES (TOUT-PILE, CHOPES, CUILLÈRES) -->
     <div class="row">
       <div class="col-md-4">
         <div class="card mb-4">
@@ -308,7 +303,6 @@
         </div>
       </div>
     </div>
-    <!-- 3. TABLEAUX COMPLÉMENTAIRES (FLAIR ET VICTOIRES) -->
     <div class="row">
       <div class="col-md-6">
         <div class="card mb-4">
@@ -391,7 +385,6 @@
         </div>
       </div>
     </div>
-    <!-- 4. GRAPHIQUES ET REPARTITION -->
     <div class="row">
       <div class="col-md-12 mb-4">
         <div class="card">
@@ -403,7 +396,7 @@
           </div>
         </div>
       </div>
-      <div class="col-md-6 mb-4">
+      <div class="col-md-12 mb-4">
         <div class="card">
           <div class="card-body">
             <h5>Évolution du classement</h5>
@@ -413,30 +406,16 @@
           </div>
         </div>
       </div>
-      <div class="col-md-6 mb-4">
-        <div class="card">
-          <div class="card-body">
-            <h5>Répartition des points</h5>
-            <div style="max-height: 250px; position: relative;">
-              <canvas id="pieChart"></canvas>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
   {{ labels|json_script:"labels-data" }}
   {{ score_series|json_script:"score-series-data" }}
   {{ rank_series|json_script:"rank-series-data" }}
-  {{ pie_labels|json_script:"pie-labels-data" }}
-  {{ pie_values|json_script:"pie-values-data" }}
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script>
     const labels = JSON.parse(document.getElementById("labels-data").textContent || '[]');
     const scoreSeries = JSON.parse(document.getElementById("score-series-data").textContent || '{}');
     const rankSeries  = JSON.parse(document.getElementById("rank-series-data").textContent || '{}');
-    const pieLabels   = JSON.parse(document.getElementById("pie-labels-data").textContent || '[]');
-    const pieValues   = JSON.parse(document.getElementById("pie-values-data").textContent || '[]');
 
     const colors = ['#3498db', '#e74c3c', '#27ae60', '#f39c12', '#9b59b6', '#34495e'];
 
@@ -459,13 +438,6 @@
       new Chart(document.getElementById('rankChart'), { 
         type: "line", data: { labels, datasets: makeDatasets(rankSeries) }, 
         options: { ...opt, scales: { y: { reverse: true, ticks: { stepSize: 1 } } } } 
-      });
-    }
-    if (document.getElementById('pieChart') && pieValues.reduce((a, b) => a + b, 0) > 0) {
-      new Chart(document.getElementById('pieChart'), { 
-        type: "pie", 
-        data: { labels: pieLabels, datasets: [{ data: pieValues, backgroundColor: colors }] },
-        options: opt
       });
     }
   </script>
