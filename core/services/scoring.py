@@ -319,10 +319,11 @@ def compute_season_ranking_points(season_obj):
         ss.ranking_points = pts_flair
         ss.save()
 
-    # --- ÉTAPE 3 : LE PODIUM (Calculé sur le total Matchs + Flair) ---
-    # On fige le classement final juste avant de distribuer les bonus de podium
+# --- ÉTAPE 3 : LE PODIUM ---
     final_ranking = list(SeasonScore.objects.filter(season=season_obj))
     final_ranking.sort(key=lambda x: (x.match_points + x.ranking_points, x.match_points), reverse=True)
+
+    print(f"DEBUG PODIUM : Nombre de scores trouvés = {len(final_ranking)}")
 
     bonus_keys = ["1st", "2nd", "3rd"]
     for i, b_key in enumerate(bonus_keys):
@@ -330,12 +331,12 @@ def compute_season_ranking_points(season_obj):
             pre_score = final_ranking[i]
             val_b = cfg.get(b_key, 0)
             
+            print(f"DEBUG JOUER {i+1} : {pre_score.user.username} | Matchs: {pre_score.match_points} | Flair: {pre_score.ranking_points} | Bonus prévu ({b_key}): {val_b}")
+            
             if val_b > 0:
-                # On va chercher l'objet propre en BDD
                 score_obj = SeasonScore.objects.get(id=pre_score.id)
-                # ON ENREGISTRE DANS LE NOUVEAU CHAMP DÉDIÉ !
                 score_obj.podium_points = val_b
                 score_obj.save()
-                print(f"🏆 Podium {i+1} : {score_obj.user.username} reçoit +{val_b} pts en Bonus Podium.")
-
-    return "Calcul complet terminé (Matchs + Flair + Gaps + Master + Podium Option A) !"
+                # On recharge pour vérifier l'écriture
+                score_obj.refresh_from_db()
+                print(f"✅ ÉCRITURE OK -> {score_obj.user.username} a maintenant {score_obj.podium_points} pts de podium. Total_points = {score_obj.total_points}")
