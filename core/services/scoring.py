@@ -212,23 +212,21 @@ def process_round_scores(round_obj):
 
 def compute_season_ranking_points(season_obj):
 
-# --- ÉTAPE 0 : VÉRIFICATION DU JSON ET DES DONNÉES (VERSION SOUPLE) ---
+    # --- ÉTAPE 0 : VÉRIFICATION DU JSON ET DES DONNÉES (SOUPLE) ---
     res = CompetitionResult.objects.filter(season=season_obj).first()
     if not res:
         return "Erreur : Aucun résultat créé pour cette saison."
     
     real_rankings = res.rankings_json.get('all', {})
-    
     if not res.real_winner:
         return "Erreur : Le vainqueur réel (Winner) n'est pas renseigné."
 
-    # Au lieu de bloquer, on fait juste un petit avertissement dans les logs de la console
-    expected_teams = season_obj.teams.all() # ou season_obj.competition.teams.all() selon ta structure
+    expected_teams = season_obj.teams.all() 
     missing_teams = [t.name for t in expected_teams if t.name not in real_rankings]
     if missing_teams:
-        print(f"⚠️ Note : {len(missing_teams)} équipes absentes du JSON (ignorées pour le calcul des rangs).")
+        print(f"⚠️ Note : {len(missing_teams)} équipes absentes du JSON (ignorées pour le calcul).")
 
-    # --- ÉTAPE 1 : SYNCHRONISATION DES POINTS DE MATCHS ---
+    # --- ÉTAPE 1 : SYNCHRONISATION DES POINTS DE MATCHS & RESET ---
     print(f"Synchronisation pour {season_obj}...")
     players = Player.objects.filter(user__isnull=False)
     for p in players:
@@ -243,8 +241,8 @@ def compute_season_ranking_points(season_obj):
             competition=season_obj.competition
         )
         ss.match_points = total_matchs
-        ss.ranking_points = 0  # Reset pour recalcul propre
-        ss.podium_points = 0
+        ss.ranking_points = 0  # Reset Flair
+        ss.podium_points = 0   # RESET DU NOUVEAU CHAMP !
         ss.save()
 
     # --- ÉTAPE 2 : CALCUL DU FLAIR (Rangs + Gaps + Vainqueur + Master) ---
@@ -282,43 +280,32 @@ def compute_season_ranking_points(season_obj):
         # C. Bonus Vainqueur Final
         bonus_pred = CompetitionBonusPrediction.objects.filter(player=p, season=season_obj).first()
         if bonus_pred and bonus_pred.winner == res.real_winner:
-            # On utilise cfg.get("winner") pour être flexible, ou 100 par défaut
             pts_flair += cfg.get("winner", 100)
 
-        # D. BONUS MASTER TOURNOI (Paliers 12 à 15 bons pronos)
+        # D. BONUS MASTER TOURNOI (6 Nations uniquement)
         if clean_key == "6 Nations":
-            from core.models import Prediction # Utilisation du bon nom de modèle
-            
-            # On récupère tous les pronos du joueur pour cette saison
+            from core.models import Prediction
             user_preds = Prediction.objects.filter(
                 player=p, 
                 match__round__season=season_obj
             ).select_related('match', 'match__home_team', 'match__away_team')
 
             good_matches_count = 0
-
             for pr in user_preds:
-                # 1. Déterminer le vainqueur réel du match
-                real_win = pr.match.winner() # Utilise ta méthode winner() du modèle Match
-                
-                # 2. Déterminer le vainqueur prédit par le joueur
+                real_win = pr.match.winner()
                 if pr.home_score_pred > pr.away_score_pred:
                     pred_win = pr.match.home_team
                 elif pr.home_score_pred < pr.away_score_pred:
                     pred_win = pr.match.away_team
                 else:
-                    pred_win = None # Match nul prédit
+                    pred_win = None
                 
-                # 3. Comparaison (si les deux sont identiques et pas nuls)
                 if real_win and pred_win and real_win == pred_win:
                     good_matches_count += 1
-                # Optionnel : si tu veux compter les matchs nuls corrects
                 elif real_win is None and pred_win is None and pr.match.home_score is not None:
                     good_matches_count += 1
 
-            # 4. Attribution du bonus selon les paliers
             bonus_master = 0
-            # MASTER_PALIERS = {12: 50, 13: 150, 14: 200, 15: 250}
             for seuil, valeur in sorted(MASTER_PALIERS.items(), reverse=True):
                 if good_matches_count >= seuil:
                     bonus_master = valeur
@@ -326,31 +313,29 @@ def compute_season_ranking_points(season_obj):
             
             if bonus_master > 0:
                 pts_flair += bonus_master
-                print(f"Master Tournoi : {p.name} (+{bonus_master} pts pour {good_matches_count}/15)")
 
-        # Sauvegarde intermédiaire du Flair
+        # Sauvegarde du Flair (uniquement Gaps + Vainqueur + Master)
         ss = SeasonScore.objects.get(user=p.user, season=season_obj)
         ss.ranking_points = pts_flair
         ss.save()
 
-# --- ÉTAPE 3 : LE PODIUM (Calculé après tous les bonus individuels) ---
-    # 1. On récupère et on fige le classement basé sur (Matchs + Flair + Vainqueur + Master)
+    # --- ÉTAPE 3 : LE PODIUM (Calculé sur le total Matchs + Flair) ---
+    # On fige le classement final juste avant de distribuer les bonus de podium
     final_ranking = list(SeasonScore.objects.filter(season=season_obj))
-    
-    # Tri par score global décroissant. En cas d'égalité, on départage aux match_points
     final_ranking.sort(key=lambda x: (x.match_points + x.ranking_points, x.match_points), reverse=True)
 
-    # 2. On distribue les bonus aux 3 premiers de ce classement figé
     bonus_keys = ["1st", "2nd", "3rd"]
     for i, b_key in enumerate(bonus_keys):
         if len(final_ranking) > i:
-            score_obj = final_ranking[i]
+            pre_score = final_ranking[i]
             val_b = cfg.get(b_key, 0)
             
             if val_b > 0:
-                # On ajoute le bonus de podium aux ranking_points existants
-                score_obj.podium_points = val_b # On stocke le bonus dans son propre champ
+                # On va chercher l'objet propre en BDD
+                score_obj = SeasonScore.objects.get(id=pre_score.id)
+                # ON ENREGISTRE DANS LE NOUVEAU CHAMP DÉDIÉ !
+                score_obj.podium_points = val_b
                 score_obj.save()
-                print(f"🏆 Podium {i+1} : {score_obj.user.username} reçoit +{val_b} pts | Nouveau Total Fini: {score_obj.total_points} pts")
+                print(f"🏆 Podium {i+1} : {score_obj.user.username} reçoit +{val_b} pts en Bonus Podium.")
 
-    return "Calcul complet terminé (Matchs + Flair + Gaps + Master + Podium sécurisé) !"
+    return "Calcul complet terminé (Matchs + Flair + Gaps + Master + Podium Option A) !"

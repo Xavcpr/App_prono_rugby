@@ -249,7 +249,7 @@ class SeasonScore(models.Model):
 
     @property
     def total_points(self):
-        return self.match_points + self.ranking_points
+        return self.match_points + self.ranking_points + self.podium_points
     
 
 # ----- Pronostics de bonus compétition (marqueur)-----
