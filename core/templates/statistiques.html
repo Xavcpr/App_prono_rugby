@@ -31,18 +31,6 @@
         <div class="small text-uppercase">Participants</div>
       </div>
     </div>
-    <select name="competition"
-            onchange="this.form.season.value=''; this.form.submit()"
-            class="form-select-custom flex-grow-1 {% if competition %}border-primary border-2{% endif %}"
-            style="{% if competition %}background-color: #e8f4fd;
-                   font-weight: bold;
-                   {% endif %}">
-      <option value="">🌍 TOUTES LES COMPÉTITIONS</option>
-      {% for comp in competitions %}
-        <option value="{{ comp.id }}"
-                {% if competition.id == comp.id %}selected{% endif %}>{{ comp.name }}</option>
-      {% endfor %}
-    </select>
     <div class="navigation-zone">
       <form method="get" class="row g-3 align-items-center">
         <div class="col-12 col-md-4 d-flex align-items-center gap-2">
@@ -118,6 +106,7 @@
         </div>
       </div>
     </div>
+    <!-- TABLEAU PRINCIPAL MODIFIÉ -->
     <div class="card mb-4">
       <div class="card-body">
         <h5>Classement détaillé</h5>
@@ -127,6 +116,7 @@
               <tr>
                 <th class="rank-col">#</th>
                 <th class="text-start ps-3">Pronostiqueur</th>
+                <th>Détail des points (Matchs + Flair + Podium)</th>
                 <th class="text-end pe-3">TOTAL GLOBAL</th>
               </tr>
             </thead>
@@ -149,8 +139,19 @@
                   <td class="text-start ps-3">
                     <strong>{{ r.username }}</strong>
                     {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-2">Moi</span>{% endif %}
+                    <!-- Affichage d'un petit badge si l'utilisateur a un bonus podium calculé -->
+                    {% if r.podium_pts and r.podium_pts > 0 %}
+                      <span class="badge bg-success text-white ms-1">🏆 Podium (+{{ r.podium_pts }})</span>
+                    {% endif %}
                   </td>
-                  <td class="text-end pe-3 fw-bold">{{ r.total_global }} pt</td>
+                  <td class="text-muted text-center">
+                    <span class="badge bg-light text-dark">{{ r.match_pts|default:0 }} M</span> +
+                    <span class="badge bg-light text-dark">{{ r.ranking_pts|default:0 }} F</span>
+                    {% if r.podium_pts and r.podium_pts > 0 %}
+                      + <span class="badge bg-warning text-dark">{{ r.podium_pts }} P</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-end pe-3 fw-bold text-primary" style="font-size: 1.1em;">{{ r.total_global }} pts</td>
                 </tr>
               {% endfor %}
             </tbody>

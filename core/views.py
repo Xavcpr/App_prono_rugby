@@ -989,10 +989,15 @@ def declencher_calcul_points(request, season_id):
 def charte_view(request):
     return render(request, "pronos/charte.html")
 
+from django.shortcuts import render
+from django.db.models import Count, Sum
+from core.models import Match, Competition, Season, SeasonScore, Player
+
 def statistics_view(request):
     comp_id = request.GET.get('competition')
     season_id = request.GET.get('season')
 
+    # --- 1. LOGIQUE HISTORIQUE : LA MATRICE DES MATCHS ---
     query = Match.objects.filter(home_score__isnull=False, away_score__isnull=False, phase='POOL')
 
     if comp_id:
@@ -1000,49 +1005,96 @@ def statistics_view(request):
     if season_id:
         query = query.filter(round__season_id=season_id)
 
-    # Agrégation des scores
     stats = query.values('home_score', 'away_score').annotate(total=Count('id'))
 
     matrix = {}
-    row_totals = {} # Sommes par ligne (Domicile)
-    col_totals = {} # Sommes par colonne (Extérieur)
+    row_totals = {}
+    col_totals = {}
     max_occurence = 0
     max_h, max_a = 0, 0
 
     for s in stats:
         h, a, t = s['home_score'], s['away_score'], s['total']
-        
-        # Remplissage matrice
         if h not in matrix: matrix[h] = {}
         matrix[h][a] = t
-        
-        # Calcul des totaux
         row_totals[h] = row_totals.get(h, 0) + t
         col_totals[a] = col_totals.get(a, 0) + t
-        
-        # Mise à jour des max pour le rendu
         if t > max_occurence: max_occurence = t
         if h > max_h: max_h = h
         if a > max_a: max_a = a
 
-    # Filtrage des saisons selon la compétition choisie
+
+    # --- 2. NOUVELLE LOGIQUE : CLASSEMENT DÉTAILLÉ & PODIUM POINTS ---
+    detailed_ranking = []
+    flair_ranking = []
+    
+    # On ne récupère les scores des joueurs que si une saison spécifique est sélectionnée
+    if season_id:
+        # Tri principal sur total_points (match_points + ranking_points + podium_points), secondaire sur match_points
+        scores = SeasonScore.objects.filter(season_id=season_id).select_related('user')
+        
+        for s in scores:
+            user_data = {
+                'username': s.user.username,
+                'match_pts': s.match_points,
+                'ranking_pts': s.ranking_points,
+                'podium_pts': s.podium_points,          # LE NOUVEAU CHAMP ENFIN ENVOYÉ AU HTML !
+                'total_global': s.total_points,         # Utilise la propriété qui somme tout automatiquement
+            }
+            detailed_ranking.append(user_data)
+            flair_ranking.append({
+                'username': s.user.username,
+                'ranking_pts': s.ranking_points
+            })
+        
+        # Tri des listes python pour l'affichage
+        detailed_ranking.sort(key=lambda x: (x['total_global'], x['match_pts']), reverse=True)
+        flair_ranking.sort(key=lambda x: x['ranking_pts'], reverse=True)
+
+
+    # --- 3. FILTRAGE DES SAISONS ---
     seasons = Season.objects.all().order_by('-year')
     if comp_id:
         seasons = seasons.filter(competition_id=comp_id)
 
+    # Récupération de la saison ou compétition active pour le bandeau
+    selected_competition = Competition.objects.filter(id=comp_id).first() if comp_id else None
+    selected_season_obj = Season.objects.filter(id=season_id).first() if season_id else None
+
+
+    # --- 4. CONTEXTE GLOBAL POUR LE TEMPLATE ---
     context = {
+        # Données Matrice
         'matrix': matrix,
         'row_totals': row_totals,
         'col_totals': col_totals,
-        'range_h': range(0, max_h + 1), # Y : Domicile
-        'range_a': range(0, max_a + 1), # X : Extérieur
+        'range_h': range(0, max_h + 1),
+        'range_a': range(0, max_a + 1),
         'max_occurence': max_occurence,
+        
+        # Données Compétitions / Filtres
         'competitions': Competition.objects.all(),
         'seasons': seasons,
+        'competition': selected_competition, 
+        'selected_season': selected_season_obj,
         'selected_comp': int(comp_id) if comp_id else None,
-        'selected_season': int(season_id) if season_id else None,
+
+        # Données Classement et Podiums (Pour alimenter ton HTML modifié)
+        'detailed_ranking': detailed_ranking,
+        'flair_ranking': flair_ranking,
+        
+        # Bouchons/Variables optionnelles pour éviter les erreurs si tes graphiques les attendent
+        'kpi': {'tout_pile': 0, 'demi_tout_pile': 0, 'bon_bonus_off': 0, 'mauvais_bonus_off': 0, 'bon_bonus_def': 0, 'mauvais_bonus_def': 0},
+        'choppes_or': [],
+        'chopes_cumulees': [],
+        'cuilleres_bois': [],
+        'victory_table': [],
+        'labels': [], 'score_series': {}, 'rank_series': {}, 'pie_labels': [], 'pie_values': []
     }
+    
     return render(request, 'scores_statistics.html', context)
+
+
 
 def bareme_view(request):
     return render(request, 'bareme.html', {
