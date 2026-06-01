@@ -14,6 +14,7 @@
     .form-select-custom { padding: 8px; border-radius: 4px; border: 1px solid #bdc3c7; background-color: white; color: #2c3e50; font-weight: 500; }
   </style>
   <div class="container-fluid py-4">
+    <!-- EN-TÊTE -->
     <div class="stats-header d-flex justify-content-between align-items-center">
       <div>
         <h1 style="margin: 0">Tableau de Bord</h1>
@@ -31,6 +32,7 @@
         <div class="small text-uppercase">Participants</div>
       </div>
     </div>
+    <!-- NAVIGATION / FILTRES -->
     <div class="navigation-zone">
       <form method="get" class="row g-3 align-items-center">
         <div class="col-12 col-md-4 d-flex align-items-center gap-2">
@@ -50,6 +52,7 @@
           <select name="season"
                   onchange="this.form.submit()"
                   class="form-select-custom flex-grow-1">
+            <option value="">-- Choisir une saison --</option>
             {% for s in seasons %}
               <option value="{{ s.id }}"
                       {% if selected_season.id == s.id %}selected{% endif %}>{{ s.year }}</option>
@@ -66,6 +69,7 @@
         </div>
       </form>
     </div>
+    <!-- BLOCS KPI -->
     <div class="row g-3 mb-4">
       <div class="col-md-3">
         <div class="card h-100 text-center">
@@ -106,17 +110,22 @@
         </div>
       </div>
     </div>
-    <!-- TABLEAU PRINCIPAL MODIFIÉ -->
+    <!-- 1. GRAND TABLEAU DU CLASSEMENT DÉTAILLÉ -->
     <div class="card mb-4">
       <div class="card-body">
         <h5>Classement détaillé</h5>
+        {% if not selected_season %}
+          <div class="alert alert-info text-center my-3">
+            💡 Veuillez sélectionner une <strong>Saison</strong> spécifique pour afficher le détail des scores et les badges bonus.
+          </div>
+        {% endif %}
         <div class="table-container">
           <table class="rugby-board">
             <thead>
               <tr>
                 <th class="rank-col">#</th>
                 <th class="text-start ps-3">Pronostiqueur</th>
-                <th>Détail des points (Matchs + Flair + Podium)</th>
+                <th>Origine des points</th>
                 <th class="text-end pe-3">TOTAL GLOBAL</th>
               </tr>
             </thead>
@@ -139,19 +148,34 @@
                   <td class="text-start ps-3">
                     <strong>{{ r.username }}</strong>
                     {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-2">Moi</span>{% endif %}
-                    <!-- Affichage d'un petit badge si l'utilisateur a un bonus podium calculé -->
-                    {% if r.podium_pts and r.podium_pts > 0 %}
-                      <span class="badge bg-success text-white ms-1">🏆 Podium (+{{ r.podium_pts }})</span>
-                    {% endif %}
+                    {% if r.podium_pts > 0 %}<span class="badge bg-success text-white ms-1">🏆 Top Podium</span>{% endif %}
                   </td>
-                  <td class="text-muted text-center">
-                    <span class="badge bg-light text-dark">{{ r.match_pts|default:0 }} M</span> +
-                    <span class="badge bg-light text-dark">{{ r.ranking_pts|default:0 }} F</span>
-                    {% if r.podium_pts and r.podium_pts > 0 %}
-                      + <span class="badge bg-warning text-dark">{{ r.podium_pts }} P</span>
+                  <td class="text-center">
+                    <span class="badge bg-primary text-white" title="Points Matchs">{{ r.match_pts|default:0 }} M</span>
+                    <span class="badge bg-info text-dark" title="Points Flair Classement">{{ r.ranking_pts|default:0 }} F</span>
+                    {% if r.podium_pts > 0 %}
+                      <span class="badge bg-success text-white" title="Points Bonus Podium">{{ r.podium_pts }} P</span>
+                    {% endif %}
+                    {% if r.has_winner %}
+                      <span class="badge bg-warning text-dark fw-bold"
+                            title="A trouvé le Vainqueur Réel !">🏅 W</span>
+                    {% endif %}
+                    {% if r.has_scorer %}
+                      <span class="badge bg-secondary text-white fw-bold"
+                            title="A trouvé le Meilleur Marqueur !">🏉 S</span>
+                    {% endif %}
+                    {% if r.has_realisateur %}
+                      <span class="badge bg-dark text-white fw-bold"
+                            title="A trouvé le Meilleur Réalisateur !">🎯 R</span>
                     {% endif %}
                   </td>
                   <td class="text-end pe-3 fw-bold text-primary" style="font-size: 1.1em;">{{ r.total_global }} pts</td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="4" class="text-muted p-4">
+                    Aucune donnée sur cette sélection. Sélectionnez une compétition et une saison.
+                  </td>
                 </tr>
               {% endfor %}
             </tbody>
@@ -159,6 +183,7 @@
         </div>
       </div>
     </div>
+    <!-- 2. LES PETITS TABLEAUX ANNEXES (TOUT-PILE, CHOPES, CUILLÈRES) -->
     <div class="row">
       <div class="col-md-4">
         <div class="card mb-4">
@@ -245,67 +270,45 @@
       <div class="col-md-4">
         <div class="card mb-4">
           <div class="card-body">
-            <h5>Classement détaillé</h5>
-            <div class="table-container">
-              <table class="rugby-board">
-                <thead>
+            <h5>🥄 Cuillères de bois</h5>
+            <table class="rugby-board">
+              <thead>
+                <tr>
+                  <th class="rank-col">#</th>
+                  <th>Joueur</th>
+                  <th>🥄</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in cuilleres_bois %}
                   <tr>
-                    <th class="rank-col">#</th>
-                    <th class="text-start ps-3">Pronostiqueur</th>
-                    <th>Origine des points</th>
-                    <th class="text-end pe-3">TOTAL GLOBAL</th>
+                    <td>
+                      {% if forloop.first %}
+                        {{ forloop.counter }}
+                      {% else %}
+                        {% with prev=cuilleres_bois|slice:forloop.counter0|last %}
+                          {% if r.value == prev.value %}
+                            -
+                          {% else %}
+                            {{ forloop.counter }}
+                          {% endif %}
+                        {% endwith %}
+                      {% endif %}
+                    </td>
+                    <td>
+                      {{ r.username }}
+                      {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
+                    </td>
+                    <td class="fw-bold" style="color:#8b4513">{{ r.value }}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {% for r in detailed_ranking %}
-                    <tr>
-                      <td class="rank-col">
-                        {% if forloop.first %}
-                          {{ forloop.counter }}
-                        {% else %}
-                          {% with prev=detailed_ranking|slice:forloop.counter0|last %}
-                            {% if r.total_global == prev.total_global %}
-                              -
-                            {% else %}
-                              {{ forloop.counter }}
-                            {% endif %}
-                          {% endwith %}
-                        {% endif %}
-                      </td>
-                      <td class="text-start ps-3">
-                        <strong>{{ r.username }}</strong>
-                        {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-2">Moi</span>{% endif %}
-                        {% if r.podium_pts > 0 %}<span class="badge bg-success text-white ms-1">🏆 Top Podium</span>{% endif %}
-                      </td>
-                      <td class="text-center">
-                        <span class="badge bg-primary text-white" title="Points Matchs">{{ r.match_pts|default:0 }} M</span>
-                        <span class="badge bg-info text-dark" title="Points Flair Classement">{{ r.ranking_pts|default:0 }} F</span>
-                        {% if r.podium_pts > 0 %}
-                          <span class="badge bg-success text-white" title="Points Bonus Podium">{{ r.podium_pts }} P</span>
-                        {% endif %}
-                        {% if r.has_winner %}
-                          <span class="badge bg-warning text-dark fw-bold"
-                                title="A trouvé le Vainqueur Réel !">🏅 W</span>
-                        {% endif %}
-                        {% if r.has_scorer %}
-                          <span class="badge bg-secondary text-white fw-bold"
-                                title="A trouvé le Meilleur Marqueur !">🏉 S</span>
-                        {% endif %}
-                        {% if r.has_realisateur %}
-                          <span class="badge bg-dark text-white fw-bold"
-                                title="A trouvé le Meilleur Réalisateur !">🎯 R</span>
-                        {% endif %}
-                      </td>
-                      <td class="text-end pe-3 fw-bold text-primary" style="font-size: 1.1em;">{{ r.total_global }} pts</td>
-                    </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
+                {% endfor %}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
     </div>
+    <!-- 3. TABLEAUX COMPLÉMENTAIRES (FLAIR ET VICTOIRES) -->
     <div class="row">
       <div class="col-md-6">
         <div class="card mb-4">
@@ -388,6 +391,7 @@
         </div>
       </div>
     </div>
+    <!-- 4. GRAPHIQUES ET REPARTITION -->
     <div class="row">
       <div class="col-md-12 mb-4">
         <div class="card">
@@ -413,7 +417,9 @@
         <div class="card">
           <div class="card-body">
             <h5>Répartition des points</h5>
-            <canvas id="pieChart"></canvas>
+            <div style="max-height: 250px; position: relative;">
+              <canvas id="pieChart"></canvas>
+            </div>
           </div>
         </div>
       </div>
@@ -455,9 +461,11 @@
         options: { ...opt, scales: { y: { reverse: true, ticks: { stepSize: 1 } } } } 
       });
     }
-    if (document.getElementById('pieChart')) {
+    if (document.getElementById('pieChart') && pieValues.reduce((a, b) => a + b, 0) > 0) {
       new Chart(document.getElementById('pieChart'), { 
-        type: "pie", data: { labels: pieLabels, datasets: [{ data: pieValues, backgroundColor: colors }] } 
+        type: "pie", 
+        data: { labels: pieLabels, datasets: [{ data: pieValues, backgroundColor: colors }] },
+        options: opt
       });
     }
   </script>

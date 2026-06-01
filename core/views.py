@@ -1107,6 +1107,8 @@ def statistics_view(request):
         # Données du camembert enfin alimentées !
         'pie_labels': pie_labels,
         'pie_values': pie_values
+        
+        
     }
     
     return render(request, 'scores_statistics.html', context)
