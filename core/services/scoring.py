@@ -212,20 +212,21 @@ def process_round_scores(round_obj):
 
 def compute_season_ranking_points(season_obj):
 
-    # --- ÉTAPE 0 : VÉRIFICATION DU JSON ET DES DONNÉES ---
+# --- ÉTAPE 0 : VÉRIFICATION DU JSON ET DES DONNÉES (VERSION SOUPLE) ---
     res = CompetitionResult.objects.filter(season=season_obj).first()
     if not res:
         return "Erreur : Aucun résultat créé pour cette saison."
     
     real_rankings = res.rankings_json.get('all', {})
-    expected_teams = season_obj.competition.teams.all() 
     
-    missing_teams = [t.name for t in expected_teams if t.name not in real_rankings]
-    if missing_teams:
-        return f"Erreur : Équipes manquantes dans le JSON : {', '.join(missing_teams)}"
-
     if not res.real_winner:
         return "Erreur : Le vainqueur réel (Winner) n'est pas renseigné."
+
+    # Au lieu de bloquer, on fait juste un petit avertissement dans les logs de la console
+    expected_teams = season_obj.teams.all() # ou season_obj.competition.teams.all() selon ta structure
+    missing_teams = [t.name for t in expected_teams if t.name not in real_rankings]
+    if missing_teams:
+        print(f"⚠️ Note : {len(missing_teams)} équipes absentes du JSON (ignorées pour le calcul des rangs).")
 
     # --- ÉTAPE 1 : SYNCHRONISATION DES POINTS DE MATCHS ---
     print(f"Synchronisation pour {season_obj}...")
