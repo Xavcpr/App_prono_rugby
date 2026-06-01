@@ -244,6 +244,7 @@ def compute_season_ranking_points(season_obj):
         )
         ss.match_points = total_matchs
         ss.ranking_points = 0  # Reset pour recalcul propre
+        ss.podium_points = 0
         ss.save()
 
     # --- ÉTAPE 2 : CALCUL DU FLAIR (Rangs + Gaps + Vainqueur + Master) ---
@@ -348,7 +349,7 @@ def compute_season_ranking_points(season_obj):
             
             if val_b > 0:
                 # On ajoute le bonus de podium aux ranking_points existants
-                score_obj.ranking_points += val_b
+                score_obj.podium_points = val_b # On stocke le bonus dans son propre champ
                 score_obj.save()
                 print(f"🏆 Podium {i+1} : {score_obj.user.username} reçoit +{val_b} pts | Nouveau Total Fini: {score_obj.total_points} pts")
 
