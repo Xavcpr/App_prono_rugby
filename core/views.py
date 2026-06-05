@@ -677,44 +677,60 @@ def statistiques_view(request):
     if season_id.isdigit():
         selected_season = seasons.filter(id=int(season_id)).first()
     
-    # --- LA CORRECTION EST ICI ---
-    # Si on est en mode "Toutes les compétitions", on ne veut PAS forcément 
-    # forcer selected_season sur la première venue, sinon on filtre par cette saison.
-    # On ne force un selected_season que si une compétition est choisie.
+    # On ne force un selected_season que si une compétition est choisie
     if not selected_season and competition:
         selected_season = seasons.first()
 
-    # 4. Calcul des stats
-    # On passe competition (qui peut être None) et selected_season (qui peut être None)
+    # 4. Calcul des stats de base via ta fonction existante
     stats = compute_statistics(competition, season=selected_season)
 
-    # --- SÉCURISATION DU CRASH SeasonScore ---
+    # --- 5. SÉCURISATION ET SYNCHRONISATION DES SCORES DEPUIS SEASONSCORE ---
     season_scores = {}
     try:
-        # Si selected_season est None, on agrège les points de toutes les saisons
         qs = SeasonScore.objects.all()
         if selected_season:
             qs = qs.filter(season=selected_season)
+        elif competition:
+            qs = qs.filter(competition=competition)
+            
+        # On groupe par utilisateur pour sommer proprement les différents compartiments
+        user_points = qs.values('user__username').annotate(
+            total_match=Sum('match_points'),
+            total_ranking=Sum('ranking_points'),
+            total_podium=Sum('podium_points')
+        )
         
-        # On somme les points par utilisateur si on est en mode global
-        user_points = qs.values('user__username').annotate(total_ranking=Sum('ranking_points'))
-        season_scores = {item['user__username']: item['total_ranking'] for item in user_points}
+        for item in user_points:
+            season_scores[item['user__username']] = {
+                'match_pts': item['total_match'] or 0,
+                'ranking_pts': item['total_ranking'] or 0,
+                'podium_pts': item['total_podium'] or 0,
+            }
     except Exception:
         season_scores = {}
 
-    # ... (Le reste de ta logique de calcul de ranking reste identique) ...
+    # Remplissage et mise à jour de detailed_ranking
     for r in stats.detailed_ranking:
-        r['match_pts'] = r.get('points', 0)
-        r['ranking_pts'] = season_scores.get(r['username'], 0)
-        r['total_global'] = r['match_pts'] + r['ranking_pts']
+        username = r['username']
+        user_scores = season_scores.get(username, {'match_pts': 0, 'ranking_pts': 0, 'podium_pts': 0})
+        
+        # On prend les points de l'ORM en priorité, sinon fallback sur ce que compute_statistics a trouvé
+        r['match_pts'] = user_scores['match_pts'] if user_scores['match_pts'] > 0 else r.get('points', 0)
+        r['ranking_pts'] = user_scores['ranking_pts']
+        r['podium_pts'] = user_scores['podium_pts']
+        
+        # Le total global est recalculé de manière transparente et stricte
+        r['total_global'] = r['match_pts'] + r['ranking_pts'] + r['podium_pts']
 
-    stats.detailed_ranking.sort(key=lambda x: x['total_global'], reverse=True)
+    # Tri par total global décroissant, puis par points de matchs en cas d'égalité
+    stats.detailed_ranking.sort(key=lambda x: (x['total_global'], x['match_pts']), reverse=True)
     
     # On cherche la dernière journée pour le bouton
     last_round_id = None
     if selected_season:
         lr = Round.objects.filter(season=selected_season).order_by('-number').first()
-        if lr: last_round_id = lr.id
+        if lr: 
+            last_round_id = lr.id
 
     context = {
         "competitions": competitions,
@@ -732,11 +748,13 @@ def statistiques_view(request):
         "flair_ranking": sorted(stats.detailed_ranking, key=lambda x: x.get('ranking_pts', 0), reverse=True),
         "victory_table": getattr(stats, 'victory_table', []),
         "last_round_id": last_round_id,
-        "pie_labels": stats.pie_labels, # Assure-toi que ces noms correspondent
+        "pie_labels": stats.pie_labels,
         "pie_values": stats.pie_values,
     }
 
     return render(request, "statistiques.html", context)
+
+
 
 @login_required
 def debug_scores_view(request):
