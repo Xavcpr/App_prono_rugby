@@ -1016,30 +1016,39 @@ def statistics_view(request):
         if h > max_h: max_h = h
         if a > max_a: max_a = a
 
-
 # --- 2. LOGIQUE CLASSEMENT DÉTAILLÉ & PODIUM ---
     detailed_ranking = []
     flair_ranking = []
     
-    # SI season_id est absent, vide ou non numérique, on charge la saison par défaut
+    # 1. Gestion stricte de la saison par défaut liée à la compétition choisie
     if not season_id or season_id == "":
-        # On va chercher la toute première saison disponible (la seule en BDD)
-        default_season = Season.objects.all().order_by('-year').first()
+        if comp_id:
+            # On cherche la saison la plus récente liée spécifiquement à CETTE compétition
+            default_season = Season.objects.filter(competition_id=comp_id).order_by('-year').first()
+        else:
+            # Repli global s'il n'y a même pas de compétition
+            default_season = Season.objects.all().order_by('-year').first()
+            
         if default_season:
             season_id = default_season.id
 
+    # 2. Extraction et calcul des scores
     if season_id:
         try:
             season_id = int(season_id)
         except ValueError:
             pass
 
-        # On récupère les scores de la saison et les résultats réels
-        scores = SeasonScore.objects.filter(season_id=season_id).select_related('user')
+        # Sécurité cruciale : On filtre par season_id ET par competition_id si disponible
+        scores_query = SeasonScore.objects.filter(season_id=season_id)
+        if comp_id:
+            scores_query = scores_query.filter(competition_id=comp_id)
+            
+        scores = scores_query.select_related('user')
         res = CompetitionResult.objects.filter(season_id=season_id).first()
         
         for s in scores:
-            # Sécurité anti-None et récupération STRICTE des valeurs en base
+            # Extraction propre des points
             m_pts = s.match_points if s.match_points is not None else 0
             f_pts = s.ranking_points if s.ranking_points is not None else 0
             
@@ -1047,6 +1056,7 @@ def statistics_view(request):
             if p_pts is None:
                 p_pts = 0
                 
+            # Addition arithmétique forcée
             t_pts = m_pts + f_pts + p_pts
 
             # --- LOGIQUE DES BADGES BONUS ---
@@ -1087,9 +1097,7 @@ def statistics_view(request):
         
         # Tri : On classe par le Total Global, et en cas d'égalité, par les points Matchs
         detailed_ranking.sort(key=lambda x: (x['total_global'], x['match_pts']), reverse=True)
-        flair_ranking.sort(key=lambda x: x['ranking_pts'], reverse=True)
-        
-        
+        flair_ranking.sort(key=lambda x: x['ranking_pts'], reverse=True)        
     # --- 3. FILTRAGE DES SAISONS ---
     seasons = Season.objects.all().order_by('-year')
     if comp_id:
