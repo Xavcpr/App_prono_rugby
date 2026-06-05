@@ -1021,6 +1021,9 @@ def statistics_view(request):
     detailed_ranking = []
     flair_ranking = []
     
+    # --- LIGNE DE DEBUG (Regarde tes logs de terminal quand tu charges la page) ---
+    raise Exception(f"DEBUG : J'ai trouvé {scores.count()} scores en base pour la saison {season_id}")
+    
     if season_id:
         # Sécurité : On convertit en int pour éviter les conflits de types (Str vs Int)
         try:
@@ -1031,9 +1034,7 @@ def statistics_view(request):
         # On récupère les scores de la saison et les résultats réels
         scores = SeasonScore.objects.filter(season_id=season_id).select_related('user')
         res = CompetitionResult.objects.filter(season_id=season_id).first()
-        
-        # --- LIGNE DE DEBUG (Regarde tes logs de terminal quand tu charges la page) ---
-        raise Exception(f"DEBUG : J'ai trouvé {scores.count()} scores en base pour la saison {season_id}")
+    
         
         for s in scores:
             # Sécurité anti-None et récupération STRICTE des valeurs en base
