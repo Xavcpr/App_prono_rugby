@@ -1017,7 +1017,7 @@ def statistics_view(request):
         if a > max_a: max_a = a
 
 
-    # --- 2. LOGIQUE CLASSEMENT DÉTAILLÉ & PODIUM ---
+# --- 2. LOGIQUE CLASSEMENT DÉTAILLÉ & PODIUM ---
     detailed_ranking = []
     flair_ranking = []
     
@@ -1033,28 +1033,34 @@ def statistics_view(request):
             p_pts = s.podium_points if s.podium_points is not None else 0
             t_pts = s.total_points if s.total_points is not None else 0
 
-            # --- LOGIQUE DES BADGES BONUS ---
-            # 1. Le Vainqueur (W)
+            # --- LOGIQUE DES BADGES BONUS (CORRIGÉE SELON LE MODELS.PY) ---
             has_winner = False
-            bonus_pred = CompetitionBonusPrediction.objects.filter(player__user=s.user, season_id=season_id).first()
-            if bonus_pred and res and bonus_pred.winner == res.real_winner:
-                has_winner = True
-            
-            # 2. Le Meilleur Marqueur (S) et Réalisateur (R)
-            # Pour éviter que ça plante si les champs n'existent pas dans ton modèle, 
-            # on vérifie d'abord de manière sûre avec 'hasattr'
-            has_scorer = hasattr(s, 'best_scorer_points') and getattr(s, 'best_scorer_points', 0) > 0
-            has_realisateur = hasattr(s, 'best_real_points') and getattr(s, 'best_real_points', 0) > 0
+            has_scorer = False
+            has_realisateur = False
 
-            # Optionnel : Si tu veux FORCER l'affichage pour tester tes badges, décommente les 2 lignes ci-dessous :
-            # has_scorer = True
-            # has_realisateur = True
+            # On récupère la prédiction bonus via le joueur lié à l'utilisateur
+            bonus_pred = CompetitionBonusPrediction.objects.filter(player__user=s.user, season_id=season_id).first()
+            
+            if bonus_pred and res:
+                # 1. Le Vainqueur (W)
+                if bonus_pred.winner == res.real_winner and res.real_winner is not None:
+                    has_winner = True
+                
+                # 2. Le Meilleur Marqueur (S) -> Comparaison des chaînes de caractères (strip pour éviter les espaces)
+                if bonus_pred.best_try_scorer and res.real_best_try_scorer:
+                    if bonus_pred.best_try_scorer.strip().lower() == res.real_best_best_try_scorer.strip().lower():
+                        has_scorer = True
+
+                # 3. Le Meilleur Réalisateur (R) -> Comparaison des chaînes de caractères
+                if bonus_pred.best_point_scorer and res.real_best_point_scorer:
+                    if bonus_pred.best_point_scorer.strip().lower() == res.real_best_point_scorer.strip().lower():
+                        has_realisateur = True
 
             user_data = {
                 'username': s.user.username,
                 'match_pts': m_pts,
                 'ranking_pts': f_pts,
-                'podium_pts': p_pts,          # Tes points podium bien au chaud ici !
+                'podium_pts': p_pts,          # Tes points podium s'affichent ici
                 'total_global': t_pts,
                 'has_winner': has_winner,
                 'has_scorer': has_scorer, 
@@ -1070,7 +1076,6 @@ def statistics_view(request):
         # Tri : On classe par le Total Global, et en cas d'égalité, par les points Matchs
         detailed_ranking.sort(key=lambda x: (x['total_global'], x['match_pts']), reverse=True)
         flair_ranking.sort(key=lambda x: x['ranking_pts'], reverse=True)
-
 
     # --- 3. FILTRAGE DES SAISONS ---
     seasons = Season.objects.all().order_by('-year')
