@@ -41,7 +41,9 @@
             <option value="">Toutes</option>
             {% for comp in competitions %}
               <option value="{{ comp.id }}"
-                      {% if competition.id == comp.id %}selected{% endif %}>{{ comp.name }}</option>
+                      {% if selected_comp == comp.id or competition.id == comp.id %}selected{% endif %}>
+                {{ comp.name }}
+              </option>
             {% endfor %}
           </select>
         </div>
@@ -50,7 +52,7 @@
           <select name="season"
                   onchange="this.form.submit()"
                   class="form-select-custom flex-grow-1">
-            <option value="">-- Choisir une saison --</option>
+            <option value="" {% if not selected_season %}selected{% endif %}>-- Choisir une saison --</option>
             {% for s in seasons %}
               <option value="{{ s.id }}"
                       {% if selected_season.id == s.id %}selected{% endif %}>{{ s.year }}</option>
@@ -110,11 +112,6 @@
     <div class="card mb-4">
       <div class="card-body">
         <h5>Classement détaillé</h5>
-        {% if not selected_season %}
-          <div class="alert alert-info text-center my-3">
-            💡 Veuillez sélectionner une <strong>Saison</strong> spécifique pour afficher le détail des scores et les badges bonus.
-          </div>
-        {% endif %}
         <div class="table-container">
           <table class="rugby-board">
             <thead>
@@ -149,7 +146,6 @@
                   <td class="text-center">
                     <span class="badge bg-primary text-white" title="Points Matchs">{{ r.match_pts|default:0 }} M</span>
                     <span class="badge bg-info text-dark" title="Points Flair Classement">{{ r.ranking_pts|default:0 }} F</span>
-                    <!-- Modifié ici : Affichage direct comme M et F -->
                     <span class="badge bg-success text-white" title="Points Bonus Podium">{{ r.podium_pts|default:0 }} P</span>
                     {% if r.has_winner %}
                       <span class="badge bg-warning text-dark fw-bold"
@@ -284,7 +280,7 @@
                           {% if r.value == prev.value %}
                             -
                           {% else %}
-                            {{ forloop.counter }}
+                            {{ fforloop.counter }}
                           {% endif %}
                         {% endwith %}
                       {% endif %}
@@ -418,7 +414,7 @@
 
     const colors = ['#3498db', '#e74c3c', '#27ae60', '#f39c12', '#9b59b6', '#34495e'];
 
-    function makeDatasets(obj) {
+    !function makeDatasets(obj) {
       return Object.keys(obj).map((k, index) => ({
         label: k,
         data: obj[k],
