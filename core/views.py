@@ -1033,7 +1033,7 @@ def statistics_view(request):
         res = CompetitionResult.objects.filter(season_id=season_id).first()
         
         # --- LIGNE DE DEBUG (Regarde tes logs de terminal quand tu charges la page) ---
-        print(f"DEBUG PODIUM: Nombre de scores trouvés pour la saison {season_id} = {scores.count()}")
+        raise Exception(f"DEBUG : J'ai trouvé {scores.count()} scores en base pour la saison {season_id}")
         
         for s in scores:
             # Sécurité anti-None et récupération STRICTE des valeurs en base
