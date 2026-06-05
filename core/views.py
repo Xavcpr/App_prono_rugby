@@ -1015,7 +1015,6 @@ def statistics_view(request):
         if t > max_occurence: max_occurence = t
         if h > max_h: max_h = h
         if a > max_a: max_a = a
-
 # --- 2. LOGIQUE CLASSEMENT DÉTAILLÉ & PODIUM ---
     detailed_ranking = []
     flair_ranking = []
@@ -1034,7 +1033,12 @@ def statistics_view(request):
     # 1. Gestion de la saison par défaut liée à la compétition choisie
     if not season_id:
         if comp_id:
-            default_season = Season.objects.filter(competition_id=comp_id).order_by('-year').first()
+            # On cherche d'abord s'il y a une saison qui a des résultats de fin de saison validés
+            active_season_res = CompetitionResult.objects.filter(season__competition_id=comp_id).order_by('-season__year').first()
+            if active_season_res:
+                default_season = active_season_res.season
+            else:
+                default_season = Season.objects.filter(competition_id=comp_id).order_by('-year').first()
         else:
             default_season = Season.objects.all().order_by('-year').first()
             
@@ -1043,7 +1047,6 @@ def statistics_view(request):
 
     # 2. Extraction et calcul des scores
     if season_id or comp_id:
-        # Filtrage propre avec des entiers garantis
         scores_query = SeasonScore.objects.all()
         if comp_id:
             scores_query = scores_query.filter(competition_id=comp_id)
@@ -1052,7 +1055,7 @@ def statistics_view(request):
             
         scores = scores_query.select_related('user')
         
-        # Si la requête est vide à cause d'un problème de structure, on élargit par sécurité
+        # Si la requête est vide ou ne donne rien, fallback de secours sur la compétition globale
         if not scores.exists() and comp_id:
             scores = SeasonScore.objects.filter(competition_id=comp_id).select_related('user')
         
@@ -1063,8 +1066,6 @@ def statistics_view(request):
         for s in scores:
             m_pts = s.match_points if s.match_points is not None else 0
             f_pts = s.ranking_points if s.ranking_points is not None else 0
-            
-            # Utilisation directe du vrai nom validé par le shell : 'podium_points'
             p_pts = s.podium_points if s.podium_points is not None else 0
                 
             t_pts = m_pts + f_pts + p_pts
@@ -1086,7 +1087,7 @@ def statistics_view(request):
                     has_winner = True
                 
                 if bonus_pred.best_try_scorer and res.real_best_try_scorer:
-                    if bonus_pred.best_try_scorer.strip().lower() == res.real_best_try_scorer.strip().lower():
+                    if bonus_pred.best_try_scorer.strip().lower() == res.real_best_best_try_scorer.strip().lower():
                         has_scorer = True
 
                 if bonus_pred.best_point_scorer and res.real_best_point_scorer:
@@ -1111,8 +1112,8 @@ def statistics_view(request):
             })
         
         detailed_ranking.sort(key=lambda x: (x['total_global'], x['match_pts']), reverse=True)
-        flair_ranking.sort(key=lambda x: x['ranking_pts'], reverse=True)    
-
+        flair_ranking.sort(key=lambda x: x['ranking_pts'], reverse=True)
+        
     # --- 3. FILTRAGE DES SAISONS POUR LE FORMULAIRE ---
     seasons = Season.objects.all().order_by('-year')
     if comp_id:
