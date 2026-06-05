@@ -1049,6 +1049,19 @@ def statistics_view(request):
             scores_query = SeasonScore.objects.filter(season_id=season_id)
             
         scores = scores_query.select_related('user')
+
+        print("\n========== DEBUG SEASONSCORE ==========")
+        for score in scores:
+            print(
+                f"USER={score.user.username} | "
+                f"SEASON={score.season_id} | "
+                f"COMP={score.competition_id} | "
+                f"MATCH={score.match_points} | "
+                f"RANK={score.ranking_points} | "
+                f"PODIUM={score.podium_points} | "
+                f"TOTAL={score.total_points}"
+            )
+        print("=======================================\n")
         
         # Récupération des résultats réels pour les badges bonus
         res = CompetitionResult.objects.filter(season_id=season_id).first()
@@ -1068,9 +1081,14 @@ def statistics_view(request):
             f_pts = s.ranking_points if s.ranking_points is not None else 0
             
             # Extraction dynamique du podium via son nom détecté
-            p_pts = getattr(s, podium_field_name, 0) if podium_field_name else 0
-            if p_pts is None:
-                p_pts = 0
+            p_pts = s.podium_points or 0
+
+            print(
+                f"VIEW -> {s.user.username} | "
+                f"match={s.match_points} | "
+                f"ranking={s.ranking_points} | "
+                f"podium={p_pts}"
+            )
                 
             # Addition arithmétique forcée
             t_pts = m_pts + f_pts + p_pts
@@ -1115,6 +1133,15 @@ def statistics_view(request):
                 'username': s.user.username,
                 'ranking_pts': f_pts
             })
+            
+            print(
+                f"VIEW -> {s.user.username} | "
+                f"match={s.match_points} | "
+                f"ranking={s.ranking_points} | "
+                f"podium={s.podium_points}"
+)
+        
+        
         
         # Tri : On classe par le Total Global, et en cas d'égalité, par les points Matchs
         detailed_ranking.sort(key=lambda x: (x['total_global'], x['match_pts']), reverse=True)
