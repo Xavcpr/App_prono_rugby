@@ -149,9 +149,8 @@
                   <td class="text-center">
                     <span class="badge bg-primary text-white" title="Points Matchs">{{ r.match_pts|default:0 }} M</span>
                     <span class="badge bg-info text-dark" title="Points Flair Classement">{{ r.ranking_pts|default:0 }} F</span>
-                    {% if r.podium_pts > 0 %}
-                      <span class="badge bg-success text-white" title="Points Bonus Podium">{{ r.podium_pts }} P</span>
-                    {% endif %}
+                    <!-- Modifié ici : Affichage direct comme M et F -->
+                    <span class="badge bg-success text-white" title="Points Bonus Podium">{{ r.podium_pts|default:0 }} P</span>
                     {% if r.has_winner %}
                       <span class="badge bg-warning text-dark fw-bold"
                             title="A trouvé le Vainqueur Réel !">🏅 W</span>

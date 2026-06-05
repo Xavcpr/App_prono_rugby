@@ -1031,27 +1031,25 @@ def statistics_view(request):
             m_pts = s.match_points if s.match_points is not None else 0
             f_pts = s.ranking_points if s.ranking_points is not None else 0
             p_pts = s.podium_points if s.podium_points is not None else 0
-            t_pts = s.total_points if s.total_points is not None else 0
+            
+            # FORCE LE CALCUL ICI au lieu de faire confiance à la property du model
+            t_pts = m_pts + f_pts + p_pts  
 
-            # --- LOGIQUE DES BADGES BONUS (CORRIGÉE SELON LE MODELS.PY) ---
+            # --- LOGIQUE DES BADGES BONUS ---
             has_winner = False
             has_scorer = False
             has_realisateur = False
 
-            # On récupère la prédiction bonus via le joueur lié à l'utilisateur
             bonus_pred = CompetitionBonusPrediction.objects.filter(player__user=s.user, season_id=season_id).first()
             
             if bonus_pred and res:
-                # 1. Le Vainqueur (W)
                 if bonus_pred.winner == res.real_winner and res.real_winner is not None:
                     has_winner = True
                 
-                # 2. Le Meilleur Marqueur (S) -> Comparaison des chaînes de caractères (strip pour éviter les espaces)
                 if bonus_pred.best_try_scorer and res.real_best_try_scorer:
-                    if bonus_pred.best_try_scorer.strip().lower() == res.real_best_best_try_scorer.strip().lower():
+                    if bonus_pred.best_try_scorer.strip().lower() == res.real_best_try_scorer.strip().lower():
                         has_scorer = True
 
-                # 3. Le Meilleur Réalisateur (R) -> Comparaison des chaînes de caractères
                 if bonus_pred.best_point_scorer and res.real_best_point_scorer:
                     if bonus_pred.best_point_scorer.strip().lower() == res.real_best_point_scorer.strip().lower():
                         has_realisateur = True
@@ -1060,8 +1058,8 @@ def statistics_view(request):
                 'username': s.user.username,
                 'match_pts': m_pts,
                 'ranking_pts': f_pts,
-                'podium_pts': p_pts,          # Tes points podium s'affichent ici
-                'total_global': t_pts,
+                'podium_pts': p_pts,          
+                'total_global': t_pts, # Contiendra enfin 5363 !
                 'has_winner': has_winner,
                 'has_scorer': has_scorer, 
                 'has_realisateur': has_realisateur,
