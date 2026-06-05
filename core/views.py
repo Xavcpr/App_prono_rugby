@@ -1017,12 +1017,9 @@ def statistics_view(request):
         if a > max_a: max_a = a
 
 
-# --- 2. LOGIQUE CLASSEMENT DÉTAILLÉ & PODIUM ---
+    # --- 2. LOGIQUE CLASSEMENT DÉTAILLÉ & PODIUM (CORRIGÉE ICI) ---
     detailed_ranking = []
     flair_ranking = []
-    
-    # --- LIGNE DE DEBUG (Regarde tes logs de terminal quand tu charges la page) ---
-    raise Exception(f"DEBUG : J'ai trouvé {scores.count()} scores en base pour la saison {season_id}")
     
     if season_id:
         # Sécurité : On convertit en int pour éviter les conflits de types (Str vs Int)
@@ -1034,20 +1031,19 @@ def statistics_view(request):
         # On récupère les scores de la saison et les résultats réels
         scores = SeasonScore.objects.filter(season_id=season_id).select_related('user')
         res = CompetitionResult.objects.filter(season_id=season_id).first()
-    
+        
+        # --- ON FORCE LE CRASH DIRECTEMENT ICI POUR ENFIN REPRENDRE LE CONTRÔLE ---
+        raise Exception(f"DEBUG CRASH : Le fichier est lu ! J'ai {scores.count()} scores.")
         
         for s in scores:
             # Sécurité anti-None et récupération STRICTE des valeurs en base
             m_pts = s.match_points if s.match_points is not None else 0
             f_pts = s.ranking_points if s.ranking_points is not None else 0
             
-            # Si jamais podium_points est un champ dynamique ou mal mis à cache, 
-            # on s'assure de lire sa valeur brute ou celle de l'admin
             p_pts = getattr(s, 'podium_points', 0)
             if p_pts is None:
                 p_pts = 0
                 
-            # Re-calcul mathématique strict du total global pour court-circuiter le modèle
             t_pts = m_pts + f_pts + p_pts
 
             # --- LOGIQUE DES BADGES BONUS ---
@@ -1061,7 +1057,6 @@ def statistics_view(request):
                 if bonus_pred.winner == res.real_winner and res.real_winner is not None:
                     has_winner = True
                 
-                # Correction d'une petite typo sur le nom du champ du modèle réel
                 if bonus_pred.best_try_scorer and res.real_best_try_scorer:
                     if bonus_pred.best_try_scorer.strip().lower() == res.real_best_try_scorer.strip().lower():
                         has_scorer = True
@@ -1091,6 +1086,7 @@ def statistics_view(request):
         detailed_ranking.sort(key=lambda x: (x['total_global'], x['match_pts']), reverse=True)
         flair_ranking.sort(key=lambda x: x['ranking_pts'], reverse=True)
 
+
     # --- 3. FILTRAGE DES SAISONS ---
     seasons = Season.objects.all().order_by('-year')
     if comp_id:
@@ -1118,14 +1114,12 @@ def statistics_view(request):
         'detailed_ranking': detailed_ranking,
         'flair_ranking': flair_ranking,
         
-        # Gardés vides pour l'instant pour éviter les erreurs d'autres tableaux manquants
         'kpi': {'tout_pile': 0, 'demi_tout_pile': 0, 'bon_bonus_off': 0, 'mauvais_bonus_off': 0, 'bon_bonus_def': 0, 'mauvais_bonus_def': 0},
         'choppes_or': [], 'chopes_cumulees': [], 'cuilleres_bois': [], 'victory_table': [],
         'labels': [], 'score_series': {}, 'rank_series': {},
     }
     
     return render(request, 'scores_statistics.html', context)
-
 
 def bareme_view(request):
     return render(request, 'bareme.html', {
