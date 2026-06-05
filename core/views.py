@@ -1016,17 +1016,26 @@ def statistics_view(request):
         if h > max_h: max_h = h
         if a > max_a: max_a = a
 
-    # --- 2. LOGIQUE CLASSEMENT DÉTAILLÉ & PODIUM ---
+# --- 2. LOGIQUE CLASSEMENT DÉTAILLÉ & PODIUM ---
     detailed_ranking = []
     flair_ranking = []
     
-    # 1. Gestion stricte de la saison par défaut liée à la compétition choisie
-    if not season_id or season_id == "":
+    # CONVERSION STRICTE DES PARAMÈTRES EN ENTIERS POUR L'ORM
+    try:
+        comp_id = int(comp_id) if comp_id else None
+    except (ValueError, TypeError):
+        comp_id = None
+
+    try:
+        season_id = int(season_id) if season_id else None
+    except (ValueError, TypeError):
+        season_id = None
+    
+    # 1. Gestion de la saison par défaut liée à la compétition choisie
+    if not season_id:
         if comp_id:
-            # On cherche la saison la plus récente liée spécifiquement à CETTE compétition
             default_season = Season.objects.filter(competition_id=comp_id).order_by('-year').first()
         else:
-            # Repli global s'il n'y a même pas de compétition
             default_season = Season.objects.all().order_by('-year').first()
             
         if default_season:
@@ -1034,45 +1043,30 @@ def statistics_view(request):
 
     # 2. Extraction et calcul des scores
     if season_id or comp_id:
-        try:
-            if season_id:
-                season_id = int(season_id)
-        except ValueError:
-            pass
-
-        # Filtrage par compétition en priorité si disponible pour éviter les exclusions de lignes
+        # Filtrage propre avec des entiers garantis
+        scores_query = SeasonScore.objects.all()
         if comp_id:
-            scores_query = SeasonScore.objects.filter(competition_id=comp_id)
-            if scores_query.filter(season_id=season_id).exists():
-                scores_query = scores_query.filter(season_id=season_id)
-        else:
-            scores_query = SeasonScore.objects.filter(season_id=season_id)
+            scores_query = scores_query.filter(competition_id=comp_id)
+        if season_id:
+            scores_query = scores_query.filter(season_id=season_id)
             
         scores = scores_query.select_related('user')
         
-        # Récupération des résultats réels pour les badges bonus
+        # Si la requête est vide à cause d'un problème de structure, on élargit par sécurité
+        if not scores.exists() and comp_id:
+            scores = SeasonScore.objects.filter(competition_id=comp_id).select_related('user')
+        
         res = CompetitionResult.objects.filter(season_id=season_id).first()
         if not res and comp_id:
             res = CompetitionResult.objects.filter(season__competition_id=comp_id).first()
         
-        # --- INTROSPECTION DYNAMIQUE DU CHAMP PODIUM ---
-        # Django cherche tout seul le vrai nom du champ qui contient 'podium' (ex: podium_points, points_podium)
-        podium_field_name = next(
-            (f.name for f in SeasonScore._meta.get_fields() if 'podium' in f.name.lower()), 
-            None
-        )
-        
         for s in scores:
-            # Extraction propre des points de matchs et classements
             m_pts = s.match_points if s.match_points is not None else 0
             f_pts = s.ranking_points if s.ranking_points is not None else 0
             
-            # Extraction dynamique du podium via son nom détecté
-            p_pts = getattr(s, podium_field_name, 0) if podium_field_name else 0
-            if p_pts is None:
-                p_pts = 0
+            # Utilisation directe du vrai nom validé par le shell : 'podium_points'
+            p_pts = s.podium_points if s.podium_points is not None else 0
                 
-            # Addition arithmétique forcée
             t_pts = m_pts + f_pts + p_pts
 
             # --- LOGIQUE DES BADGES BONUS ---
@@ -1103,7 +1097,7 @@ def statistics_view(request):
                 'username': s.user.username,
                 'match_pts': m_pts,
                 'ranking_pts': f_pts,
-                'podium_pts': p_pts, # On garde la clé 'podium_pts' pour ton template HTML
+                'podium_pts': p_pts, 
                 'total_global': t_pts, 
                 'has_winner': has_winner,
                 'has_scorer': has_scorer, 
@@ -1116,9 +1110,8 @@ def statistics_view(request):
                 'ranking_pts': f_pts
             })
         
-        # Tri : On classe par le Total Global, et en cas d'égalité, par les points Matchs
         detailed_ranking.sort(key=lambda x: (x['total_global'], x['match_pts']), reverse=True)
-        flair_ranking.sort(key=lambda x: x['ranking_pts'], reverse=True)        
+        flair_ranking.sort(key=lambda x: x['ranking_pts'], reverse=True)    
 
     # --- 3. FILTRAGE DES SAISONS POUR LE FORMULAIRE ---
     seasons = Season.objects.all().order_by('-year')
