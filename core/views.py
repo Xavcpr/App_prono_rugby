@@ -1082,7 +1082,7 @@ def statistics_view(request):
                 'username': s.user.username,
                 'match_pts': m_pts,
                 'ranking_pts': f_pts,
-                'podium_pts': p_pts,          
+                'podium_pts': p_pts,          # Modifié ici : 'podium_pts' au lieu de 'podium_points'
                 'total_global': t_pts, 
                 'has_winner': has_winner,
                 'has_scorer': has_scorer, 
