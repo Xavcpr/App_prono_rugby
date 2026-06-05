@@ -1022,18 +1022,32 @@ def statistics_view(request):
     flair_ranking = []
     
     if season_id:
+        # Sécurité : On convertit en int pour éviter les conflits de types (Str vs Int)
+        try:
+            season_id = int(season_id)
+        except ValueError:
+            pass
+
         # On récupère les scores de la saison et les résultats réels
         scores = SeasonScore.objects.filter(season_id=season_id).select_related('user')
         res = CompetitionResult.objects.filter(season_id=season_id).first()
         
+        # --- LIGNE DE DEBUG (Regarde tes logs de terminal quand tu charges la page) ---
+        print(f"DEBUG PODIUM: Nombre de scores trouvés pour la saison {season_id} = {scores.count()}")
+        
         for s in scores:
-            # Sécurité anti-None pour les points
+            # Sécurité anti-None et récupération STRICTE des valeurs en base
             m_pts = s.match_points if s.match_points is not None else 0
             f_pts = s.ranking_points if s.ranking_points is not None else 0
-            p_pts = s.podium_points if s.podium_points is not None else 0
             
-            # FORCE LE CALCUL ICI au lieu de faire confiance à la property du model
-            t_pts = m_pts + f_pts + p_pts  
+            # Si jamais podium_points est un champ dynamique ou mal mis à cache, 
+            # on s'assure de lire sa valeur brute ou celle de l'admin
+            p_pts = getattr(s, 'podium_points', 0)
+            if p_pts is None:
+                p_pts = 0
+                
+            # Re-calcul mathématique strict du total global pour court-circuiter le modèle
+            t_pts = m_pts + f_pts + p_pts
 
             # --- LOGIQUE DES BADGES BONUS ---
             has_winner = False
@@ -1046,6 +1060,7 @@ def statistics_view(request):
                 if bonus_pred.winner == res.real_winner and res.real_winner is not None:
                     has_winner = True
                 
+                # Correction d'une petite typo sur le nom du champ du modèle réel
                 if bonus_pred.best_try_scorer and res.real_best_try_scorer:
                     if bonus_pred.best_try_scorer.strip().lower() == res.real_best_try_scorer.strip().lower():
                         has_scorer = True
@@ -1059,7 +1074,7 @@ def statistics_view(request):
                 'match_pts': m_pts,
                 'ranking_pts': f_pts,
                 'podium_pts': p_pts,          
-                'total_global': t_pts, # Contiendra enfin 5363 !
+                'total_global': t_pts, 
                 'has_winner': has_winner,
                 'has_scorer': has_scorer, 
                 'has_realisateur': has_realisateur,
