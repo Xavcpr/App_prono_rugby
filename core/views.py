@@ -1017,12 +1017,18 @@ def statistics_view(request):
         if a > max_a: max_a = a
 
 
-    # --- 2. LOGIQUE CLASSEMENT DÉTAILLÉ & PODIUM (CORRIGÉE ICI) ---
+# --- 2. LOGIQUE CLASSEMENT DÉTAILLÉ & PODIUM ---
     detailed_ranking = []
     flair_ranking = []
     
+    # SI season_id est absent, vide ou non numérique, on charge la saison par défaut
+    if not season_id or season_id == "":
+        # On va chercher la toute première saison disponible (la seule en BDD)
+        default_season = Season.objects.all().order_by('-year').first()
+        if default_season:
+            season_id = default_season.id
+
     if season_id:
-        # Sécurité : On convertit en int pour éviter les conflits de types (Str vs Int)
         try:
             season_id = int(season_id)
         except ValueError:
@@ -1031,9 +1037,6 @@ def statistics_view(request):
         # On récupère les scores de la saison et les résultats réels
         scores = SeasonScore.objects.filter(season_id=season_id).select_related('user')
         res = CompetitionResult.objects.filter(season_id=season_id).first()
-        
-        # --- ON FORCE LE CRASH DIRECTEMENT ICI POUR ENFIN REPRENDRE LE CONTRÔLE ---
-        raise Exception(f"DEBUG CRASH : Le fichier est lu ! J'ai {scores.count()} scores.")
         
         for s in scores:
             # Sécurité anti-None et récupération STRICTE des valeurs en base
@@ -1085,8 +1088,8 @@ def statistics_view(request):
         # Tri : On classe par le Total Global, et en cas d'égalité, par les points Matchs
         detailed_ranking.sort(key=lambda x: (x['total_global'], x['match_pts']), reverse=True)
         flair_ranking.sort(key=lambda x: x['ranking_pts'], reverse=True)
-
-
+        
+        
     # --- 3. FILTRAGE DES SAISONS ---
     seasons = Season.objects.all().order_by('-year')
     if comp_id:
