@@ -665,35 +665,71 @@ def statistiques_view(request):
     if competition_id and competition_id.isdigit():
         competition = Competition.objects.filter(id=int(competition_id)).first()
 
-    # 2. Gestion des Saisons
-    # Si competition est None, on montre TOUTES les saisons >= 2025 de TOUTES les compétitions
-    seasons = Season.objects.filter(year__gte=2025)
+# 2. Gestion des Saisons & Construction des libellés uniques pour le menu
+    seasons_qs = Season.objects.filter(year__gte=2025).order_by("-year", "competition__name")
+    
     if competition:
-        seasons = seasons.filter(competition=competition)
-    seasons = seasons.order_by("-year", "competition__name")
+        seasons_qs = seasons_qs.filter(competition=competition)
+
+    # On crée une liste de dictionnaires uniques pour le menu déroulant du template
+    distinct_seasons = []
+    seen_years = set()
+    
+    for s in seasons_qs:
+        # Si on est en mode global (Toutes), on ne veut pas afficher "2025" deux fois
+        if not competition:
+            if s.year not in seen_years:
+                seen_years.add(s.year)
+                # Libellé intelligent global
+                label = f"{s.year}/{s.year+1}" if s.year == 2025 else f"{s.year}"
+                distinct_seasons.append({'id': s.year, 'label': label, 'year': s.year})
+        else:
+            # Si une compétition est sélectionnée, on affiche le vrai format de la compétition
+            if s.competition.name.lower() == "6 nations":
+                label = f"{s.year}"
+            else:
+                label = f"{s.year}/{s.year+1}"
+            distinct_seasons.append({'id': s.id, 'label': label, 'year': s.year})
 
     # 3. Sélection de la saison
     selected_season = None
-    if season_id.isdigit():
-        selected_season = seasons.filter(id=int(season_id)).first()
-    
-    # On ne force un selected_season que si une compétition est choisie
-    if not selected_season and competition:
-        selected_season = seasons.first()
+    selected_year = None
 
+    if season_id and season_id.isdigit():
+        if competition:
+            # Si comp sélectionnée, season_id est l'ID de la ligne Season
+            selected_season = Season.objects.filter(id=int(season_id)).first()
+            if selected_season:
+                selected_year = selected_season.year
+        else:
+            # Si "Toutes", season_id est en fait l'année (year) cliquée
+            selected_year = int(season_id)
+    
+    # Si rien n'est sélectionné par l'utilisateur et qu'on a une compétition, on prend la dernière
+    if not selected_year and not selected_season and competition:
+        selected_season = seasons_qs.first()
+        if selected_season:
+            selected_year = selected_season.year
+            
     # 4. Calcul des stats de base via ta fonction existante
     stats = compute_statistics(competition, season=selected_season)
 
-    # --- 5. SÉCURISATION ET SYNCHRONISATION DES SCORES DEPUIS SEASONSCORE ---
+# --- 5. SÉCURISATION ET SYNCHRONISATION DES SCORES DEPUIS SEASONSCORE ---
     season_scores = {}
     try:
         qs = SeasonScore.objects.all()
-        if selected_season:
-            qs = qs.filter(season=selected_season)
-        elif competition:
-            qs = qs.filter(competition=competition)
+        
+        if competition:
+            if selected_season:
+                qs = qs.filter(season=selected_season)
+        else:
+            # Mode global : on filtre par l'année de la saison si l'utilisateur a choisi un package annuel
+            if selected_year:
+                qs = qs.filter(season__year=selected_year)
+            else:
+                # Par défaut, si aucun filtre, on affiche la saison en cours (2025)
+                qs = qs.filter(season__year=2025)
             
-        # On groupe par utilisateur pour sommer proprement les différents compartiments
         user_points = qs.values('user__username').annotate(
             total_match=Sum('match_points'),
             total_ranking=Sum('ranking_points'),
@@ -708,7 +744,7 @@ def statistiques_view(request):
             }
     except Exception:
         season_scores = {}
-
+        
     # Remplissage et mise à jour de detailed_ranking
     for r in stats.detailed_ranking:
         username = r['username']
@@ -735,7 +771,7 @@ def statistiques_view(request):
     context = {
         "competitions": competitions,
         "competition": competition,
-        "seasons": seasons,
+        "seasons": distinct_seasons, # On passe notre liste propre nettoyée de doublons
         "selected_season": selected_season,
         "kpi": stats.kpi,
         "labels": stats.labels,
