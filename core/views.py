@@ -676,25 +676,24 @@ def statistiques_view(request):
     seen_years = set()
     
     for s in seasons_qs:
-        # Conversion de sécurité au cas où l'année est un string en BDD
         try:
             year_int = int(s.year)
         except (ValueError, TypeError):
-            year_int = 2025 # Fallback de sécurité
+            year_int = 2025
 
-        # Si on est en mode global (Toutes), on ne veut pas afficher "2025" deux fois
+        # CORRECTION DU LIBELLÉ : On vérifie TOUJOURS si c'est le 6 Nations, même en vue globale
+        if s.competition and "6 nations" in s.competition.name.lower():
+            label = f"{s.year}"
+        else:
+            label = f"{year_int}/{year_int+1}"
+
         if not competition:
+            # En mode global, on regroupe par année brute pour éviter les doublons textuels
             if s.year not in seen_years:
                 seen_years.add(s.year)
-                # Libellé intelligent global
-                label = f"{year_int}/{year_int+1}" if year_int == 2025 else f"{s.year}"
                 distinct_seasons.append({'id': s.year, 'label': label, 'year': s.year})
         else:
-            # Si une compétition est sélectionnée, on affiche le vrai format de la compétition
-            if s.competition.name.lower() == "6 nations":
-                label = f"{s.year}"
-            else:
-                label = f"{year_int}/{year_int+1}"
+            # En mode compétition sélectionnée, on garde l'ID unique de la saison
             distinct_seasons.append({'id': s.id, 'label': label, 'year': s.year})
 
     # 3. Sélection de la saison
@@ -703,15 +702,13 @@ def statistiques_view(request):
 
     if season_id and season_id.isdigit():
         if competition:
-            # Si comp sélectionnée, season_id est l'ID de la ligne Season
             selected_season = Season.objects.filter(id=int(season_id)).first()
             if selected_season:
                 selected_year = selected_season.year
         else:
-            # Si "Toutes", season_id est en fait l'année (year) cliquée
             selected_year = int(season_id)
     
-    # Si rien n'est sélectionné par l'utilisateur et qu'on a une compétition, on prend la dernière
+    # Si une compétition spécifique est demandée sans choix de saison, on prend la dernière disponible
     if not selected_year and not selected_season and competition:
         selected_season = seasons_qs.first()
         if selected_season:
@@ -729,12 +726,10 @@ def statistiques_view(request):
             if selected_season:
                 qs = qs.filter(season=selected_season)
         else:
-            # Mode global : on filtre par l'année de la saison si l'utilisateur a choisi un package annuel
+            # CORRECTION VUE GLOBALE : Si l'utilisateur n'a pas sélectionné d'année spécifique,
+            # on ne filtre PAS sur 2025 par défaut, on prend TOUT l'historique global pour avoir les vrais totaux !
             if selected_year:
                 qs = qs.filter(season__year=selected_year)
-            else:
-                # Par défaut, si aucun filtre, on affiche la saison en cours (2025)
-                qs = qs.filter(season__year=2025)
             
         user_points = qs.values('user__username').annotate(
             total_match=Sum('match_points'),
@@ -756,18 +751,18 @@ def statistiques_view(request):
         username = r['username']
         user_scores = season_scores.get(username, {'match_pts': 0, 'ranking_pts': 0, 'podium_pts': 0})
         
-        # On prend les points de l'ORM en priorité, sinon fallback sur ce que compute_statistics a trouvé
+        # On injecte les valeurs synchronisées
         r['match_pts'] = user_scores['match_pts'] if user_scores['match_pts'] > 0 else r.get('points', 0)
         r['ranking_pts'] = user_scores['ranking_pts']
         r['podium_pts'] = user_scores['podium_pts']
         
-        # Le total global est recalculé de manière transparente et stricte
+        # Recalcul strict du total
         r['total_global'] = r['match_pts'] + r['ranking_pts'] + r['podium_pts']
 
-    # Tri par total global décroissant, puis par points de matchs en cas d'égalité
+    # Tri par total global décroissant, puis par points de matchs
     stats.detailed_ranking.sort(key=lambda x: (x['total_global'], x['match_pts']), reverse=True)
     
-    # On cherche la dernière journée pour le bouton
+    # On cherche la dernière journée pour le bouton Résultats
     last_round_id = None
     if selected_season:
         lr = Round.objects.filter(season=selected_season).order_by('-number').first()
@@ -777,7 +772,7 @@ def statistiques_view(request):
     context = {
         "competitions": competitions,
         "competition": competition,
-        "seasons": distinct_seasons, # On passe notre liste propre nettoyée de doublons
+        "seasons": distinct_seasons,
         "selected_season": selected_season,
         "kpi": stats.kpi,
         "labels": stats.labels,
@@ -795,7 +790,6 @@ def statistiques_view(request):
     }
 
     return render(request, "statistiques.html", context)
-
 
 
 @login_required
