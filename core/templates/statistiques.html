@@ -52,10 +52,15 @@
           <select name="season"
                   onchange="this.form.submit()"
                   class="form-select-custom flex-grow-1">
-            <option value="" {% if not selected_season %}selected{% endif %}>-- Choisir une saison --</option>
+            <option value=""
+                    {% if not selected_season and not request.GET.season %}selected{% endif %}>
+              -- Choisir une saison --
+            </option>
             {% for s in seasons %}
               <option value="{{ s.id }}"
-                      {% if selected_season.id == s.id %}selected{% endif %}>{{ s.year }}</option>
+                      {% if request.GET.season == s.id|stringformat:"i" or selected_season.id == s.id or request.GET.season == s.year|stringformat:"i" %}selected{% endif %}>
+                {{ s.label }}
+              </option>
             {% endfor %}
           </select>
         </div>
@@ -141,23 +146,29 @@
                   <td class="text-start ps-3">
                     <strong>{{ r.username }}</strong>
                     {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-2">Moi</span>{% endif %}
-                    {% if r.podium_pts > 0 %}<span class="badge bg-success text-white ms-1">🏆 Top Podium</span>{% endif %}
+                    {# N'afficher l'étiquette Top Podium que si la compétition ET la saison sont filtrées #}
+                    {% if competition and selected_season %}
+                      {% if r.podium_pts > 0 %}<span class="badge bg-success text-white ms-1">🏆 Top Podium</span>{% endif %}
+                    {% endif %}
                   </td>
                   <td class="text-center">
                     <span class="badge bg-primary text-white" title="Points Matchs">{{ r.match_pts|default:0 }} M</span>
                     <span class="badge bg-info text-dark" title="Points Flair Classement">{{ r.ranking_pts|default:0 }} F</span>
                     <span class="badge bg-success text-white" title="Points Bonus Podium">{{ r.podium_pts|default:0 }} P</span>
-                    {% if r.has_winner %}
-                      <span class="badge bg-warning text-dark fw-bold"
-                            title="A trouvé le Vainqueur Réel !">🏅 W</span>
-                    {% endif %}
-                    {% if r.has_scorer %}
-                      <span class="badge bg-secondary text-white fw-bold"
-                            title="A trouvé le Meilleur Marqueur !">🏉 S</span>
-                    {% endif %}
-                    {% if r.has_realisateur %}
-                      <span class="badge bg-dark text-white fw-bold"
-                            title="A trouvé le Meilleur Réalisateur !">🎯 R</span>
+                    {# N'afficher les macarons bonus individuels que si la compétition ET la saison sont filtrées #}
+                    {% if competition and selected_season %}
+                      {% if r.has_winner %}
+                        <span class="badge bg-warning text-dark fw-bold"
+                              title="A trouvé le Vainqueur Réel !">🏅 W</span>
+                      {% endif %}
+                      {% if r.has_scorer %}
+                        <span class="badge bg-secondary text-white fw-bold"
+                              title="A trouvé le Meilleur Marqueur !">🏉 S</span>
+                      {% endif %}
+                      {% if r.has_realisateur %}
+                        <span class="badge bg-dark text-white fw-bold"
+                              title="A trouvé le Meilleur Réalisateur !">🎯 R</span>
+                      {% endif %}
                     {% endif %}
                   </td>
                   <td class="text-end pe-3 fw-bold text-primary" style="font-size: 1.1em;">{{ r.total_global }} pts</td>
@@ -236,185 +247,185 @@
                       {% if forloop.first %}
                         {{ forloop.counter }}
                       {% else %}
-                        {% with prev=chopes_cumulees|slice:forloop.counter0|last %}
-                          {% if r.value == prev.value %}
-                            -
-                          {% else %}
-                            {{ forloop.counter }}
-                          {% endif %}
-                        {% endwith %}
-                      {% endif %}
-                    </td>
-                    <td>
-                      {{ r.username }}
-                      {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
-                    </td>
-                    <td class="fw-bold" style="color:#f39c12">{{ r.value }}</td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
+                        {% Math with prev=chopes_cumulees|slice:forloop.counter0|last %}
+                        {% if r.value == prev.value %}
+                          -
+                        {% else %}
+                          {{ forloop.counter }}
+                        {% endif %}
+                      {% endwith %}
+                    {% endif %}
+                  </td>
+                  <td>
+                    {{ r.username }}
+                    {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
+                  </td>
+                  <td class="fw-bold" style="color:#f39c12">{{ r.value }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
       </div>
-      <div class="col-md-4">
-        <div class="card mb-4">
-          <div class="card-body">
-            <h5>🥄 Cuillères de bois</h5>
-            <table class="rugby-board">
-              <thead>
+    </div>
+    <div class="col-md-4">
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5>🥄 Cuillères de bois</h5>
+          <table class="rugby-board">
+            <thead>
+              <tr>
+                <th class="rank-col">#</th>
+                <th>Joueur</th>
+                <th>🥄</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in cuilleres_bois %}
                 <tr>
-                  <th class="rank-col">#</th>
-                  <th>Joueur</th>
-                  <th>🥄</th>
+                  <td>
+                    {% if forloop.first %}
+                      {{ forloop.counter }}
+                    {% else %}
+                      {% with prev=cuilleres_bois|slice:forloop.counter0|last %}
+                        {% if r.value == prev.value %}
+                          -
+                        {% else %}
+                          {{ forloop.counter }}
+                        {% endif %}
+                      {% endwith %}
+                    {% endif %}
+                  </td>
+                  <td>
+                    {{ r.username }}
+                    {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
+                  </td>
+                  <td class="fw-bold" style="color:#8b4513">{{ r.value }}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {% for r in cuilleres_bois %}
-                  <tr>
-                    <td>
-                      {% if forloop.first %}
-                        {{ forloop.counter }}
-                      {% else %}
-                        {% with prev=cuilleres_bois|slice:forloop.counter0|last %}
-                          {% if r.value == prev.value %}
-                            -
-                          {% else %}
-                            {{ fforloop.counter }}
-                          {% endif %}
-                        {% endwith %}
-                      {% endif %}
-                    </td>
-                    <td>
-                      {{ r.username }}
-                      {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
-                    </td>
-                    <td class="fw-bold" style="color:#8b4513">{{ r.value }}</td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-6">
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5>Flair Classement 📊</h5>
+          <table class="rugby-board">
+            <thead>
+              <tr>
+                <th class="rank-col">#</th>
+                <th>Joueur</th>
+                <th>Points</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in flair_ranking %}
+                <tr>
+                  <td class="rank-col">
+                    {% if forloop.first %}
+                      {{ forloop.counter }}
+                    {% else %}
+                      {% with prev=flair_ranking|slice:forloop.counter0|last %}
+                        {% if r.ranking_pts == prev.ranking_pts %}
+                          -
+                        {% else %}
+                          {{ forloop.counter }}
+                        {% endif %}
+                      {% endwith %}
+                    {% endif %}
+                  </td>
+                  <td class="text-start ps-3">
+                    <strong>{{ r.username }}</strong>
+                    {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-2">Moi</span>{% endif %}
+                  </td>
+                  <td class="fw-bold text-primary">{{ r.ranking_pts }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card mb-4">
+        <div class="card-body">
+          <h5>Bons pronostics de victoire ✅</h5>
+          <table class="rugby-board">
+            <thead>
+              <tr>
+                <th class="rank-col">#</th>
+                <th>Joueur</th>
+                <th>Bons</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in victory_table %}
+                <tr>
+                  <td class="rank-col">
+                    {% if forloop.first %}
+                      {{ forloop.counter }}
+                    {% else %}
+                      {% with prev=victory_table|slice:forloop.counter0|last %}
+                        {% if r.bons == prev.bons %}
+                          -
+                        {% else %}
+                          {{ forloop.counter }}
+                        {% endif %}
+                      {% endwith %}
+                    {% endif %}
+                  </td>
+                  <td class="text-start ps-3">
+                    {{ r.username }}
+                    {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
+                  </td>
+                  <td class="fw-bold text-success">{{ r.bons }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-12 mb-4">
+      <div class="card">
+        <div class="card-body">
+          <h5>Évolution des scores</h5>
+          <div style="height: 300px;">
+            <canvas id="scoreChart"></canvas>
           </div>
         </div>
       </div>
     </div>
-    <div class="row">
-      <div class="col-md-6">
-        <div class="card mb-4">
-          <div class="card-body">
-            <h5>Flair Classement 📊</h5>
-            <table class="rugby-board">
-              <thead>
-                <tr>
-                  <th class="rank-col">#</th>
-                  <th>Joueur</th>
-                  <th>Points</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for r in flair_ranking %}
-                  <tr>
-                    <td class="rank-col">
-                      {% if forloop.first %}
-                        {{ forloop.counter }}
-                      {% else %}
-                        {% with prev=flair_ranking|slice:forloop.counter0|last %}
-                          {% if r.ranking_pts == prev.ranking_pts %}
-                            -
-                          {% else %}
-                            {{ forloop.counter }}
-                          {% endif %}
-                        {% endwith %}
-                      {% endif %}
-                    </td>
-                    <td class="text-start ps-3">
-                      <strong>{{ r.username }}</strong>
-                      {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-2">Moi</span>{% endif %}
-                    </td>
-                    <td class="fw-bold text-primary">{{ r.ranking_pts }}</td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="card mb-4">
-          <div class="card-body">
-            <h5>Bons pronostics de victoire ✅</h5>
-            <table class="rugby-board">
-              <thead>
-                <tr>
-                  <th class="rank-col">#</th>
-                  <th>Joueur</th>
-                  <th>Bons</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for r in victory_table %}
-                  <tr>
-                    <td class="rank-col">
-                      {% if forloop.first %}
-                        {{ forloop.counter }}
-                      {% else %}
-                        {% with prev=victory_table|slice:forloop.counter0|last %}
-                          {% if r.bons == prev.bons %}
-                            -
-                          {% else %}
-                            {{ forloop.counter }}
-                          {% endif %}
-                        {% endwith %}
-                      {% endif %}
-                    </td>
-                    <td class="text-start ps-3">
-                      {{ r.username }}
-                      {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
-                    </td>
-                    <td class="fw-bold text-success">{{ r.bons }}</td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="row">
-      <div class="col-md-12 mb-4">
-        <div class="card">
-          <div class="card-body">
-            <h5>Évolution des scores</h5>
-            <div style="height: 300px;">
-              <canvas id="scoreChart"></canvas>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-12 mb-4">
-        <div class="card">
-          <div class="card-body">
-            <h5>Évolution du classement</h5>
-            <div style="height: 250px;">
-              <canvas id="rankChart"></canvas>
-            </div>
+    <div class="col-md-12 mb-4">
+      <div class="card">
+        <div class="card-body">
+          <h5>Évolution du classement</h5>
+          <div style="height: 250px;">
+            <canvas id="rankChart"></canvas>
           </div>
         </div>
       </div>
     </div>
   </div>
-  {{ labels|json_script:"labels-data" }}
-  {{ score_series|json_script:"score-series-data" }}
-  {{ rank_series|json_script:"rank-series-data" }}
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script>
+</div>
+{{ labels|json_script:"labels-data" }}
+{{ score_series|json_script:"score-series-data" }}
+{{ rank_series|json_script:"rank-series-data" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
     const labels = JSON.parse(document.getElementById("labels-data").textContent || '[]');
     const scoreSeries = JSON.parse(document.getElementById("score-series-data").textContent || '{}');
     const rankSeries  = JSON.parse(document.getElementById("rank-series-data").textContent || '{}');
 
     const colors = ['#3498db', '#e74c3c', '#27ae60', '#f39c12', '#9b59b6', '#34495e'];
 
-    !function makeDatasets(obj) {
+    function makeDatasets(obj) {
       return Object.keys(obj).map((k, index) => ({
         label: k,
         data: obj[k],
@@ -435,5 +446,5 @@
         options: { ...opt, scales: { y: { reverse: true, ticks: { stepSize: 1 } } } } 
       });
     }
-  </script>
+</script>
 {% endblock %}

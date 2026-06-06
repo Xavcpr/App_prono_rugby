@@ -665,7 +665,7 @@ def statistiques_view(request):
     if competition_id and competition_id.isdigit():
         competition = Competition.objects.filter(id=int(competition_id)).first()
 
-# 2. Gestion des Saisons & Construction des libellés uniques pour le menu
+    # 2. Gestion des Saisons & Construction des libellés uniques pour le menu
     seasons_qs = Season.objects.filter(year__gte=2025).order_by("-year", "competition__name")
     
     if competition:
@@ -676,19 +676,25 @@ def statistiques_view(request):
     seen_years = set()
     
     for s in seasons_qs:
+        # Conversion de sécurité au cas où l'année est un string en BDD
+        try:
+            year_int = int(s.year)
+        except (ValueError, TypeError):
+            year_int = 2025 # Fallback de sécurité
+
         # Si on est en mode global (Toutes), on ne veut pas afficher "2025" deux fois
         if not competition:
             if s.year not in seen_years:
                 seen_years.add(s.year)
                 # Libellé intelligent global
-                label = f"{s.year}/{s.year+1}" if s.year == 2025 else f"{s.year}"
+                label = f"{year_int}/{year_int+1}" if year_int == 2025 else f"{s.year}"
                 distinct_seasons.append({'id': s.year, 'label': label, 'year': s.year})
         else:
             # Si une compétition est sélectionnée, on affiche le vrai format de la compétition
             if s.competition.name.lower() == "6 nations":
                 label = f"{s.year}"
             else:
-                label = f"{s.year}/{s.year+1}"
+                label = f"{year_int}/{year_int+1}"
             distinct_seasons.append({'id': s.id, 'label': label, 'year': s.year})
 
     # 3. Sélection de la saison
@@ -714,7 +720,7 @@ def statistiques_view(request):
     # 4. Calcul des stats de base via ta fonction existante
     stats = compute_statistics(competition, season=selected_season)
 
-# --- 5. SÉCURISATION ET SYNCHRONISATION DES SCORES DEPUIS SEASONSCORE ---
+    # --- 5. SÉCURISATION ET SYNCHRONISATION DES SCORES DEPUIS SEASONSCORE ---
     season_scores = {}
     try:
         qs = SeasonScore.objects.all()
