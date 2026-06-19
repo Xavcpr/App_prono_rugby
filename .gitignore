@@ -1,9 +1,25 @@
 # Python
 __pycache__/
 *.pyc
+*.pyo
 
 # Virtualenv
 venv/
 
-# SQLite
+# SQLite databases
 db.sqlite3
+db_backup.sqlite3
+core/db.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+Thumbs.db
+.DS_Store
