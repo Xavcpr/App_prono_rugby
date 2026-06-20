@@ -669,7 +669,6 @@ def statistiques_view(request):
     seasons_qs = Season.objects.annotate(
         nb_rounds=Count('rounds')
     ).filter(
-        Q(year__startswith='2024') | Q(year__startswith='2025') | Q(year__startswith='2026'),
         nb_rounds__gt=0,
     ).order_by("-year", "competition__name")
     
@@ -717,6 +716,14 @@ def statistiques_view(request):
                 'year': s.year
             })
 
+    # Limiter le dropdown aux 2 saisons les plus récentes
+    if not competition:
+        distinct_seasons.sort(key=lambda x: int(x['year']), reverse=True)
+    else:
+        # En mode compétition, extraire l'année de début pour le tri
+        distinct_seasons.sort(key=lambda x: int(get_season_key(x['year'])), reverse=True)
+    distinct_seasons = distinct_seasons[:2]
+
     # 3. Sélection de la saison
     selected_season = None
     selected_year = None
@@ -737,11 +744,12 @@ def statistiques_view(request):
                         selected_year = key
                         break
     
-    # Si une compétition spécifique est demandée sans choix de saison, on prend la dernière disponible
+    # Si une compétition spécifique est demandée sans choix de saison, on prend la plus récente
     if not selected_year and not selected_season and competition:
-        selected_season = seasons_qs.first()
-        if selected_season:
-            selected_year = selected_season.year
+        if distinct_seasons:
+            selected_season = Season.objects.filter(id=distinct_seasons[0]['id']).first()
+            if selected_season:
+                selected_year = selected_season.year
             
     # 4. Calcul des stats de base via ta fonction existante
     if not competition and selected_year and selected_year in season_groups:
