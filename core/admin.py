@@ -134,14 +134,14 @@ class CompetitionResultAdmin(admin.ModelAdmin):
     def get_season_year(self, obj):
         return obj.season.year
 
-    @admin.action(description="🔥 Calculer/Rafraîchir les points de fin de saison 🔥")
+    @admin.action(description="🔥 Calculer les points de classement (phase régulière) 🔥")
     def recalculate_season_points(self, request, queryset):
         if queryset.count() > 1:
             self.message_user(request, "Erreur : Sélectionnez une seule saison.", messages.ERROR)
             return
         result_obj = queryset.first()
         try:
-            msg = compute_season_ranking_points(result_obj.season)
+            msg = compute_season_ranking_points(result_obj.season, compute_podium=False)
             self.message_user(request, f"Succès : {msg}", messages.SUCCESS)
         except Exception as e:
             self.message_user(request, f"Erreur : {str(e)}", messages.ERROR)

@@ -213,7 +213,7 @@ def process_round_scores(round_obj):
 from django.db.models import Sum
 from core.models import SeasonScore, CompetitionResult, CompetitionBonusPrediction, DailyScore, Player, CompetitionTeamPrediction
 
-def compute_season_ranking_points(season_obj):
+def compute_season_ranking_points(season_obj, compute_podium=False):
 
     # --- ÉTAPE 0 : VÉRIFICATION ET DESTRUCTURATION DU JSON (POULES OU GLOBAL) ---
     res = CompetitionResult.objects.filter(season=season_obj).first()
@@ -343,28 +343,19 @@ def compute_season_ranking_points(season_obj):
         ss.save()
 
 
-    # --- ÉTAPE 3 : LE PODIUM (Calculé sur le total Matchs + Flair stabilisé) ---
-    final_ranking = list(SeasonScore.objects.filter(season=season_obj))
-    # Tri principal sur les points accumulés (Matchs + Flair), départage secondaire aux Matchs
-    final_ranking.sort(key=lambda x: (x.match_points + x.ranking_points, x.match_points), reverse=True)
+    # --- ÉTAPE 3 : LE PODIUM (optionnel, réservé à la fin de la compétition) ---
+    if compute_podium:
+        final_ranking = list(SeasonScore.objects.filter(season=season_obj))
+        final_ranking.sort(key=lambda x: (x.match_points + x.ranking_points, x.match_points), reverse=True)
 
-    print(f"DEBUG PODIUM : Nombre de scores trouvés = {len(final_ranking)}")
+        bonus_keys = ["1st", "2nd", "3rd"]
+        for i, b_key in enumerate(bonus_keys):
+            if len(final_ranking) > i:
+                pre_score = final_ranking[i]
+                val_b = cfg.get(b_key, 0)
+                if val_b > 0:
+                    score_obj = SeasonScore.objects.get(id=pre_score.id)
+                    score_obj.podium_points = val_b
+                    score_obj.save()
 
-    bonus_keys = ["1st", "2nd", "3rd"]
-    for i, b_key in enumerate(bonus_keys):
-        if len(final_ranking) > i:
-            pre_score = final_ranking[i]
-            val_b = cfg.get(b_key, 0)
-            
-            print(f"DEBUG JOUER {i+1} : {pre_score.user.username} | Matchs: {pre_score.match_points} | Flair: {pre_score.ranking_points} | Bonus prévu ({b_key}): {val_b}")
-            
-            if val_b > 0:
-                score_obj = SeasonScore.objects.get(id=pre_score.id)
-                # On isole bien dans le nouveau champ dédié pour ne plus polluer le Flair
-                score_obj.podium_points = val_b
-                score_obj.save()
-                
-                score_obj.refresh_from_db()
-                print(f"✅ ÉCRITURE OK -> {score_obj.user.username} a maintenant {score_obj.podium_points} pts de podium. Total_points = {score_obj.total_points}")
-
-    return "Calcul complet terminé (Matchs + Flair Dynamique + Gaps + Master + Podium Option A) !"
+    return "Calcul terminé (Matchs + Flair)" if not compute_podium else "Calcul terminé (Matchs + Flair + Podium)"
