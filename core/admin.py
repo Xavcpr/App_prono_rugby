@@ -124,7 +124,7 @@ class CompetitionTeamPredictionAdmin(admin.ModelAdmin):
 class CompetitionResultAdmin(admin.ModelAdmin):
     list_display = ("season", "get_competition_name", "get_season_year", "real_winner")
     list_filter = ("season__competition", "season")
-    actions = ['recalculate_season_points']
+    actions = ['recalculate_season_points', 'recalculate_season_points_full']
 
     @admin.display(description="Compétition")
     def get_competition_name(self, obj):
@@ -150,6 +150,24 @@ class CompetitionResultAdmin(admin.ModelAdmin):
                 recalc_count += 1
             # 2. Calculer les points de classement
             msg = compute_season_ranking_points(season, compute_podium=False)
+            self.message_user(request, f"Succès : {recalc_count} journées recalculées. {msg}", messages.SUCCESS)
+        except Exception as e:
+            self.message_user(request, f"Erreur : {str(e)}", messages.ERROR)
+
+    @admin.action(description="🏆 Recalculer TOUT (journées + classement + PODIUM + vainqueur) 🏆")
+    def recalculate_season_points_full(self, request, queryset):
+        if queryset.count() > 1:
+            self.message_user(request, "Erreur : Sélectionnez une seule saison.", messages.ERROR)
+            return
+        result_obj = queryset.first()
+        season = result_obj.season
+        try:
+            rounds = season.rounds.all().order_by('number')
+            recalc_count = 0
+            for r in rounds:
+                process_round_scores(r)
+                recalc_count += 1
+            msg = compute_season_ranking_points(season, compute_podium=True)
             self.message_user(request, f"Succès : {recalc_count} journées recalculées. {msg}", messages.SUCCESS)
         except Exception as e:
             self.message_user(request, f"Erreur : {str(e)}", messages.ERROR)
