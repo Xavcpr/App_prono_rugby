@@ -3,7 +3,7 @@ from django.db.models import Sum, F
 from django import forms
 from datetime import datetime, time
 
-from .services.scoring import compute_season_ranking_points
+from .services.scoring import compute_season_ranking_points, process_round_scores
 from .models import (
     CompetitionResult, CompetitionTeam, Season, Team, Player, Competition, Round, Match, ScoringConfig,
     Prediction, DailyScore, SeasonScore, CompetitionBonusPrediction, CompetitionTeamPrediction
@@ -134,15 +134,23 @@ class CompetitionResultAdmin(admin.ModelAdmin):
     def get_season_year(self, obj):
         return obj.season.year
 
-    @admin.action(description="🔥 Calculer les points de classement (phase régulière) 🔥")
+    @admin.action(description="🔥 Recalculer TOUT (journées + points classement) 🔥")
     def recalculate_season_points(self, request, queryset):
         if queryset.count() > 1:
             self.message_user(request, "Erreur : Sélectionnez une seule saison.", messages.ERROR)
             return
         result_obj = queryset.first()
+        season = result_obj.season
         try:
-            msg = compute_season_ranking_points(result_obj.season, compute_podium=False)
-            self.message_user(request, f"Succès : {msg}", messages.SUCCESS)
+            # 1. Recalculer toutes les journées de la saison
+            rounds = season.rounds.all().order_by('number')
+            recalc_count = 0
+            for r in rounds:
+                process_round_scores(r)
+                recalc_count += 1
+            # 2. Calculer les points de classement
+            msg = compute_season_ranking_points(season, compute_podium=False)
+            self.message_user(request, f"Succès : {recalc_count} journées recalculées. {msg}", messages.SUCCESS)
         except Exception as e:
             self.message_user(request, f"Erreur : {str(e)}", messages.ERROR)
 
