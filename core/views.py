@@ -666,7 +666,9 @@ def statistiques_view(request):
         competition = Competition.objects.filter(id=int(competition_id)).first()
 
     # 2. Gestion des Saisons & Construction des libellés uniques pour le menu
-    seasons_qs = Season.objects.filter(year__gte=2025).order_by("-year", "competition__name")
+    seasons_qs = Season.objects.filter(
+        Q(year__startswith='2024') | Q(year__startswith='2025') | Q(year__startswith='2026')
+    ).order_by("-year", "competition__name")
     
     if competition:
         seasons_qs = seasons_qs.filter(competition=competition)
@@ -739,7 +741,10 @@ def statistiques_view(request):
             selected_year = selected_season.year
             
     # 4. Calcul des stats de base via ta fonction existante
-    stats = compute_statistics(competition, season=selected_season)
+    if not competition and selected_year and selected_year in season_groups:
+        stats = compute_statistics(None, season_ids=season_groups[selected_year])
+    else:
+        stats = compute_statistics(competition, season=selected_season)
 
     # --- 5. SÉCURISATION ET SYNCHRONISATION DES SCORES DEPUIS SEASONSCORE ---
     season_scores = {}

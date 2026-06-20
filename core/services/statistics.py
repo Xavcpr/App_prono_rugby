@@ -76,14 +76,17 @@ class StatsResult:
     cuilleres_bois: List[Dict]
 
 
-def compute_statistics(competition: Optional[Competition], season: Optional[Season] = None) -> StatsResult:
+def compute_statistics(competition: Optional[Competition], season: Optional[Season] = None, season_ids: Optional[list] = None) -> StatsResult:
     # 1. ---- Définition du périmètre des Rounds ----
     rounds_qs = Round.objects.all()
     
-    # FILTRE PRIORITAIRE : Si une saison est spécifiée, on ne prend QUE ses rounds
-    if season is not None:
+    # FILTRE PRIORITAIRE : IDs de saisons (mode global avec saison sélectionnée)
+    if season_ids:
+        rounds_qs = rounds_qs.filter(season_id__in=season_ids)
+    # Sinon, si une saison spécifique
+    elif season is not None:
         rounds_qs = rounds_qs.filter(season=season)
-    # Sinon, si seulement la compétition est spécifiée
+    # Sinon, si seulement la compétition
     elif competition is not None:
         rounds_qs = rounds_qs.filter(season__competition=competition)
 
