@@ -215,6 +215,12 @@ from core.models import SeasonScore, CompetitionResult, CompetitionBonusPredicti
 
 def compute_season_ranking_points(season_obj, compute_podium=False):
 
+    # Détection auto : si la saison n'a PAS de phase finale, le podium est calculé automatiquement
+    playoff_phases = ['SF', 'FINAL', 'QF', 'R16']
+    has_playoffs = season_obj.rounds.filter(phase__in=playoff_phases).exists()
+    if not has_playoffs:
+        compute_podium = True
+
     # --- ÉTAPE 0 : VÉRIFICATION ET DESTRUCTURATION DU JSON (POULES OU GLOBAL) ---
     res = CompetitionResult.objects.filter(season=season_obj).first()
     if not res:
