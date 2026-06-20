@@ -220,8 +220,9 @@ def compute_season_ranking_points(season_obj):
     if not res:
         return "Erreur : Aucun résultat créé pour cette saison."
     
-    if not res.real_winner:
-        return "Erreur : Le vainqueur réel (Winner) n'est pas renseigné."
+    has_winner = bool(res.real_winner)
+    if not has_winner:
+        print("⚠️ Pas de vainqueur renseigné — le bonus vainqueur ne sera pas attribué, mais les points Matchs + Flair + Podium seront calculés.")
 
     # Gestion intelligente du JSON : on s'adapte si c'est découpé en "pool1", "pool2" ou "all"
     json_data = res.rankings_json or {}
@@ -299,9 +300,9 @@ def compute_season_ranking_points(season_obj):
         if all_correct and preds.count() >= 6:
             pts_flair += cfg.get("all_class", 0)
 
-        # C. Bonus Vainqueur Final
+        # C. Bonus Vainqueur Final (uniquement si le vainqueur est connu)
         bonus_pred = CompetitionBonusPrediction.objects.filter(player=p, season=season_obj).first()
-        if bonus_pred and bonus_pred.winner == res.real_winner:
+        if has_winner and bonus_pred and bonus_pred.winner == res.real_winner:
             pts_flair += cfg.get("winner", 100)
 
         # D. BONUS MASTER TOURNOI (6 Nations uniquement)
