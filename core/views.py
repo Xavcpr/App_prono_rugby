@@ -666,8 +666,11 @@ def statistiques_view(request):
         competition = Competition.objects.filter(id=int(competition_id)).first()
 
     # 2. Gestion des Saisons & Construction des libellés uniques pour le menu
-    seasons_qs = Season.objects.filter(
-        Q(year__startswith='2024') | Q(year__startswith='2025') | Q(year__startswith='2026')
+    seasons_qs = Season.objects.annotate(
+        nb_rounds=Count('rounds')
+    ).filter(
+        Q(year__startswith='2024') | Q(year__startswith='2025') | Q(year__startswith='2026'),
+        nb_rounds__gt=0,
     ).order_by("-year", "competition__name")
     
     if competition:
