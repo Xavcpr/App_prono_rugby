@@ -671,42 +671,66 @@ def statistiques_view(request):
     if competition:
         seasons_qs = seasons_qs.filter(competition=competition)
 
-    # On crée une liste de dictionnaires uniques pour le menu déroulant du template
+    # Helper : extraire l'année de début d'une saison
+    # "2025/2026" → "2025", "2026" (6 Nations) → "2025", "2024-2025" → "2024"
+    def get_season_key(year_str):
+        if '/' in year_str:
+            return year_str.split('/')[0]
+        if '-' in year_str:
+            return year_str.split('-')[0]
+        if year_str.isdigit():
+            return str(int(year_str) - 1)
+        return year_str
+
     distinct_seasons = []
-    seen_years = set()
-    
+    season_key_to_id = {}     # "2025" → 1 (pour le dropdown)
+    season_groups = {}        # "2025" → [Season.id, ...] (pour le filtrage)
+    id_counter = 1
+
     for s in seasons_qs:
-        try:
-            year_int = int(s.year)
-        except (ValueError, TypeError):
-            year_int = 2025
-
-        # CORRECTION DU LIBELLÉ : On vérifie TOUJOURS si c'est le 6 Nations, même en vue globale
-        if s.competition and "6 nations" in s.competition.name.lower():
-            label = f"{s.year}"
-        else:
-            label = f"{year_int}/{year_int+1}"
-
         if not competition:
-            # En mode global, on regroupe par année brute pour éviter les doublons textuels
-            if s.year not in seen_years:
-                seen_years.add(s.year)
-                distinct_seasons.append({'id': s.year, 'label': label, 'year': s.year})
+            # Mode global : regrouper par clé de saison (ex: Top14 2025/2026 + 6N 2026 → "2025-2026")
+            season_key = get_season_key(s.year)
+            if season_key not in season_groups:
+                season_groups[season_key] = []
+            season_groups[season_key].append(s.id)
+
+            if season_key not in season_key_to_id:
+                season_key_to_id[season_key] = id_counter
+                distinct_seasons.append({
+                    'id': id_counter,
+                    'label': f"Saison {season_key}-{int(season_key)+1}",
+                    'year': season_key
+                })
+                id_counter += 1
         else:
-            # En mode compétition sélectionnée, on garde l'ID unique de la saison
-            distinct_seasons.append({'id': s.id, 'label': label, 'year': s.year})
+            # Mode compétition spécifique : garder l'ID unique de la saison
+            season_key = get_season_key(s.year)
+            distinct_seasons.append({
+                'id': s.id,
+                'label': s.year,
+                'year': s.year
+            })
 
     # 3. Sélection de la saison
     selected_season = None
     selected_year = None
 
-    if season_id and season_id.isdigit():
+    if season_id:
         if competition:
-            selected_season = Season.objects.filter(id=int(season_id)).first()
-            if selected_season:
-                selected_year = selected_season.year
+            # Mode compétition : season_id = Season.pk
+            if season_id.isdigit():
+                selected_season = Season.objects.filter(id=int(season_id)).first()
+                if selected_season:
+                    selected_year = selected_season.year
         else:
-            selected_year = int(season_id)
+            # Mode global : season_id = ID entier du groupe
+            if season_id.isdigit():
+                season_id_int = int(season_id)
+                for key, key_id in season_key_to_id.items():
+                    if key_id == season_id_int:
+                        selected_year = key
+                        break
     
     # Si une compétition spécifique est demandée sans choix de saison, on prend la dernière disponible
     if not selected_year and not selected_season and competition:
@@ -726,10 +750,9 @@ def statistiques_view(request):
             if selected_season:
                 qs = qs.filter(season=selected_season)
         else:
-            # CORRECTION VUE GLOBALE : Si l'utilisateur n'a pas sélectionné d'année spécifique,
-            # on ne filtre PAS sur 2025 par défaut, on prend TOUT l'historique global pour avoir les vrais totaux !
-            if selected_year:
-                qs = qs.filter(season__year=selected_year)
+            # Mode global : filtrer par les IDs des saisons du groupe sélectionné
+            if selected_year and selected_year in season_groups:
+                qs = qs.filter(season_id__in=season_groups[selected_year])
             
         user_points = qs.values('user__username').annotate(
             total_match=Sum('match_points'),
