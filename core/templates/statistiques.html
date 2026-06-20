@@ -146,9 +146,11 @@
                   <td class="text-start ps-3">
                     <strong>{{ r.username }}</strong>
                     {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-2">Moi</span>{% endif %}
-                    {# N'afficher l'étiquette Top Podium que si la compétition ET la saison sont filtrées #}
+                    {# Afficher l'étiquette Top Podium pour le top 3 (podium provisoire ou définitif) #}
                     {% if competition and selected_season %}
-                      {% if r.podium_pts > 0 %}<span class="badge bg-success text-white ms-1">🏆 Top Podium</span>{% endif %}
+                      {% if r.podium_pts > 0 or forloop.counter <= 3 %}
+                        <span class="badge bg-success text-white ms-1">🏆 Top Podium</span>
+                      {% endif %}
                     {% endif %}
                   </td>
                   <td class="text-center">
