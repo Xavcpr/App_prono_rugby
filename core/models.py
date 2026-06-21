@@ -137,6 +137,9 @@ class Match(models.Model):
     bonus_offense_home = models.BooleanField(default=False)
     bonus_offense_away = models.BooleanField(default=False)
 
+    class Meta:
+        ordering = ["kickoff_at", "id"]
+
     def total_score(self):
         if self.home_score is not None and self.away_score is not None:
             return self.home_score + self.away_score
