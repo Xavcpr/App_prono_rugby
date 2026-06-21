@@ -62,7 +62,7 @@
               </div>
               {% if user.is_staff %}
                 <div class="col-6">
-                  <a class="nav-link small text-secondary fw-bold" href="/admin/">🔑 Admin</a>
+                  <a class="nav-link small text-secondary fw-bold" href="{% url 'admin:index' %}">🔑 Admin</a>
                 </div>
               {% endif %}
               <div class="col-6">

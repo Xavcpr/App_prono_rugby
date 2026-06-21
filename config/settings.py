@@ -19,11 +19,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-m^mge(8%rl8%tyt*82g2jvd&*)#1zl3tj7fg!lrah+3m@97w5r'
+import os
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+SECRET_KEY = os.environ.get(
+    'DJANGO_SECRET_KEY',
+    'django-insecure-m^mge(8%rl8%tyt*82g2jvd&*)#1zl3tj7fg!lrah+3m@97w5r'
+)
+
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = [
     "xavfabiani.pythonanywhere.com",
@@ -124,9 +127,7 @@ USE_I18N = True
 
 STATIC_URL = 'static/'
 
-ALLOWED_HOSTS = ['xavFabiani.pythonanywhere.com', "127.0.0.1", "localhost"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
-DEBUG = True  # pour la prod
 
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = "/pronos/"

@@ -65,7 +65,7 @@
           </select>
         </div>
         <div class="col-12 col-md-5 d-flex justify-content-md-end gap-2">
-          <a href="/pronos/{% if competition %}?competition={{ competition.id }}{% endif %}"
+          <a href="{% url 'pronos' %}{% if competition %}?competition={{ competition.id }}{% endif %}"
              class="btn btn-warning btn-sm fw-bold">✏️ Pronos</a>
           {% if last_round_id %}
             <a href="{% url 'round_board' last_round_id %}"

@@ -20,6 +20,12 @@ core/db.sqlite3
 # Jupyter
 .ipynb_checkpoints/
 
+# Dossier dupliqué (legacy)
+/backend/
+
+# Static files collectés
+staticfiles/
+
 # OS
 Thumbs.db
 .DS_Store
