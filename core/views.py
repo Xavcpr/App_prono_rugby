@@ -1369,7 +1369,6 @@ def hall_of_fame_view(request):
     return render(request, 'hall_of_fame.html', {'all_time_ranking': ranking})
 
 @login_required
-@login_required
 def home_view(request):
     player = request.user.player
     user = request.user
@@ -1418,55 +1417,79 @@ def home_view(request):
     target_names = [user.username.lower(), player.name.lower()]
     hof_rank = next((i + 1 for i, (name, _) in enumerate(hof_ranking) if name.lower().strip() in target_names), "?")
 
-    # --- 5. TROPHÉES ET RANGS (Tout-piles, Demi-piles, Chopes, Cuillères) ---
+    # --- 5. TROPHÉES ET RANGS ---
     all_users = User.objects.filter(player__isnull=False).distinct()
+    user_ids_list = list(all_users.values_list('id', flat=True))
     user_counts = {u.id: {'chopes': 0, 'cuilleres': 0, 'perfects': 0, 'demis': 0} for u in all_users}
-    
+
+    # Toutes les prédictions de la période en UNE requête
+    all_preds = Prediction.objects.filter(
+        match__kickoff_at__range=(start_date, now),
+        match__home_score__isnull=False
+    ).select_related('player__user', 'match')
+    all_preds_list = list(all_preds)
+
+    # Index par user_id
+    preds_by_user = {uid: [] for uid in user_ids_list}
+    for pr in all_preds_list:
+        if pr.player.user_id in preds_by_user:
+            preds_by_user[pr.player.user_id].append(pr)
+
     for u in all_users:
-        u_preds = Prediction.objects.filter(
-            player__user=u, 
-            match__kickoff_at__range=(start_date, now), 
-            match__home_score__isnull=False
-        )
-        for p in u_preds:
-            rh, ra = p.match.home_score, p.match.away_score
-            ph, pa = p.home_score_pred, p.away_score_pred
-            if ph == rh and pa == ra:
+        for p in preds_by_user.get(u.id, []):
+            m = p.match
+            if p.home_score_pred == m.home_score and p.away_score_pred == m.away_score:
                 user_counts[u.id]['perfects'] += 1
-            elif ph == rh or pa == ra:
+            elif p.home_score_pred == m.home_score or p.away_score_pred == m.away_score:
                 user_counts[u.id]['demis'] += 1
+
+    # Tous les DailyScores de la période en UNE requête
+    all_ds = DailyScore.objects.filter(
+        round__date__range=(start_date, end_date)
+    ).select_related('user', 'round__season__competition').order_by('round_id', '-points')
+    ds_by_round = {}
+    for ds in all_ds:
+        ds_by_round.setdefault(ds.round_id, []).append(ds)
 
     relevant_rounds = Round.objects.filter(date__range=(start_date, end_date))
     debug_log = []
-    for r in relevant_rounds:
-        day_scores = list(DailyScore.objects.filter(round=r).order_by('-points'))
-        if day_scores:
-            max_p, min_p = day_scores[0].points, day_scores[-1].points
-            s_bo_p, s_bo_ok, s_bd_p, s_bd_ok = 0, 0, 0, 0
-            
-            for index, ds in enumerate(day_scores):
-                if ds.points == max_p and max_p > 0: user_counts[ds.user.id]['chopes'] += 3
-                elif len(day_scores) > 1 and index == 1 and ds.points > 0: user_counts[ds.user.id]['chopes'] += 2
-                elif len(day_scores) > 2 and index == 2 and ds.points > 0: user_counts[ds.user.id]['chopes'] += 1
-                if len(day_scores) >= 3 and ds.points == min_p:
-                    user_counts[ds.user.id]['cuilleres'] += 1
+    current_user_preds = preds_by_user.get(user.id, [])
+    current_user_preds_by_round = {}
+    for p in current_user_preds:
+        current_user_preds_by_round.setdefault(p.match.round_id, []).append(p)
 
-                if ds.user == user:
-                    r_preds = Prediction.objects.filter(player=player, match__round=r, match__home_score__isnull=False)
-                    for p in r_preds:
-                        if p.match.phase == "POOL":
-                            if p.bonus_home_pred or p.bonus_away_pred:
-                                s_bo_p += 1
-                                if (p.bonus_home_pred and p.match.bonus_offense_home) or (p.bonus_away_pred and p.match.bonus_offense_away):
-                                    s_bo_ok += 1
-                            threshold = r.season.competition.bonus_defense_threshold
-                            if 1 <= abs(p.home_score_pred - p.away_score_pred) <= threshold:
-                                s_bd_p += 1
-                                if p.match.get_defense_bonus() is not None:
-                                    s_bd_ok += 1
-            
-            if s_bo_p > 0 or s_bd_p > 0:
-                debug_log.append(f"📅 {str(r)} : BO {s_bo_ok}/{s_bo_p} | BD {s_bd_ok}/{s_bd_p}")
+    for r in relevant_rounds:
+        day_scores = ds_by_round.get(r.id, [])
+        if not day_scores:
+            continue
+        max_p, min_p = day_scores[0].points, day_scores[-1].points
+        s_bo_p, s_bo_ok, s_bd_p, s_bd_ok = 0, 0, 0, 0
+
+        for index, ds in enumerate(day_scores):
+            if ds.points == max_p and max_p > 0:
+                user_counts[ds.user.id]['chopes'] += 3
+            elif len(day_scores) > 1 and index == 1 and ds.points > 0:
+                user_counts[ds.user.id]['chopes'] += 2
+            elif len(day_scores) > 2 and index == 2 and ds.points > 0:
+                user_counts[ds.user.id]['chopes'] += 1
+            if len(day_scores) >= 3 and ds.points == min_p:
+                user_counts[ds.user.id]['cuilleres'] += 1
+
+        if ds_by_round.get(r.id):
+            for p in current_user_preds_by_round.get(r.id, []):
+                if p.match.phase == "POOL":
+                    if p.bonus_home_pred or p.bonus_away_pred:
+                        s_bo_p += 1
+                        if (p.bonus_home_pred and p.match.bonus_offense_home) or (p.bonus_away_pred and p.match.bonus_offense_away):
+                            s_bo_ok += 1
+                    threshold = r.season.competition.bonus_defense_threshold
+                    if 1 <= abs(p.home_score_pred - p.away_score_pred) <= threshold:
+                        s_bd_p += 1
+                        if p.match.get_defense_bonus() is not None:
+                            s_bd_ok += 1
+
+        if s_bo_p > 0 or s_bd_p > 0:
+            debug_log.append(f"📅 {str(r)} : BO {s_bo_ok}/{s_bo_p} | BD {s_bd_ok}/{s_bd_p}")
 
     my_stats = user_counts.get(user.id)
     rank_chopes = sum(1 for v in user_counts.values() if v['chopes'] > my_stats['chopes']) + 1
@@ -1476,29 +1499,37 @@ def home_view(request):
 
     # --- 6. ANALYSE PAR COMPÉTITION ---
     all_past_matches = Match.objects.filter(kickoff_at__range=(start_date, now))
-    preds_done = Prediction.objects.filter(player=player, match__in=all_past_matches)
+    preds_done = Prediction.objects.filter(
+        player=player, match__in=all_past_matches
+    ).select_related('match__round__season__competition')
+    preds_done_list = list(preds_done)
     
     global_bo_prono, global_bo_ok = 0, 0
     global_bd_prono, global_bd_ok = 0, 0
 
     comp_analysis = []
     for season in active_seasons:
-        s_preds = preds_done.filter(match__round__season=season, match__home_score__isnull=False)
-        if not s_preds.exists(): continue
+        s_preds = [p for p in preds_done_list if p.match.round.season_id == season.id and p.match.home_score is not None]
+        if not s_preds:
+            continue
 
         s_bo_p, s_bo_ok, s_bd_p, s_bd_ok, s_bons = 0, 0, 0, 0, 0
         for p in s_preds:
-            rh, ra, ph, pa = p.match.home_score, p.match.away_score, p.home_score_pred, p.away_score_pred
+            m = p.match
+            rh, ra = m.home_score, m.away_score
+            ph, pa = p.home_score_pred, p.away_score_pred
             if (ph > pa and rh > ra) or (ph < pa and rh < ra) or (ph == pa and rh == ra):
                 s_bons += 1
-            if p.match.phase == "POOL":
+            if m.phase == "POOL":
                 if p.bonus_home_pred or p.bonus_away_pred:
                     s_bo_p += 1
-                    if (p.bonus_home_pred and p.match.bonus_offense_home) or (p.bonus_away_pred and p.match.bonus_offense_away): s_bo_ok += 1
+                    if (p.bonus_home_pred and m.bonus_offense_home) or (p.bonus_away_pred and m.bonus_offense_away):
+                        s_bo_ok += 1
                 threshold = season.competition.bonus_defense_threshold
                 if 1 <= abs(ph - pa) <= threshold:
                     s_bd_p += 1
-                    if p.match.get_defense_bonus() is not None: s_bd_ok += 1
+                    if m.get_defense_bonus() is not None:
+                        s_bd_ok += 1
 
         global_bo_prono += s_bo_p; global_bo_ok += s_bo_ok
         global_bd_prono += s_bd_p; global_bd_ok += s_bd_ok
@@ -1511,24 +1542,25 @@ def home_view(request):
         s_rank = 1
         for entry in leaderboard:
             adv_flair = SeasonScore.objects.filter(user_id=entry['user'], season=season).values_list('ranking_points', flat=True).first() or 0
-            if (entry['total_m'] + adv_flair) > total_pts: s_rank += 1
+            if (entry['total_m'] + adv_flair) > total_pts:
+                s_rank += 1
 
         comp_analysis.append({
-            'name': season.competition.name, 'bons': s_bons, 'total': s_preds.count(),
-            'ratio': round((s_bons / s_preds.count() * 100), 1) if s_preds.count() > 0 else 0,
+            'name': season.competition.name, 'bons': s_bons, 'total': len(s_preds),
+            'ratio': round((s_bons / len(s_preds) * 100), 1) if s_preds else 0,
             'rank': s_rank, 'pts': total_pts, 'bo': f"{s_bo_ok}/{s_bo_p}", 'bd': f"{s_bd_ok}/{s_bd_p}"
         })
 
-    # --- 7. DÉTECTION NO-SHOW (Nouveau bloc Debug) ---
-    match_ids_with_preds = set(preds_done.values_list('match_id', flat=True))
+    # --- 7. DÉTECTION NO-SHOW ---
+    pred_match_ids = {p.match_id for p in preds_done_list}
     no_show_list = []
     for m in all_past_matches:
-        if m.id not in match_ids_with_preds:
+        if m.id not in pred_match_ids:
             no_show_list.append(m)
             debug_log.append(f"❌ NO-SHOW : {m.home_team} vs {m.away_team} ({m.kickoff_at.strftime('%d/%m %H:%i')})")
 
     context = {
-        'rank_general': rank_general, 'total_players': all_users.count(),
+        'rank_general': rank_general, 'total_players': len(user_ids_list),
         'evolution': evolution,
         'hof_rank': hof_rank, 'total_points_all': user_row.get('points', 0) + user_row.get('ranking_points', 0),
         'perfects': my_stats['perfects'], 'rank_perfects': rank_perfects,
