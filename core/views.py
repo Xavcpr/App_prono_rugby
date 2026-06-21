@@ -708,7 +708,10 @@ def statistiques_view(request):
 
     # 2. Gestion des Saisons & Construction des libellés uniques pour le menu
     seasons_qs = Season.objects.filter(
-        Q(rounds__dailyscore__isnull=False) | Q(seasonscore__isnull=False)
+        Q(rounds__dailyscore__points__gt=0) |
+        Q(seasonscore__match_points__gt=0) |
+        Q(seasonscore__ranking_points__gt=0) |
+        Q(seasonscore__podium_points__gt=0)
     ).distinct().order_by("-year", "competition__name")
     
     if competition:
