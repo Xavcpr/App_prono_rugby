@@ -1,3 +1,4 @@
+import os
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout as auth_logout, update_session_auth_hash
@@ -1303,6 +1304,19 @@ def statistics_view(request):
     }
     
     return render(request, 'scores_statistics.html', context)
+
+
+from django.http import HttpResponse
+from core.services.email_service import send_round_reminders
+
+
+@staff_member_required
+def cron_send_reminders(request, token):
+    expected = os.environ.get("CRON_TOKEN", "")
+    if token != expected:
+        return HttpResponse("Invalid token", status=403)
+    send_round_reminders()
+    return HttpResponse("OK")
 
 
 def bareme_view(request):

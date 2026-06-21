@@ -1,5 +1,5 @@
 from django.urls import path 
-from .views import home_view, hall_of_fame_view, bareme_view, charte_view, admin_saisie_resultats, declencher_calcul_points, recap_pronos_classement, debug_scores_view, statistics_view, statistiques_view, all_pronos_view, compute_round_view, pronos_view, logout_view, round_results_board, settings_view, competition_ranking_view, classement_prediction
+from .views import home_view, hall_of_fame_view, bareme_view, charte_view, admin_saisie_resultats, declencher_calcul_points, recap_pronos_classement, debug_scores_view, statistics_view, statistiques_view, all_pronos_view, compute_round_view, pronos_view, logout_view, round_results_board, settings_view, competition_ranking_view, classement_prediction, cron_send_reminders
 
 urlpatterns = [
     # Page d'accueil (peut rediriger vers les pronos ou une page d'info)
@@ -44,7 +44,9 @@ urlpatterns = [
     # Explication/logigramme barème de points
     path('bareme/', bareme_view, name='bareme'),
     # Classement all-time
-    path('hall-of-fame/', hall_of_fame_view, name='hall_of_fame')
+    path('hall-of-fame/', hall_of_fame_view, name='hall_of_fame'),
+    # Cron externe pour les rappels (protégé par token)
+    path('cron/send-reminders/<str:token>/', cron_send_reminders, name='cron_send_reminders'),
 ]
 
 
