@@ -97,7 +97,7 @@ def compute_statistics(competition: Optional[Competition], season: Optional[Seas
     elif competition is not None:
         rounds_qs = rounds_qs.filter(season__competition=competition)
 
-    rounds_qs = rounds_qs.order_by("id")
+    rounds_qs = rounds_qs.order_by("date", "id")
     rounds = list(rounds_qs)
 
     round_ids = [r.id for r in rounds]
