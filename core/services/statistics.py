@@ -131,6 +131,21 @@ def compute_statistics(competition: Optional[Competition], season: Optional[Seas
             scores_map[rid] = {}
         scores_map[rid][uname] = int(ds.points or 0)
 
+    # Fallback : calculer les scores par round depuis les pronostics
+    pred_points = (
+        Prediction.objects.filter(match__round_id__in=round_ids)
+        .values("match__round_id", "player__user__username")
+        .annotate(total=Sum("points"))
+    )
+    pred_scores = {}
+    for item in pred_points:
+        rid = item["match__round_id"]
+        uname = item["player__user__username"]
+        pts = item["total"] or 0
+        if rid not in pred_scores:
+            pred_scores[rid] = {}
+        pred_scores[rid][uname] = pred_scores[rid].get(uname, 0) + pts
+
     score_series = {k: [] for k in player_keys}
     rank_series  = {k: [] for k in player_keys}
     gap_series   = {k: [] for k in player_keys}
@@ -142,15 +157,7 @@ def compute_statistics(competition: Optional[Competition], season: Optional[Seas
     for rid in round_ids:
         day_data = scores_map.get(rid, {})
         if not day_data:
-            for k in player_keys:
-                score_series[k].append(cumulative[k])
-            ordered = sorted(cumulative.items(), key=lambda x: x[1], reverse=True)
-            ranks = {name: idx + 1 for idx, (name, _) in enumerate(ordered)}
-            leader_points = ordered[0][1] if ordered else 0
-            for k in player_keys:
-                rank_series[k].append(int(ranks.get(k, 1)))
-                gap_series[k].append(int(leader_points - cumulative[k]))
-            continue
+            day_data = pred_scores.get(rid, {})
 
         for k in player_keys:
             pts_jour = day_data.get(k, 0)
