@@ -144,6 +144,12 @@ def compute_statistics(competition: Optional[Competition], season: Optional[Seas
         if not day_data:
             for k in player_keys:
                 score_series[k].append(cumulative[k])
+            ordered = sorted(cumulative.items(), key=lambda x: x[1], reverse=True)
+            ranks = {name: idx + 1 for idx, (name, _) in enumerate(ordered)}
+            leader_points = ordered[0][1] if ordered else 0
+            for k in player_keys:
+                rank_series[k].append(int(ranks.get(k, 1)))
+                gap_series[k].append(int(leader_points - cumulative[k]))
             continue
 
         for k in player_keys:
