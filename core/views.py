@@ -1310,7 +1310,6 @@ from django.http import HttpResponse
 from core.services.email_service import send_round_reminders
 
 
-@staff_member_required
 def cron_send_reminders(request, token):
     expected = os.environ.get("CRON_TOKEN", "")
     if token != expected:
