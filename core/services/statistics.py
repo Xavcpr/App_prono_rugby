@@ -286,22 +286,18 @@ def compute_statistics(competition: Optional[Competition], season: Optional[Seas
         sorted_data = sorted(data_dict.items(), key=lambda x: x[1], reverse=True)
         return [{"username": k, "value": v} for k, v in sorted_data]
 
-    def format_bo(data_dict_bon, data_dict_mauvais):
+    def format_bonus(data_dict_bon, data_dict_mauvais):
         combined = []
         for k in player_keys:
-            total = data_dict_bon.get(k, 0) + data_dict_mauvais.get(k, 0)
+            reussi = data_dict_bon.get(k, 0)
+            rate = data_dict_mauvais.get(k, 0)
+            total = reussi + rate
             if total > 0:
-                combined.append({"username": k, "reussi": data_dict_bon.get(k, 0), "rate": data_dict_mauvais.get(k, 0), "total": total})
-        combined.sort(key=lambda x: x["reussi"], reverse=True)
-        return combined
-
-    def format_bd(data_dict_bon, data_dict_mauvais):
-        combined = []
-        for k in player_keys:
-            total = data_dict_bon.get(k, 0) + data_dict_mauvais.get(k, 0)
-            if total > 0:
-                combined.append({"username": k, "reussi": data_dict_bon.get(k, 0), "rate": data_dict_mauvais.get(k, 0), "total": total})
-        combined.sort(key=lambda x: x["reussi"], reverse=True)
+                combined.append({
+                    "username": k, "reussi": reussi, "rate": rate, "total": total,
+                    "points": 15 * reussi - 3 * rate
+                })
+        combined.sort(key=lambda x: x["points"], reverse=True)
         return combined
 
     return StatsResult(
@@ -313,7 +309,12 @@ def compute_statistics(competition: Optional[Competition], season: Optional[Seas
         pie_values=[list(correct_outcomes.values()).count(i) for i in range(pie_den, -1, -1)],
         pie_denominator=pie_den,
         victory_table=sorted(
-            [{"username": k, "bons": v} for k, v in correct_outcomes.items()],
+            [{
+                "username": k, "bons": v,
+                "total": v + bois_by_player.get(k, 0),
+                "pourcentage": round(v / (v + bois_by_player.get(k, 0)) * 100, 1)
+                    if (v + bois_by_player.get(k, 0)) > 0 else 0
+            } for k, v in correct_outcomes.items()],
             key=lambda x: x["bons"], reverse=True
         ),
         kpi=kpi,
@@ -323,6 +324,6 @@ def compute_statistics(competition: Optional[Competition], season: Optional[Seas
         chopes_cumulees=format_trophy(chopes_points_by_player),
         cuilleres_bois=format_trophy(cuilleres_by_player),
         demi_tout_pile_table=format_trophy(demi_tout_pile_by_player),
-        bonus_off_table=format_bo(bon_bonus_off_by_player, mauvais_bonus_off_by_player),
-        bonus_def_table=format_bd(bon_bonus_def_by_player, mauvais_bonus_def_by_player),
+        bonus_off_table=format_bonus(bon_bonus_off_by_player, mauvais_bonus_off_by_player),
+        bonus_def_table=format_bonus(bon_bonus_def_by_player, mauvais_bonus_def_by_player),
     )
