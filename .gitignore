@@ -29,3 +29,9 @@ staticfiles/
 # OS
 Thumbs.db
 .DS_Store
+
+# Excel temp files
+~$*.xlsx
+
+# Environment variables
+.env

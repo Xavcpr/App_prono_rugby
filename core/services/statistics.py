@@ -3,28 +3,8 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 from django.db.models import Sum
-from django.contrib.auth import get_user_model
 
 from core.models import Competition, Round, Match, Player, Prediction, DailyScore, Season
-
-MATCH_HOME_SCORE_FIELD = "home_score"
-MATCH_AWAY_SCORE_FIELD = "away_score"
-
-PRED_HOME_SCORE_FIELD  = "home_score_pred"
-PRED_AWAY_SCORE_FIELD  = "away_score_pred"
-
-MATCH_BONUS_OFF_FIELD = None
-MATCH_BONUS_DEF_FIELD = None
-PRED_BONUS_OFF_FIELD  = None
-PRED_BONUS_DEF_FIELD  = None
-
-PRED_POINTS_FIELD = "points"
-
-
-def _get(obj, field, default=None):
-    if not field:
-        return default
-    return getattr(obj, field, default)
 
 
 def _outcome(h: int, a: int) -> str:

@@ -1,25 +1,24 @@
-from django.db import models
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout as auth_logout, update_session_auth_hash
 from django.contrib import messages
 from django.utils import timezone
 from django.contrib.auth.forms import PasswordChangeForm
-from django.db.models import F, Prefetch, Sum, Count, Max, Q
+from django.db.models import Prefetch, Sum, Count, Q
 from django.contrib.admin.views.decorators import staff_member_required
 from datetime import datetime
 from django.contrib.auth.models import User
 
 # Modèles conservés
 from .models import (
-    Competition, Season, Round, Match, Team, Player, 
+    Competition, Season, Round, Match, Player, 
     Prediction, DailyScore, SeasonScore, CompetitionResult,
     CompetitionTeam, CompetitionTeamPrediction, CompetitionBonusPrediction, SeasonHistory
 )
 
 # Services
 from .services import scoring
-from .services.scoring import PHASE_MULTIPLIERS, SCORING_CONFIG, RUGBY_SCORING, process_round_scores, get_winner_side, calculate_match_points, BONUS_SCALES
+from .services.scoring import PHASE_MULTIPLIERS, SCORING_CONFIG, RUGBY_SCORING, process_round_scores, get_winner_side, BONUS_SCALES
 from .services.statistics import compute_statistics
 
 # CONFIGURATION DU BAREME DES POINTS
@@ -115,7 +114,7 @@ def pronos_view(request):
         return redirect(f"{request.path}?competition={selected_comp.id}&season={selected_season.id}&round={round_id}")
 
     # 4. PRÉPARATION AFFICHAGE
-    matches = Match.objects.filter(round_id=round_id).select_related("home_team", "away_team").order_by("kickoff_at")
+    matches = Match.objects.filter(round_id=round_id).select_related("home_team", "away_team", "round").order_by("kickoff_at")
     predictions_by_match = {p.match_id: p for p in Prediction.objects.filter(player=player, match__round_id=round_id)}
 
     submit_disabled = True
@@ -138,7 +137,6 @@ def pronos_view(request):
         "prev_round_id": prev_round_id,
         "next_round_id": next_round_id,
     })
-# ... reste de tes vues (logout, settings, etc.) inchangé ...
 
 # ------------------
 # LOGOUT VIEW
@@ -344,7 +342,7 @@ def all_pronos_view(request):
     # 3. Détermination de la saison (FILTRÉE par la compétition choisie)
     seasons = Season.objects.filter(competition=selected_comp, year__gte=2025).order_by('-year')
     
-    if season_id and seasons.filter(id=season_id).exists():
+    if season_id:
         selected_season = seasons.filter(id=season_id).first()
     else:
         # Si on change de comp, season_id devient invalide, on prend la plus récente de la nouvelle comp
@@ -354,7 +352,6 @@ def all_pronos_view(request):
     rounds = Round.objects.filter(season=selected_season).order_by('number')
 
     # 5. Détermination du Round final à afficher
-    # 5. DÉTERMINATION DU ROUND FINAL À AFFICHER
     # On initialise à None
     current_round_obj = None
 
@@ -370,8 +367,6 @@ def all_pronos_view(request):
         # PRIORITÉ 3 : Si tous les rounds sont passés, on prend le dernier
         if not current_round_obj:
             current_round_obj = rounds.last()
-
-    # ... (Le reste de ton code pour les matches et les lignes reste identique)
 
     rows = []
     players = Player.objects.all().select_related('user').order_by('user__username')
@@ -470,7 +465,7 @@ def all_pronos_view(request):
 
 def round_results_board(request, round_id):
     # 1. Récupération de l'objet et gestion des changements via GET
-    round_obj = get_object_or_404(Round, id=round_id)
+    round_obj = get_object_or_404(Round.objects.select_related('season__competition'), id=round_id)
     
     new_comp_id = request.GET.get('comp')
     new_season_id = request.GET.get('season')
@@ -496,7 +491,7 @@ def round_results_board(request, round_id):
     seasons = Season.objects.filter(competition=selected_comp, year__gte=2025).order_by('-year')
     rounds = Round.objects.filter(season=selected_season).order_by('number')
     players = Player.objects.all().order_by('name')
-    matches = Match.objects.filter(round=round_obj).order_by('kickoff_at')
+    matches = Match.objects.filter(round=round_obj).select_related('home_team', 'away_team').order_by('kickoff_at')
     all_competitions = Competition.objects.prefetch_related(
         Prefetch('seasons', queryset=Season.objects.all().order_by('-year'))
     ).distinct()
@@ -514,34 +509,52 @@ def round_results_board(request, round_id):
     # Sécurité pour les bonus BO/BD (Uniquement en POOL)
     is_pool_phase = (round_obj.phase == "POOL")
 
-    # 4. Pré-calcul des gagnants par match (Partage du pool)
+    # 4. Toutes les prédictions du round en UNE requête
+    all_preds = list(Prediction.objects.filter(
+        match__round=round_obj
+    ).select_related(
+        'player', 'match'
+    ))
+
+    # Index par match pour la matrice des points
+    preds_by_match_player = {}
+    for pr in all_preds:
+        key = (pr.match_id, pr.player_id)
+        preds_by_match_player[key] = pr
+
+    # Index par joueur pour les stats
+    preds_by_player = {p.id: [] for p in players}
+    for pr in all_preds:
+        if pr.player_id in preds_by_player:
+            preds_by_player[pr.player_id].append(pr)
+
+    # 5. Pré-calcul des gagnants par match (Partage du pool)
     match_winners_counts = {}
     for m in matches:
         if m.home_score is not None and m.away_score is not None:
             real_side = get_winner_side(m.home_score, m.away_score)
-            winners_count = Prediction.objects.filter(
-                match=m
-            ).extra(where=[
-                "(home_score_pred > away_score_pred AND %s = 'HOME') OR "
-                "(away_score_pred > home_score_pred AND %s = 'AWAY') OR "
-                "(home_score_pred = away_score_pred AND %s = 'DRAW')"
-            ], params=[real_side, real_side, real_side]).count()
+            winners_count = 0
+            for pr in all_preds:
+                if pr.match_id != m.id: continue
+                pred_side = get_winner_side(pr.home_score_pred, pr.away_score_pred)
+                if pred_side == real_side:
+                    winners_count += 1
             match_winners_counts[m.id] = winners_count
         else:
             match_winners_counts[m.id] = 0
 
-    # 5. Construction de la matrice des points (Points bruts stockés)
+    # 6. Construction de la matrice des points
     matrix = {}
     for m in matches:
         matrix[m.id] = {}
         for p in players:
-            pred = Prediction.objects.filter(match=m, player=p).first()
-            matrix[m.id][p.id] = pred.points if (pred and pred.points is not None) else 0
+            pr = preds_by_match_player.get((m.id, p.id))
+            matrix[m.id][p.id] = pr.points if (pr and pr.points is not None) else 0
 
-    # 6. Calcul des totaux et stats par joueur
+    # 7. Calcul des totaux et stats par joueur
     totals_display = []
     for p in players:
-        player_preds = Prediction.objects.filter(match__round=round_obj, player=p)
+        player_preds = preds_by_player.get(p.id, [])
         stats = {
             'pm': 0, 'winners': 0, 'bo': 0, 'bd': 0, 'diff': 0, 
             'somme': 0, 'ext': 0, 'dtp': 0, 'draw': 0, 'tp': 0
@@ -549,8 +562,9 @@ def round_results_board(request, round_id):
 
         for pr in player_preds:
             m = pr.match
-            match_threshold = m.round.season.competition.bonus_defense_threshold
             if m.home_score is None or m.away_score is None: continue
+            
+            match_threshold = round_obj.season.competition.bonus_defense_threshold
             
             real_winner_side = get_winner_side(m.home_score, m.away_score)
             pred_winner_side = get_winner_side(pr.home_score_pred, pr.away_score_pred)
@@ -566,13 +580,11 @@ def round_results_board(request, round_id):
 
             # --- Bonus BO / BD (Uniquement si POOL) ---
             if is_pool_phase:
-                # Bonus Offensif
                 if pr.bonus_home_pred:
                     stats['bo'] += scoring.SCORING_CONFIG['OFFENSIVE_BONUS_VALUE'] if m.bonus_offense_home else scoring.SCORING_CONFIG['BONUS_MALUS']
                 if pr.bonus_away_pred:
                     stats['bo'] += scoring.SCORING_CONFIG['OFFENSIVE_BONUS_VALUE'] if m.bonus_offense_away else scoring.SCORING_CONFIG['BONUS_MALUS']
                 
-                # Bonus Défensif
                 real_bd = m.get_defense_bonus()
                 player_diff = abs(pr.home_score_pred - pr.away_score_pred)
                 pred_bd = None
@@ -906,7 +918,7 @@ def debug_scores_view(request):
         selected_season = seasons.first()
 
     # 5. Filtrer les Rounds UNIQUEMENT pour cette saison
-    rounds = Round.objects.filter(season=selected_season).order_by('number')
+    rounds = Round.objects.filter(season=selected_season).select_related('season').order_by('number')
     players = Player.objects.filter(user__isnull=False).order_by('name')
     
     # 6. Matrice de scores (ton code reste le même, mais filtré par rounds de la saison)
@@ -1157,7 +1169,7 @@ def statistics_view(request):
         if t > max_occurence: max_occurence = t
         if h > max_h: max_h = h
         if a > max_a: max_a = a
-# --- 2. LOGIQUE CLASSEMENT DÉTAILLÉ & PODIUM ---
+    # --- 2. CLASSEMENT DÉTAILLÉ & PODIUM ---
     detailed_ranking = []
     flair_ranking = []
     
@@ -1204,6 +1216,14 @@ def statistics_view(request):
         res = CompetitionResult.objects.filter(season_id=season_id).first()
         if not res and comp_id:
             res = CompetitionResult.objects.filter(season__competition_id=comp_id).first()
+
+        # Pré-chargement des bonus prédictions en une requête
+        bonus_preds_qs = CompetitionBonusPrediction.objects.select_related('player__user')
+        if season_id:
+            bonus_preds_qs = bonus_preds_qs.filter(season_id=season_id)
+        elif comp_id:
+            bonus_preds_qs = bonus_preds_qs.filter(competition_id=comp_id)
+        bonus_by_user = {bp.player.user_id: bp for bp in bonus_preds_qs}
         
         for s in scores:
             m_pts = s.match_points if s.match_points is not None else 0
@@ -1217,12 +1237,7 @@ def statistics_view(request):
             has_scorer = False
             has_realisateur = False
 
-            bonus_pred_query = CompetitionBonusPrediction.objects.filter(player__user=s.user)
-            if season_id:
-                bonus_pred_query = bonus_pred_query.filter(season_id=season_id)
-            elif comp_id:
-                bonus_pred_query = bonus_pred_query.filter(competition_id=comp_id)
-            bonus_pred = bonus_pred_query.first()
+            bonus_pred = bonus_by_user.get(s.user.id)
             
             if bonus_pred and res:
                 if bonus_pred.winner == res.real_winner and res.real_winner is not None:
@@ -1301,31 +1316,6 @@ def bareme_view(request):
         '6nations': RUGBY_SCORING.get("6 Nations"),
     })
     
-def get_all_time_ranking():
-    current_year = datetime.now().year
-    histories = SeasonHistory.objects.all()
-    all_time_scores = {}
-
-    for record in histories:
-        n = current_year - record.season_year
-        name = record.display_name
-        is_active = record.user is not None  # True si le joueur a un compte
-        # Ton algo combiné :
-        # 1. Score de performance (0 à 100)
-        performance = ((record.total_players + 1 - record.rank) * 100) / record.total_players
-        
-        # 2. Coefficient temporel (0.9^n)
-        time_coeff = 0.9 ** n
-        
-        weighted_score = performance * time_coeff
-        
-        # 3. Cumul par utilisateur
-        user_name = record.user.username
-        all_time_scores[user_name] = all_time_scores.get(user_name, 0) + weighted_score
-
-    # Trier par score décroissant
-    return sorted(all_time_scores.items(), key=lambda x: x[1], reverse=True)
-
 def hall_of_fame_view(request):
     current_year = datetime.now().year
     histories = SeasonHistory.objects.all()
@@ -1379,97 +1369,6 @@ def hall_of_fame_view(request):
     return render(request, 'hall_of_fame.html', {'all_time_ranking': ranking})
 
 @login_required
-def home_view(request):
-    player = request.user.player
-    now = timezone.now()
-
-    # 1. FILTRE STRICT SUR L'ANNÉE 2026
-    # On prend tout ce qui mentionne 2026 mais qui ne contient pas 2027
-    active_seasons = Season.objects.filter(
-        year__icontains="2026"
-    ).exclude(year__icontains="2027")
-
-    # 2. PROCHAIN MATCH & STATS GÉNÉRALES
-    next_match = Match.objects.filter(kickoff_at__gt=now).order_by('kickoff_at').first()
-    stats = compute_statistics(competition=None, season=None)
-    
-    user_row = next((row for row in stats.detailed_ranking if row['username'] == request.user.username), {})
-    rank_general = next((i+1 for i, r in enumerate(stats.detailed_ranking) if r['username'] == request.user.username), "?")
-
-    # 3. CALCUL DES CHOPES (PODIUM 3-2-1) ET CUILLÈRES
-    all_scores = DailyScore.objects.filter(round__season__in=active_seasons)
-    chopes_total = 0
-    cuilleres_count = 0
-    rounds_played = all_scores.values_list('round', flat=True).distinct()
-    
-    for r_id in rounds_played:
-        # On récupère tous les scores de la journée triés par points décroissants
-        day_scores = list(all_scores.filter(round_id=r_id).order_by('-points'))
-        
-        if len(day_scores) > 0:
-            # Attribution des chopes (Podium)
-            if day_scores[0].user == request.user:
-                chopes_total += 3  # 1er
-            elif len(day_scores) > 1 and day_scores[1].user == request.user:
-                chopes_total += 2  # 2e
-            elif len(day_scores) > 2 and day_scores[2].user == request.user:
-                chopes_total += 1  # 3e
-            
-            # Attribution cuillère (Dernier - min 3 joueurs)
-            if len(day_scores) >= 3 and day_scores[-1].user == request.user:
-                cuilleres_count += 1
-
-    # 4. STATS TECHNIQUES & BARRES PAR COMPÉTITION
-    comp_analysis = []
-    global_bons, global_total = 0, 0
-    global_off, global_def = 0, 0
-
-    for season in active_seasons:
-        preds = Prediction.objects.filter(player=player, match__round__season=season).exclude(match__home_score__isnull=True)
-        
-        if preds.exists():
-            s_bons = 0
-            for p in preds:
-                # Calcul victoire
-                real_res = 1 if p.match.home_score > p.match.away_score else (2 if p.match.home_score < p.match.away_score else 0)
-                pred_res = 1 if p.home_score_pred > p.away_score_pred else (2 if p.home_score_pred < p.away_score_pred else 0)
-                if real_res == pred_res: s_bons += 1
-                
-                # Bonus (Adapté à tes champs réels Match)
-                if p.bonus_home_pred and getattr(p.match, 'home_bonus_off', False): global_off += 1
-                if p.bonus_away_pred and getattr(p.match, 'away_bonus_def', False): global_def += 1
-
-            u_score = SeasonScore.objects.filter(user=request.user, season=season).first()
-            s_rank = SeasonScore.objects.filter(season=season, match_points__gt=u_score.match_points).count() + 1 if u_score else "?"
-
-            comp_analysis.append({
-                'name': season.competition.name,
-                'bons': s_bons,
-                'total': preds.count(),
-                'ratio': round((s_bons / preds.count() * 100), 1),
-                'rank': s_rank,
-                'pts': (u_score.match_points + u_score.ranking_points) if u_score else 0
-            })
-            global_bons += s_bons
-            global_total += preds.count()
-
-    context = {
-        'rank_general': rank_general,
-        'total_players': len(stats.detailed_ranking),
-        'total_points_all': user_row.get('points', 0) + user_row.get('ranking_points', 0),
-        'perfects': user_row.get('perfects', 0),
-        'chopes_count': chopes_total,
-        'cuilleres_count': cuilleres_count,
-        'comp_analysis': comp_analysis,
-        'global_ratio': round((global_bons / global_total * 100), 1) if global_total > 0 else 0,
-        'global_bons': global_bons,
-        'global_total': global_total,
-        'bonus_off': global_off,
-        'bonus_def': global_def,
-        'next_match': next_match,
-    }
-    return render(request, 'home.html', context)
-
 @login_required
 def home_view(request):
     player = request.user.player
@@ -1490,7 +1389,7 @@ def home_view(request):
     ).distinct()
 
     # --- 2. PROCHAIN MATCH ---
-    next_match = Match.objects.filter(kickoff_at__gt=now).order_by('kickoff_at').first()
+    next_match = Match.objects.filter(kickoff_at__gt=now).select_related('home_team', 'away_team').order_by('kickoff_at').first()
 
     # --- 3. STATS GÉNÉRALES (Classement général) ---
     stats = compute_statistics(competition=None, season=None)
@@ -1629,8 +1528,7 @@ def home_view(request):
             debug_log.append(f"❌ NO-SHOW : {m.home_team} vs {m.away_team} ({m.kickoff_at.strftime('%d/%m %H:%i')})")
 
     context = {
-        'rank_general': rank_general, 'total_players': len(all_users),
-        'total_players': all_users.count(),
+        'rank_general': rank_general, 'total_players': all_users.count(),
         'evolution': evolution,
         'hof_rank': hof_rank, 'total_points_all': user_row.get('points', 0) + user_row.get('ranking_points', 0),
         'perfects': my_stats['perfects'], 'rank_perfects': rank_perfects,
