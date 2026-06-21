@@ -1314,7 +1314,7 @@ from core.services.email_service import send_round_reminders
 def cron_send_reminders(request, token):
     expected = settings.CRON_TOKEN
     if token != expected:
-        return HttpResponse(f"Invalid token. Got '{token}', expected '{expected}'", status=403)
+        return HttpResponse("Invalid token", status=403)
     send_round_reminders()
     return HttpResponse("OK")
 
