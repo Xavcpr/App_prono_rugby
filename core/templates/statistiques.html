@@ -114,6 +114,172 @@
         </div>
       </div>
     </div>
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5>🏅 Points Matchs (M)</h5>
+            <div class="table-container" style="max-height:300px;overflow-y:auto">
+              <table class="rugby-board">
+                <thead><tr><th class="rank-col">#</th><th>Joueur</th><th>M</th></tr></thead>
+                <tbody>
+                  {% for r in match_ranking %}
+                    <tr>
+                      <td class="rank-col">{{ forloop.counter }}</td>
+                      <td class="text-start ps-3">
+                        {{ r.username }}
+                        {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
+                      </td>
+                      <td class="fw-bold text-primary">{{ r.match_pts }}</td>
+                    </tr>
+                  {% empty %}
+                    <tr><td colspan="3" class="text-muted">Aucune donnée</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5>📊 Points Flair (F)</h5>
+            <div class="table-container" style="max-height:300px;overflow-y:auto">
+              <table class="rugby-board">
+                <thead><tr><th class="rank-col">#</th><th>Joueur</th><th>F</th></tr></thead>
+                <tbody>
+                  {% for r in flair_ranking %}
+                    <tr>
+                      <td class="rank-col">{{ forloop.counter }}</td>
+                      <td class="text-start ps-3">
+                        {{ r.username }}
+                        {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
+                      </td>
+                      <td class="fw-bold text-info">{{ r.ranking_pts }}</td>
+                    </tr>
+                  {% empty %}
+                    <tr><td colspan="3" class="text-muted">Aucune donnée</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5>🏆 Points Podium (P)</h5>
+            <div class="table-container" style="max-height:300px;overflow-y:auto">
+              <table class="rugby-board">
+                <thead><tr><th class="rank-col">#</th><th>Joueur</th><th>P</th></tr></thead>
+                <tbody>
+                  {% for r in podium_ranking %}
+                    {% if r.podium_pts > 0 %}
+                    <tr>
+                      <td class="rank-col">{{ forloop.counter }}</td>
+                      <td class="text-start ps-3">
+                        {{ r.username }}
+                        {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
+                      </td>
+                      <td class="fw-bold text-success">{{ r.podium_pts }}</td>
+                    </tr>
+                    {% endif %}
+                  {% empty %}
+                    <tr><td colspan="3" class="text-muted">Aucun point podium</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5>🌓 Demi-tout-pile</h5>
+            <div class="table-container" style="max-height:260px;overflow-y:auto">
+              <table class="rugby-board">
+                <thead><tr><th class="rank-col">#</th><th>Joueur</th><th>Total</th></tr></thead>
+                <tbody>
+                  {% for r in demi_tout_pile_table %}
+                    <tr>
+                      <td class="rank-col">{{ forloop.counter }}</td>
+                      <td class="text-start ps-3">
+                        {{ r.username }}
+                        {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
+                      </td>
+                      <td class="fw-bold text-info">{{ r.value }}</td>
+                    </tr>
+                  {% empty %}
+                    <tr><td colspan="3" class="text-muted">Aucune donnée</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5>⚡ Bonus Offensif</h5>
+            <div class="table-container" style="max-height:260px;overflow-y:auto">
+              <table class="rugby-board">
+                <thead><tr><th>Joueur</th><th>Réussi</th><th>Raté</th><th>Total</th></tr></thead>
+                <tbody>
+                  {% for r in bonus_off_table %}
+                    <tr>
+                      <td class="text-start ps-3">
+                        {{ r.username }}
+                        {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
+                      </td>
+                      <td class="fw-bold text-success">{{ r.reussi }}</td>
+                      <td class="text-danger">{{ r.rate }}</td>
+                      <td>{{ r.total }}</td>
+                    </tr>
+                  {% empty %}
+                    <tr><td colspan="4" class="text-muted">Aucun bonus offensif</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5>🛡️ Bonus Défensif</h5>
+            <div class="table-container" style="max-height:260px;overflow-y:auto">
+              <table class="rugby-board">
+                <thead><tr><th>Joueur</th><th>Réussi</th><th>Raté</th><th>Total</th></tr></thead>
+                <tbody>
+                  {% for r in bonus_def_table %}
+                    <tr>
+                      <td class="text-start ps-3">
+                        {{ r.username }}
+                        {% if r.username == user.username %}<span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}
+                      </td>
+                      <td class="fw-bold text-success">{{ r.reussi }}</td>
+                      <td class="text-danger">{{ r.rate }}</td>
+                      <td>{{ r.total }}</td>
+                    </tr>
+                  {% empty %}
+                    <tr><td colspan="4" class="text-muted">Aucun bonus défensif</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="card mb-4">
       <div class="card-body">
         <h5>Classement détaillé</h5>

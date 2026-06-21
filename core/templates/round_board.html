@@ -93,12 +93,22 @@
       </div>
       <div class="d-flex align-items-center gap-1">
         <label class="small fw-bold mb-0">Journée:</label>
-        <select onchange="if(this.value) location.href='/resultats/' + this.value + '/';">
-          <option value="" disabled>-- Choisir --</option>
-          {% for r in rounds %}
-            <option value="{{ r.id }}" {% if r.id == round.id %}selected{% endif %}>J.{{ r.number }}</option>
-          {% endfor %}
-        </select>
+        <div class="d-flex align-items-center gap-1">
+          {% if prev_round_id %}
+            <a href="{% url 'round_board' prev_round_id %}"
+               class="btn btn-outline-secondary btn-sm py-0" style="font-size:0.8rem">◀</a>
+          {% endif %}
+          <select onchange="if(this.value) location.href='/resultats/' + this.value + '/';">
+            <option value="" disabled>-- Choisir --</option>
+            {% for r in rounds %}
+              <option value="{{ r.id }}" {% if r.id == round.id %}selected{% endif %}>J.{{ r.number }}</option>
+            {% endfor %}
+          </select>
+          {% if next_round_id %}
+            <a href="{% url 'round_board' next_round_id %}"
+               class="btn btn-outline-secondary btn-sm py-0" style="font-size:0.8rem">▶</a>
+          {% endif %}
+        </div>
       </div>
     </form>
     <div style="margin-left: auto; display: flex; gap: 10px;">

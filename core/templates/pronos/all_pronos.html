@@ -90,14 +90,28 @@
         </div>
         <div class="d-flex align-items-center gap-1">
           <label class="small fw-bold mb-0">Journée:</label>
-          <select name="round" onchange="this.form.submit()">
-            {% for r in rounds %}
-              <option value="{{ r.id }}"
-                      {% if current_round_obj and r.id == current_round_obj.id %}selected{% endif %}>{{ r }}</option>
-            {% endfor %}
-          </select>
+          <div class="d-flex align-items-center gap-1">
+            {% if prev_round_id %}
+              <a href="?comp={{ selected_comp.id }}&season={{ selected_season.id }}&round={{ prev_round_id }}"
+                 class="btn btn-outline-secondary btn-sm py-0" style="font-size:0.8rem">◀</a>
+            {% endif %}
+            <select name="round" onchange="this.form.submit()">
+              {% for r in rounds %}
+                <option value="{{ r.id }}"
+                        {% if current_round_obj and r.id == current_round_obj.id %}selected{% endif %}>{{ r }}</option>
+              {% endfor %}
+            </select>
+            {% if next_round_id %}
+              <a href="?comp={{ selected_comp.id }}&season={{ selected_season.id }}&round={{ next_round_id }}"
+                 class="btn btn-outline-secondary btn-sm py-0" style="font-size:0.8rem">▶</a>
+            {% endif %}
+          </div>
         </div>
       </form>
+      {% if current_round_obj %}
+        <a href="{% url 'round_board' current_round_obj.id %}"
+           class="btn btn-primary btn-sm">📊 Résultats journée</a>
+      {% endif %}
     </div>
     <div class="legend-small">
       {% if current_round_obj.phase == 'POOL' %}

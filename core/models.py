@@ -167,7 +167,9 @@ class Match(models.Model):
 
     def __str__(self):
         if self.home_team and self.away_team:
-            return f"{self.home_team} vs {self.away_team}"
+            s = self.round.season if self.round and self.round.season_id else None
+            ctx = f" [{s.competition.name} J{self.round.number}]" if s else ""
+            return f"{self.home_team} vs {self.away_team}{ctx}"
         return f"Match à définir ({self.round})"
     
     @property

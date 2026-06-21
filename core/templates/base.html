@@ -10,7 +10,7 @@
   <body class="bg-light">
     <nav class="navbar navbar-dark bg-dark sticky-top shadow">
       <div class="container-fluid">
-        <a class="navbar-brand fw-bold" href="{% url 'home' %}">🏉 PAGE D'ACCUEIL</a>
+        <a class="navbar-brand fw-bold" href="{% url 'home' %}">{% block navbar_brand %}🏉 PAGE D'ACCUEIL{% endblock %}</a>
         <button class="navbar-toggler"
                 type="button"
                 data-bs-toggle="collapse"

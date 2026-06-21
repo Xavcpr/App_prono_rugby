@@ -25,6 +25,22 @@ from .services.statistics import compute_statistics
 # CONFIGURATION DU BAREME DES POINTS
 
 
+def _get_adjacent_rounds(rounds_qs, current_round_id):
+    if not current_round_id:
+        return (None, None)
+    try:
+        current_id = int(current_round_id)
+    except (ValueError, TypeError):
+        return (None, None)
+    rounds_list = list(rounds_qs)
+    for i, r in enumerate(rounds_list):
+        if r.id == current_id:
+            prev_id = rounds_list[i-1].id if i > 0 else None
+            next_id = rounds_list[i+1].id if i < len(rounds_list) - 1 else None
+            return (prev_id, next_id)
+    return (None, None)
+
+
 # ------------------
 # PRONOS VIEW
 # ------------------
@@ -107,6 +123,8 @@ def pronos_view(request):
         match.user_prediction = predictions_by_match.get(match.id)
         if not match.is_locked: submit_disabled = False
 
+    prev_round_id, next_round_id = _get_adjacent_rounds(rounds, round_id)
+
     return render(request, "pronos/pronos.html", {
         "player": player,
         "matches": matches,
@@ -117,6 +135,8 @@ def pronos_view(request):
         "selected_season": selected_season,
         "selected_round": round_id,
         "submit_disabled": submit_disabled,
+        "prev_round_id": prev_round_id,
+        "next_round_id": next_round_id,
     })
 # ... reste de tes vues (logout, settings, etc.) inchangé ...
 
@@ -437,10 +457,15 @@ def all_pronos_view(request):
                 'is_locked': is_locked
             })
 
+    prev_round_id, next_round_id = _get_adjacent_rounds(
+        rounds, current_round_obj.id if current_round_obj else None
+    )
+
     return render(request, "pronos/all_pronos.html", {
         "rows": rows, "players": players, "competitions": all_competitions,
         "seasons": seasons, "rounds": rounds, "selected_comp": selected_comp,
         "selected_season": selected_season, "current_round_obj": current_round_obj,
+        "prev_round_id": prev_round_id, "next_round_id": next_round_id,
     })  
 
 def round_results_board(request, round_id):
@@ -632,17 +657,20 @@ def round_results_board(request, round_id):
             if entry['score'] == min_score and len(totals_display) > 1:
                 entry['rank_class'] = 'wooden-spoon'
 
+    prev_round_id, next_round_id = _get_adjacent_rounds(rounds, round_id)
     context = {
         'round': round_obj,
-        'players': players,
+        'rounds': rounds,
         'matches': matches,
+        'players': players,
         'matrix': matrix,
         'totals': totals_display,
         'all_competitions': all_competitions,
         'seasons': seasons,
-        'rounds': rounds,
         'selected_comp': selected_comp,
         'selected_season': selected_season,
+        'prev_round_id': prev_round_id,
+        'next_round_id': next_round_id,
     }
     return render(request, 'round_board.html', context)
 
@@ -801,13 +829,31 @@ def statistiques_view(request):
     # Tri par total global décroissant, puis par points de matchs
     stats.detailed_ranking.sort(key=lambda x: (x['total_global'], x['match_pts']), reverse=True)
     
-    # On cherche la dernière journée pour le bouton Résultats
+    # On cherche la dernière journée modifiée pour le bouton Résultats
     last_round_id = None
     if selected_season:
-        lr = Round.objects.filter(season=selected_season).order_by('-number').first()
-        if lr: 
+        lr = Round.objects.filter(
+            season=selected_season,
+            dailyscore__isnull=False
+        ).order_by('-date', '-number').first()
+        if not lr:
+            lr = Round.objects.filter(
+                season=selected_season,
+                matches__home_score__isnull=False
+            ).distinct().order_by('-date', '-number').first()
+        if not lr:
+            lr = Round.objects.filter(season=selected_season).order_by('-number').first()
+        if lr:
             last_round_id = lr.id
 
+    match_ranking = sorted(
+        [r for r in stats.detailed_ranking if r.get('match_pts', 0) > 0],
+        key=lambda x: x['match_pts'], reverse=True
+    ) or stats.detailed_ranking
+    podium_ranking = sorted(
+        stats.detailed_ranking,
+        key=lambda x: x.get('podium_pts', 0), reverse=True
+    )
     context = {
         "competitions": competitions,
         "competition": competition,
@@ -826,6 +872,11 @@ def statistiques_view(request):
         "last_round_id": last_round_id,
         "pie_labels": stats.pie_labels,
         "pie_values": stats.pie_values,
+        "demi_tout_pile_table": stats.demi_tout_pile_table,
+        "bonus_off_table": stats.bonus_off_table,
+        "bonus_def_table": stats.bonus_def_table,
+        "match_ranking": match_ranking,
+        "podium_ranking": podium_ranking,
     }
 
     return render(request, "statistiques.html", context)

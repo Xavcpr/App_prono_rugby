@@ -103,6 +103,7 @@ class SeasonScoreAdmin(admin.ModelAdmin):
 class PredictionAdmin(admin.ModelAdmin):
     list_display = ("player", "match", "home_score_pred", "away_score_pred", "points")
     list_filter = ("match__round__season", "match__round", "player")
+    autocomplete_fields = ("match",)
 
 @admin.register(CompetitionTeam)
 class CompetitionTeamAdmin(admin.ModelAdmin):
