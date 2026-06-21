@@ -1307,11 +1307,12 @@ def statistics_view(request):
 
 
 from django.http import HttpResponse
+from django.conf import settings
 from core.services.email_service import send_round_reminders
 
 
 def cron_send_reminders(request, token):
-    expected = os.environ.get("CRON_TOKEN", "")
+    expected = settings.CRON_TOKEN
     if token != expected:
         return HttpResponse("Invalid token", status=403)
     send_round_reminders()
