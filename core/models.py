@@ -93,6 +93,7 @@ class Round(models.Model):
     )
     
     date = models.DateField(null=True, blank=True)
+    reminder_hours_sent = models.CharField(max_length=50, blank=True, default="")
 
     class Meta:
         constraints = [

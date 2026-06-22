@@ -18,7 +18,7 @@ def _parse_hours():
 def send_round_reminders():
     today = timezone.now().date()
     trigger_hours = _parse_hours()
-    from core.models import Round, Match, Prediction, Player
+    from core.models import Round, Prediction, Player
 
     max_hours = max(trigger_hours)
     upcoming_rounds = Round.objects.filter(
@@ -36,18 +36,23 @@ def send_round_reminders():
         if matched_hour is None:
             continue
 
-        label = f"H-{int(matched_hour)}"
+        hour_str = str(int(matched_hour))
+        already_sent = hour_str in rnd.reminder_hours_sent.split(",")
+        if already_sent:
+            continue
+
+        label = f"H-{hour_str}"
         players = Player.objects.filter(
             user__isnull=False, user__email__gt=""
         ).select_related("user")
 
+        sent_count = 0
         for player in players:
             has_pred = Prediction.objects.filter(
                 player=player, match__round=rnd
             ).exists()
             if has_pred:
                 continue
-
             subject = f"[Pronos] {label} - {rnd.season.competition.name} J{rnd.number}"
             message = (
                 f"Salut {player.user.username},\n\n"
@@ -57,9 +62,14 @@ def send_round_reminders():
                 f"Va sur : https://xavfabiani.pythonanywhere.com/pronos/\n\n"
                 f"À très vite !"
             )
-            send_mail(
-                subject, message, settings.DEFAULT_FROM_EMAIL, [player.user.email]
-            )
+            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [player.user.email])
+            sent_count += 1
+
+        if sent_count > 0:
+            previous = rnd.reminder_hours_sent.split(",") if rnd.reminder_hours_sent else []
+            if hour_str not in previous:
+                previous.append(hour_str)
+            Round.objects.filter(id=rnd.id).update(reminder_hours_sent=",".join(filter(None, previous)))
 
 
 def notify_new_round(round_obj):
