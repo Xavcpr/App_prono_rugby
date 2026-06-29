@@ -1410,16 +1410,35 @@ def home_view(request):
     # --- 3. STATS GÉNÉRALES (Classement général) ---
     active_season_ids = list(active_seasons.values_list('id', flat=True))
     stats = compute_statistics(competition=None, season_ids=active_season_ids)
+
+    # Enrichir avec les SeasonScores (flairs + podiums)
+    ss_qs = SeasonScore.objects.filter(season_id__in=active_season_ids).select_related('user')
+    season_scores_data = {}
+    for ss in ss_qs:
+        uname = ss.user.username
+        if uname not in season_scores_data:
+            season_scores_data[uname] = {'match_pts': 0, 'ranking_pts': 0, 'podium_pts': 0}
+        season_scores_data[uname]['match_pts'] += ss.match_points or 0
+        season_scores_data[uname]['ranking_pts'] += ss.ranking_points or 0
+        season_scores_data[uname]['podium_pts'] += ss.podium_points or 0
+
+    for r in stats.detailed_ranking:
+        uname = r['username']
+        ss = season_scores_data.get(uname, {})
+        r['match_pts'] = ss.get('match_pts', 0) if ss.get('match_pts', 0) > 0 else r.get('points', 0)
+        r['ranking_pts'] = ss.get('ranking_pts', 0)
+        r['podium_pts'] = ss.get('podium_pts', 0)
+        r['total_global'] = r['match_pts'] + r['ranking_pts'] + r['podium_pts']
+
+    stats.detailed_ranking.sort(key=lambda x: (x['total_global'], x['match_pts']), reverse=True)
+
     user_row = next((row for row in stats.detailed_ranking if row['username'] == user.username), {})
     rank_general = next((i+1 for i, r in enumerate(stats.detailed_ranking) if r['username'] == user.username), "?")
 
     evolution = 0
     if user_row:
-        # On récupère le score de saison pour l'utilisateur
-        # Note : Adapte la requête selon comment tu lies SeasonScore et User
-        ss = SeasonScore.objects.filter(user=user).first() 
+        ss = SeasonScore.objects.filter(user=user).first()
         if ss and ss.last_rank:
-            # Si last_rank = 11 et rank_general = 9, evolution = +2 (positif = vert)
             evolution = ss.last_rank - rank_general
 
     # --- 4. HALL OF FAME ---
@@ -1586,7 +1605,7 @@ def home_view(request):
     context = {
         'rank_general': rank_general, 'total_players': len(user_ids_list),
         'evolution': evolution,
-        'hof_rank': hof_rank, 'total_points_all': user_row.get('points', 0) + user_row.get('ranking_points', 0),
+        'hof_rank': hof_rank, 'total_points_all': user_row.get('total_global', 0),
         'perfects': my_stats['perfects'], 'rank_perfects': rank_perfects,
         'chopes_count': my_stats['chopes'], 'rank_chopes': rank_chopes,
         'cuilleres_count': my_stats['cuilleres'], 'rank_cuilleres': rank_cuilleres,
