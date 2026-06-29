@@ -126,6 +126,14 @@ def compute_statistics(competition: Optional[Competition], season: Optional[Seas
             pred_scores[rid] = {}
         pred_scores[rid][uname] = pred_scores[rid].get(uname, 0) + pts
 
+    # Ne garder que les joueurs qui ont des données dans la période
+    active_players = set()
+    for rid_data in scores_map.values():
+        active_players.update(rid_data.keys())
+    for rid_data in pred_scores.values():
+        active_players.update(rid_data.keys())
+    player_keys = [k for k in player_keys if k in active_players]
+
     score_series = {k: [] for k in player_keys}
     rank_series  = {k: [] for k in player_keys}
     gap_series   = {k: [] for k in player_keys}
@@ -144,19 +152,30 @@ def compute_statistics(competition: Optional[Competition], season: Optional[Seas
             cumulative[k] += pts_jour
             score_series[k].append(cumulative[k])
 
-        day_scores_list = sorted(list(set(day_data.values())), reverse=True)
-        min_day_score = min(day_data.values()) if day_data else 0
+        sorted_items = sorted(day_data.items(), key=lambda x: -x[1])
+        rank = 0
+        prev_pts = None
+        player_rank = {}
+        for idx, (k, pts) in enumerate(sorted_items):
+            if pts != prev_pts:
+                rank = idx + 1
+                prev_pts = pts
+            player_rank[k] = rank
+
+        min_pts = min(day_data.values()) if day_data else 0
+        max_pts = max(day_data.values()) if day_data else 0
 
         for k, pts in day_data.items():
+            r = player_rank[k]
             if pts > 0:
-                if pts == day_scores_list[0]:
+                if r == 1:
                     chopes_points_by_player[k] += 3
-                elif len(day_scores_list) > 1 and pts == day_scores_list[1]:
+                elif r == 2:
                     chopes_points_by_player[k] += 2
-                elif len(day_scores_list) > 2 and pts == day_scores_list[2]:
+                elif r == 3:
                     chopes_points_by_player[k] += 1
 
-            if pts == min_day_score and len(day_data) > 1:
+            if pts > 0 and pts == min_pts and len(day_data) >= 3 and min_pts < max_pts:
                 cuilleres_by_player[k] += 1
 
         ordered = sorted(cumulative.items(), key=lambda x: x[1], reverse=True)

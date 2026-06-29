@@ -1408,7 +1408,8 @@ def home_view(request):
     next_match = Match.objects.filter(kickoff_at__gt=now).select_related('home_team', 'away_team').order_by('kickoff_at').first()
 
     # --- 3. STATS GÉNÉRALES (Classement général) ---
-    stats = compute_statistics(competition=None, season=None)
+    active_season_ids = list(active_seasons.values_list('id', flat=True))
+    stats = compute_statistics(competition=None, season_ids=active_season_ids)
     user_row = next((row for row in stats.detailed_ranking if row['username'] == user.username), {})
     rank_general = next((i+1 for i, r in enumerate(stats.detailed_ranking) if r['username'] == user.username), "?")
 
@@ -1482,14 +1483,20 @@ def home_view(request):
         max_p, min_p = day_scores[0].points, day_scores[-1].points
         s_bo_p, s_bo_ok, s_bd_p, s_bd_ok = 0, 0, 0, 0
 
-        for index, ds in enumerate(day_scores):
-            if ds.points == max_p and max_p > 0:
-                user_counts[ds.user.id]['chopes'] += 3
-            elif len(day_scores) > 1 and index == 1 and ds.points > 0:
-                user_counts[ds.user.id]['chopes'] += 2
-            elif len(day_scores) > 2 and index == 2 and ds.points > 0:
-                user_counts[ds.user.id]['chopes'] += 1
-            if len(day_scores) >= 3 and ds.points == min_p:
+        prev_points = None
+        rank = 0
+        for idx, ds in enumerate(day_scores):
+            if ds.points != prev_points:
+                rank = idx + 1
+                prev_points = ds.points
+            if ds.points > 0:
+                if rank == 1:
+                    user_counts[ds.user.id]['chopes'] += 3
+                elif rank == 2:
+                    user_counts[ds.user.id]['chopes'] += 2
+                elif rank == 3:
+                    user_counts[ds.user.id]['chopes'] += 1
+            if len(day_scores) >= 3 and ds.points == min_p and min_p < max_p and ds.points > 0:
                 user_counts[ds.user.id]['cuilleres'] += 1
 
         if ds_by_round.get(r.id):
