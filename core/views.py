@@ -1436,10 +1436,9 @@ def home_view(request):
     rank_general = next((i+1 for i, r in enumerate(stats.detailed_ranking) if r['username'] == user.username), "?")
 
     evolution = 0
-    if user_row:
-        ss = SeasonScore.objects.filter(user=user).first()
-        if ss and ss.last_rank:
-            evolution = ss.last_rank - rank_general
+    rank_history = stats.rank_series.get(user.username, [])
+    if len(rank_history) >= 2:
+        evolution = rank_history[-2] - rank_history[-1]
 
     # --- 4. HALL OF FAME ---
     histories = SeasonHistory.objects.all()
