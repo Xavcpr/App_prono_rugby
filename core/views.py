@@ -341,9 +341,9 @@ def all_pronos_view(request):
         selected_comp = near_round.season.competition if near_round else all_competitions.first()
 
     # 3. Détermination de la saison (FILTRÉE par la compétition choisie)
-    seasons = Season.objects.filter(competition=selected_comp, year__gte=2025).order_by('-year')
+    seasons = Season.objects.filter(competition=selected_comp).order_by('-year')
     
-    if season_id:
+    if season_id and seasons.filter(id=season_id).exists():
         selected_season = seasons.filter(id=season_id).first()
     else:
         # Si on change de comp, season_id devient invalide, on prend la plus récente de la nouvelle comp
@@ -1496,7 +1496,7 @@ def home_view(request):
                     user_counts[ds.user.id]['chopes'] += 2
                 elif rank == 3:
                     user_counts[ds.user.id]['chopes'] += 1
-            if len(day_scores) >= 3 and ds.points == min_p and min_p < max_p and ds.points > 0:
+            if len(day_scores) >= 3 and ds.points == min_p and min_p < max_p:
                 user_counts[ds.user.id]['cuilleres'] += 1
 
         if ds_by_round.get(r.id):

@@ -175,7 +175,7 @@ def compute_statistics(competition: Optional[Competition], season: Optional[Seas
                 elif r == 3:
                     chopes_points_by_player[k] += 1
 
-            if pts > 0 and pts == min_pts and len(day_data) >= 3 and min_pts < max_pts:
+            if pts == min_pts and len(day_data) >= 3 and min_pts < max_pts:
                 cuilleres_by_player[k] += 1
 
         ordered = sorted(cumulative.items(), key=lambda x: x[1], reverse=True)

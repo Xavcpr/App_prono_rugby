@@ -262,7 +262,7 @@
                 <tbody>
                   {% for r in demi_tout_pile_table %}
                     <tr>
-                      <td class="rank-col">{{ forloop.counter }}</td>
+                      <td class="rank-col">{% if forloop.first %}{{ forloop.counter }}{% else %}{% with prev=demi_tout_pile_table|slice:forloop.counter0|last %}{% if r.value == prev.value %}-{% else %}{{ forloop.counter }}{% endif %}{% endwith %}{% endif %}</td>
                       <td class="text-start ps-3">{{ r.username }}{% if r.username == user.username %} <span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}</td>
                       <td class="fw-bold text-info">{{ r.value }}</td>
                     </tr>
@@ -279,16 +279,17 @@
             <h5>⚡ Bonus Offensif</h5>
             <div class="table-container" style="max-height:220px;overflow-y:auto">
               <table class="rugby-board">
-                <thead><tr><th>Joueur</th><th>Réussi</th><th>Raté</th><th>Points</th></tr></thead>
+                <thead><tr><th class="rank-col">#</th><th>Joueur</th><th>Réussi</th><th>Raté</th><th>Points</th></tr></thead>
                 <tbody>
                   {% for r in bonus_off_table %}
                     <tr>
+                      <td class="rank-col">{% if forloop.first %}{{ forloop.counter }}{% else %}{% with prev=bonus_off_table|slice:forloop.counter0|last %}{% if r.points == prev.points %}-{% else %}{{ forloop.counter }}{% endif %}{% endwith %}{% endif %}</td>
                       <td class="text-start ps-3">{{ r.username }}{% if r.username == user.username %} <span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}</td>
                       <td class="fw-bold text-success">{{ r.reussi }}</td>
                       <td class="text-danger">{{ r.rate }}</td>
                       <td class="fw-bold">{{ r.points }}</td>
                     </tr>
-                  {% empty %}<tr><td colspan="4" class="text-muted">Aucun bonus offensif</td></tr>{% endfor %}
+                  {% empty %}<tr><td colspan="5" class="text-muted">Aucun bonus offensif</td></tr>{% endfor %}
                 </tbody>
               </table>
             </div>
@@ -301,16 +302,17 @@
             <h5>🛡️ Bonus Défensif</h5>
             <div class="table-container" style="max-height:220px;overflow-y:auto">
               <table class="rugby-board">
-                <thead><tr><th>Joueur</th><th>Réussi</th><th>Raté</th><th>Points</th></tr></thead>
+                <thead><tr><th class="rank-col">#</th><th>Joueur</th><th>Réussi</th><th>Raté</th><th>Points</th></tr></thead>
                 <tbody>
                   {% for r in bonus_def_table %}
                     <tr>
+                      <td class="rank-col">{% if forloop.first %}{{ forloop.counter }}{% else %}{% with prev=bonus_def_table|slice:forloop.counter0|last %}{% if r.points == prev.points %}-{% else %}{{ forloop.counter }}{% endif %}{% endwith %}{% endif %}</td>
                       <td class="text-start ps-3">{{ r.username }}{% if r.username == user.username %} <span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}</td>
                       <td class="fw-bold text-success">{{ r.reussi }}</td>
                       <td class="text-danger">{{ r.rate }}</td>
                       <td class="fw-bold">{{ r.points }}</td>
                     </tr>
-                  {% empty %}<tr><td colspan="4" class="text-muted">Aucun bonus défensif</td></tr>{% endfor %}
+                  {% empty %}<tr><td colspan="5" class="text-muted">Aucun bonus défensif</td></tr>{% endfor %}
                 </tbody>
               </table>
             </div>
@@ -352,7 +354,7 @@
                 <tbody>
                   {% for r in match_ranking %}
                     <tr>
-                      <td class="rank-col">{{ forloop.counter }}</td>
+                      <td class="rank-col">{% if forloop.first %}{{ forloop.counter }}{% else %}{% with prev=match_ranking|slice:forloop.counter0|last %}{% if r.match_pts == prev.match_pts %}-{% else %}{{ forloop.counter }}{% endif %}{% endwith %}{% endif %}</td>
                       <td class="text-start ps-3">{{ r.username }}{% if r.username == user.username %} <span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}</td>
                       <td class="fw-bold text-primary">{{ r.match_pts }}</td>
                     </tr>
@@ -373,7 +375,7 @@
                 <tbody>
                   {% for r in flair_ranking %}
                     <tr>
-                      <td class="rank-col">{{ forloop.counter }}</td>
+                      <td class="rank-col">{% if forloop.first %}{{ forloop.counter }}{% else %}{% with prev=flair_ranking|slice:forloop.counter0|last %}{% if r.ranking_pts == prev.ranking_pts %}-{% else %}{{ forloop.counter }}{% endif %}{% endwith %}{% endif %}</td>
                       <td class="text-start ps-3">{{ r.username }}{% if r.username == user.username %} <span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}</td>
                       <td class="fw-bold text-info">{{ r.ranking_pts }}</td>
                     </tr>
