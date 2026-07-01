@@ -46,6 +46,7 @@ class Season(models.Model):
     competition = models.ForeignKey(Competition, on_delete=models.CASCADE, related_name="seasons")
     year = models.CharField(max_length=20, default="2025/2026")  # ex: "2025/2026"
     teams = models.ManyToManyField('Team', related_name="seasons", blank=True)
+    scoring_config = models.JSONField(null=True, blank=True, verbose_name="Barème gelé")
 
     class Meta:
         unique_together = ("competition", "year")

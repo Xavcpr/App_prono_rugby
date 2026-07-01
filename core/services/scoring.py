@@ -4,71 +4,55 @@ from django.db.models import Sum, F
 import core.services.scoring as scoring
 
 
-# --- CONFIGURATION DU BARÈME ---
-SCORING_CONFIG = {
-    "MATCH_POOL_BASE": 680,
-    "PERFECT_SCORE_BONUS": 680,
-    "HALF_PERFECT_BONUS": 40,
-    "AWAY_WIN_BONUS": 15,
-    "DRAW_BONUS": 100,
-    "OFFENSIVE_BONUS_VALUE": 15,
-    "DEFENSIVE_BONUS_VALUE": 15,
-    "BONUS_MALUS": -3,
-    "DIFF_TABLE": {0: 15, 1: 12, 2: 10, 3: 8, 4: 6, 5: 4, 6: 2, 7: 1},
-    "SUM_TABLE": {0: 8, 1: 6, 2: 5, 3: 4, 4: 3, 5: 2, 6: 1},
-}
-
-PHASE_MULTIPLIERS = {
-    "POOL": 1.0,
-    "R16": 1.25,
-    "QF": 1.5,
-    "SF": 2.0,
-    "FINAL": 3.0
-}
-
-BONUS_SCALES = {
+# --- CONFIGURATION DU BARÈME (DEFAUT) ---
+_DEFAULT_SCORING_CONFIG = {
+    "SCORING_CONFIG": {
+        "MATCH_POOL_BASE": 680,
+        "PERFECT_SCORE_BONUS": 680,
+        "HALF_PERFECT_BONUS": 40,
+        "AWAY_WIN_BONUS": 15,
+        "DRAW_BONUS": 100,
+        "OFFENSIVE_BONUS_VALUE": 15,
+        "DEFENSIVE_BONUS_VALUE": 15,
+        "BONUS_MALUS": -3,
+        "DIFF_TABLE": {0: 15, 1: 12, 2: 10, 3: 8, 4: 6, 5: 4, 6: 2, 7: 1},
+        "SUM_TABLE": {0: 8, 1: 6, 2: 5, 3: 4, 4: 3, 5: 2, 6: 1},
+    },
+    "PHASE_MULTIPLIERS": {
+        "POOL": 1.0, "R16": 1.25, "QF": 1.5, "SF": 2.0, "FINAL": 3.0,
+    },
+    "BONUS_SCALES": {
         "Top 14": {7: 150, 6: 60, 5: 20},
-        "Champions Cup": {12: 300, 11: 150, 10: 100, 9: 40}
+        "Champions Cup": {12: 300, 11: 150, 10: 100, 9: 40},
+    },
+    "RUGBY_SCORING": {
+        "Top 14": {"bonus": 200, "winner": 200, "exact_rank": 80, "gap_1": 40, "gap_2": 20, "all_class": 3000, "1st": 300, "2nd": 150, "3rd": 50},
+        "Champions Cup": {"bonus": 0, "winner": 200, "exact_rank": 50, "gap_1": 20, "gap_2": 0, "all_class": 100, "1st": 150, "2nd": 75, "3rd": 25},
+        "6 Nations": {"bonus": 0, "winner": 100, "exact_rank": 50, "gap_1": 0, "gap_2": 0, "all_class": 100, "1st": 50, "2nd": 25, "3rd": 10},
+    },
+    "MASTER_PALIERS": {12: 50, 13: 150, 14: 200, 15: 250},
 }
 
-RUGBY_SCORING = {
-    "Top 14": {
-        "bonus": 200,      # Marqueur / Scoreur
-        "winner": 200,
-        "exact_rank": 80,
-        "gap_1": 40,
-        "gap_2": 20,
-        "all_class" : 3000,
-        "1st" : 300,
-        "2nd" : 150,
-        "3rd" : 50,
-    },
-    "Champions Cup": {
-        "bonus": 0,        # Pas de bonus marqueur sur cette compète
-        "winner": 200,
-        "exact_rank": 50,
-        "gap_1": 20,
-        "gap_2": 0,
-        "all_class" : 100,        
-        "1st" : 150,
-        "2nd" : 75,
-        "3rd" : 25,
-    },
-    "6 Nations": {
-        "bonus": 0,
-        "winner": 100,
-        "exact_rank": 50,
-        "gap_1": 0,
-        "gap_2": 0,
-        "all_class" : 100,
-        "1st" : 50,
-        "2nd" : 25,
-        "3rd" : 10,
-    }
-}
+# Aliasing pour compatibilité avec les imports existants dans views.py
+SCORING_CONFIG = _DEFAULT_SCORING_CONFIG["SCORING_CONFIG"]
+PHASE_MULTIPLIERS = _DEFAULT_SCORING_CONFIG["PHASE_MULTIPLIERS"]
+BONUS_SCALES = _DEFAULT_SCORING_CONFIG["BONUS_SCALES"]
+RUGBY_SCORING = _DEFAULT_SCORING_CONFIG["RUGBY_SCORING"]
+MASTER_PALIERS = _DEFAULT_SCORING_CONFIG["MASTER_PALIERS"]
 
-# Bonus journée tournoi des 6 nations pour ceux qui ont plus que X bons pronos
-MASTER_PALIERS = {12: 50, 13: 150, 14: 200, 15: 250}
+
+def _get_scoring_config(season):
+    """Renvoie la config gelée d'une saison, ou la config par défaut si absente."""
+    if season and season.scoring_config:
+        return season.scoring_config
+    return _DEFAULT_SCORING_CONFIG
+
+
+def _store_scoring_config(season):
+    """Stocke la config par défaut sur la saison si pas encore fait (gel)."""
+    if season and season.scoring_config is None:
+        season.scoring_config = _DEFAULT_SCORING_CONFIG
+        season.save(update_fields=["scoring_config"])
 # --- OUTILS DE CALCUL ---
 
 def get_winner_side(score_home, score_away):
@@ -76,9 +60,9 @@ def get_winner_side(score_home, score_away):
     if score_away > score_home: return "AWAY"
     return "DRAW"
 
-def calculate_match_points(prediction, match, winners_count):
+def calculate_match_points(prediction, match, winners_count, scoring_config=None):
+    cfg = (scoring_config or {}).get("SCORING_CONFIG", _DEFAULT_SCORING_CONFIG["SCORING_CONFIG"])
     pts = 0
-    cfg = SCORING_CONFIG
     
     if match.home_score is None or match.away_score is None:
         return 0
@@ -146,10 +130,13 @@ def calculate_match_points(prediction, match, winners_count):
     return pts
 
 def process_round_scores(round_obj):
+    season = round_obj.season
+    _store_scoring_config(season)
+    cfg = _get_scoring_config(season)
     matches = round_obj.matches.all()
     players = Player.objects.all()
-    comp_name = round_obj.season.competition.name
-    current_scale = BONUS_SCALES.get(comp_name, {})
+    comp_name = season.competition.name
+    current_scale = cfg["BONUS_SCALES"].get(comp_name, {})
 
     # SÉCURITÉ : On s'assure que les matchs ont la même phase que la journée
     matches.update(phase=round_obj.phase)
@@ -177,7 +164,7 @@ def process_round_scores(round_obj):
                 if m.home_score is None or m.away_score is None: continue
                 
                 winners_cnt = match_winners_counts.get(m.id, 0)
-                m_pts = calculate_match_points(pr, m, winners_cnt)
+                m_pts = calculate_match_points(pr, m, winners_cnt, cfg)
                 
                 real_side = get_winner_side(m.home_score, m.away_score)
                 pred_side = get_winner_side(pr.home_score_pred, pr.away_score_pred)
@@ -198,7 +185,7 @@ def process_round_scores(round_obj):
                     break
             
             # MULTIPLICATEUR (Appliqué sur tout : Matchs + Bonus de palier)
-            multiplier = PHASE_MULTIPLIERS.get(round_obj.phase, 1.0)
+            multiplier = cfg["PHASE_MULTIPLIERS"].get(round_obj.phase, 1.0)
             
             if "6 Nations" in comp_name:
                 multiplier *= 2.0
@@ -214,6 +201,7 @@ from django.db.models import Sum
 from core.models import SeasonScore, CompetitionResult, CompetitionBonusPrediction, DailyScore, Player, CompetitionTeamPrediction
 
 def compute_season_ranking_points(season_obj, compute_podium=False):
+    _store_scoring_config(season_obj)
 
     # Détection auto : si la saison n'a PAS de phase finale, le podium est calculé automatiquement
     playoff_phases = ['SF', 'FINAL', 'QF', 'R16']
@@ -275,7 +263,9 @@ def compute_season_ranking_points(season_obj, compute_podium=False):
     # --- ÉTAPE 2 : CALCUL DU FLAIR (Rangs + Gaps + Vainqueur + Master) ---
     comp_name = season_obj.competition.name
     clean_key = "6 Nations" if "6 Nations" in comp_name else ("Top 14" if "Top 14" in comp_name else "Champions Cup")
-    cfg = RUGBY_SCORING.get(clean_key, {})
+    s_cfg = _get_scoring_config(season_obj)
+    cfg = s_cfg["RUGBY_SCORING"].get(clean_key, {})
+    paliers = s_cfg.get("MASTER_PALIERS", {12: 50, 13: 150, 14: 200, 15: 250})
 
     for p in players:
         pts_flair = 0
@@ -335,7 +325,7 @@ def compute_season_ranking_points(season_obj, compute_podium=False):
                     good_matches_count += 1
 
             bonus_master = 0
-            for seuil, valeur in sorted(MASTER_PALIERS.items(), reverse=True):
+            for seuil, valeur in sorted(paliers.items(), reverse=True):
                 if good_matches_count >= seuil:
                     bonus_master = valeur
                     break
