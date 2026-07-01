@@ -46,6 +46,7 @@ def send_round_reminders():
             user__isnull=False, user__email__gt=""
         ).select_related("user")
 
+        missing_players = []
         sent_count = 0
         for player in players:
             has_pred = Prediction.objects.filter(
@@ -53,6 +54,7 @@ def send_round_reminders():
             ).exists()
             if has_pred:
                 continue
+            missing_players.append(player)
             subject = f"[Pronos] {label} - {rnd.season.competition.name} J{rnd.number}"
             message = (
                 f"Salut {player.user.username},\n\n"
@@ -64,6 +66,25 @@ def send_round_reminders():
             )
             send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [player.user.email])
             sent_count += 1
+
+        # À H-6, envoyer un récap au GO
+        if matched_hour == 6 and missing_players and settings.EMAIL_HOST_USER:
+            recap_message = (
+                f"Récap H-6 pour {rnd.season.competition.name} J{rnd.number} "
+                f"({_format_date(rnd.date)}) :\n\n"
+                f"{len(missing_players)} joueur(s) n'ont pas encore pronostiqué :\n"
+            )
+            for mp in missing_players:
+                recap_message += f"  - {mp.user.username}\n"
+            recap_message += (
+                f"\nVa sur : https://xavfabiani.pythonanywhere.com/tous-les-pronos/"
+            )
+            send_mail(
+                f"[GO] {len(missing_players)} relance(s) - {rnd.season.competition.name} J{rnd.number}",
+                recap_message,
+                settings.DEFAULT_FROM_EMAIL,
+                [settings.EMAIL_HOST_USER],
+            )
 
         if sent_count > 0:
             previous = rnd.reminder_hours_sent.split(",") if rnd.reminder_hours_sent else []
