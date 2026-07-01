@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.db.models import Prefetch, Sum, Count, Q
 from .forms import SettingsForm
 from django.contrib.admin.views.decorators import staff_member_required
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.contrib.auth.models import User
 
 # Modèles conservés
@@ -1437,8 +1437,20 @@ def home_view(request):
 
     evolution = 0
     rank_history = stats.rank_series.get(user.username, [])
-    if len(rank_history) >= 2:
-        evolution = rank_history[-2] - rank_history[-1]
+    if rank_history and stats.round_dates:
+        seven_days_ago = (now - timedelta(days=7)).date()
+        idx_7d = None
+        for i, d_str in enumerate(stats.round_dates):
+            try:
+                rdate = datetime.strptime(d_str[:10], "%Y-%m-%d").date()
+                if rdate <= seven_days_ago:
+                    idx_7d = i
+            except (ValueError, IndexError):
+                continue
+        if idx_7d is not None:
+            evolution = rank_history[idx_7d] - rank_history[-1]
+        elif len(rank_history) >= 2:
+            evolution = rank_history[-2] - rank_history[-1]
 
     # --- 4. HALL OF FAME ---
     histories = SeasonHistory.objects.all()

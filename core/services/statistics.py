@@ -65,6 +65,7 @@ class StatsResult:
     demi_tout_pile_table: List[Dict] = field(default_factory=list)
     bonus_off_table: List[Dict] = field(default_factory=list)
     bonus_def_table: List[Dict] = field(default_factory=list)
+    round_dates: List[str] = field(default_factory=list)
 
 
 def compute_statistics(competition: Optional[Competition], season: Optional[Season] = None, season_ids: Optional[list] = None) -> StatsResult:
@@ -85,7 +86,9 @@ def compute_statistics(competition: Optional[Competition], season: Optional[Seas
     has_multi_comp = len({r.season.competition_id for r in rounds}) > 1
 
     labels = []
+    round_dates = []
     for r in rounds:
+        round_dates.append(str(r.date))
         if has_multi_comp:
             abbr = _comp_abbr(r.season.competition.name)
             if r.phase != Round.MatchPhase.POOL:
@@ -325,4 +328,5 @@ def compute_statistics(competition: Optional[Competition], season: Optional[Seas
         demi_tout_pile_table=format_trophy(demi_tout_pile_by_player),
         bonus_off_table=format_bonus(bon_bonus_off_by_player, mauvais_bonus_off_by_player),
         bonus_def_table=format_bonus(bon_bonus_def_by_player, mauvais_bonus_def_by_player),
+        round_dates=round_dates,
     )
