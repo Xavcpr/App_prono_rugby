@@ -1436,8 +1436,7 @@ def home_view(request):
     rank_general = next((i+1 for i, r in enumerate(stats.detailed_ranking) if r['username'] == user.username), "?")
 
     evolution = 0
-    rank_history = stats.rank_series.get(user.username, [])
-    if rank_history and stats.round_dates:
+    if stats.round_dates:
         seven_days_ago = (now - timedelta(days=7)).date()
         idx_7d = None
         for i, d_str in enumerate(stats.round_dates):
@@ -1448,9 +1447,19 @@ def home_view(request):
             except (ValueError, IndexError):
                 continue
         if idx_7d is not None:
-            evolution = rank_history[idx_7d] - rank_history[-1]
-        elif len(rank_history) >= 2:
-            evolution = rank_history[-2] - rank_history[-1]
+            # Classement enrichi à J-7 (matches + flairs + podiums)
+            enriched_past = {}
+            for uname in stats.score_series:
+                match_pts = stats.score_series[uname][idx_7d]
+                ss = season_scores_data.get(uname, {})
+                total = match_pts + ss.get('ranking_pts', 0) + ss.get('podium_pts', 0)
+                enriched_past[uname] = total
+            past_ranking = sorted(enriched_past.items(), key=lambda x: -x[1])
+            past_rank = next((i+1 for i, (n, _) in enumerate(past_ranking) if n == user.username), None)
+            if past_rank is not None:
+                evolution = past_rank - rank_general
+        elif len(stats.rank_series.get(user.username, [])) >= 2:
+            evolution = stats.rank_series[user.username][-2] - rank_general
 
     # --- 4. HALL OF FAME ---
     histories = SeasonHistory.objects.all()
