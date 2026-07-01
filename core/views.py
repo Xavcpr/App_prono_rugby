@@ -457,11 +457,28 @@ def all_pronos_view(request):
         rounds, current_round_obj.id if current_round_obj else None
     )
 
+    # Stats prédictions pour l'admin
+    player_status = []
+    if current_round_obj:
+        match_ids = {m.id for m in matches}
+        for p in players:
+            p_preds = [pr for pr in predictions if pr.player_id == p.id and pr.match_id in match_ids and pr.home_score_pred is not None]
+            done = len(p_preds)
+            total = len(matches)
+            if done == 0:
+                status = 'missing'
+            elif done < total:
+                status = 'partial'
+            else:
+                status = 'complete'
+            player_status.append({'player': p, 'status': status, 'done': done, 'total': total})
+
     return render(request, "pronos/all_pronos.html", {
         "rows": rows, "players": players, "competitions": all_competitions,
         "seasons": seasons, "rounds": rounds, "selected_comp": selected_comp,
         "selected_season": selected_season, "current_round_obj": current_round_obj,
         "prev_round_id": prev_round_id, "next_round_id": next_round_id,
+        "player_status": player_status, "is_admin": is_admin,
     })  
 
 def round_results_board(request, round_id):

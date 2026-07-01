@@ -113,6 +113,20 @@
            class="btn btn-primary btn-sm">📊 Résultats journée</a>
       {% endif %}
     </div>
+    {% if is_admin and player_status %}
+    <div class="alert alert-info d-flex flex-wrap gap-2 align-items-center mb-3" role="alert">
+      <strong>👑 Admin - Statut des pronos :</strong>
+      {% for ps in player_status %}
+        {% if ps.status == 'missing' %}
+          <span class="badge bg-danger">{{ ps.player.name }} {{ ps.done }}/{{ ps.total }}</span>
+        {% elif ps.status == 'partial' %}
+          <span class="badge bg-warning text-dark">{{ ps.player.name }} {{ ps.done }}/{{ ps.total }}</span>
+        {% else %}
+          <span class="badge bg-success">{{ ps.player.name }} ✅</span>
+        {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
     <div class="legend-small">
       {% if current_round_obj.phase == 'POOL' %}
         <span><span class="bo-success">24</span> BO réussi</span>
