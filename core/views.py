@@ -19,10 +19,15 @@ from .models import (
 
 # Services
 from .services import scoring
+from django.http import JsonResponse, HttpResponse
 from .services.scoring import PHASE_MULTIPLIERS, SCORING_CONFIG, RUGBY_SCORING, process_round_scores, get_winner_side, BONUS_SCALES, compute_competition_points
 from .services.statistics import compute_statistics
 
 # CONFIGURATION DU BAREME DES POINTS
+
+
+def health_view(request):
+    return HttpResponse("ok", content_type="text/plain")
 
 
 def _get_adjacent_rounds(rounds_qs, current_round_id):
