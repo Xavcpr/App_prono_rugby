@@ -19,7 +19,7 @@ from .models import (
 
 # Services
 from .services import scoring
-from .services.scoring import PHASE_MULTIPLIERS, SCORING_CONFIG, RUGBY_SCORING, process_round_scores, get_winner_side, BONUS_SCALES
+from .services.scoring import PHASE_MULTIPLIERS, SCORING_CONFIG, RUGBY_SCORING, process_round_scores, get_winner_side, BONUS_SCALES, compute_competition_points
 from .services.statistics import compute_statistics
 
 # CONFIGURATION DU BAREME DES POINTS

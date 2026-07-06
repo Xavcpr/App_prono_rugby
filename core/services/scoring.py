@@ -200,6 +200,7 @@ def process_round_scores(round_obj):
 from django.db.models import Sum
 from core.models import SeasonScore, CompetitionResult, CompetitionBonusPrediction, DailyScore, Player, CompetitionTeamPrediction
 
+@transaction.atomic
 def compute_season_ranking_points(season_obj, compute_podium=False):
     _store_scoring_config(season_obj)
 
@@ -355,3 +356,56 @@ def compute_season_ranking_points(season_obj, compute_podium=False):
                     score_obj.save()
 
     return "Calcul terminé (Matchs + Flair)" if not compute_podium else "Calcul terminé (Matchs + Flair + Podium)"
+def compute_competition_points(season):
+    from core.models import CompetitionResult, CompetitionTeamPrediction, CompetitionBonusPrediction, SeasonScore, Player
+    result = CompetitionResult.objects.filter(season=season).first()
+    if not result:
+        return "Aucun r�sultat saisi."
+
+    s_cfg = _get_scoring_config(season)
+    rules = s_cfg["RUGBY_SCORING"].get(season.competition.name, s_cfg["RUGBY_SCORING"]["Top 14"])
+    players = Player.objects.all()
+
+    for player in players:
+        pts_classement = 0
+        pts_bonus_finaux = 0
+
+        user_preds = CompetitionTeamPrediction.objects.filter(
+            player=player,
+            competition=season.competition,
+            season=season
+        )
+        for p in user_preds:
+            real_block = result.rankings_json.get(p.block_key, {})
+            real_pos = real_block.get(str(p.team.id))
+            if real_pos:
+                diff = abs(p.position - int(real_pos))
+                if diff == 0: pts_classement += rules["exact_rank"]
+                elif diff == 1: pts_classement += rules["gap_1"]
+                elif diff == 2: pts_classement += rules["gap_2"]
+
+        bonus_pred = CompetitionBonusPrediction.objects.filter(
+            player=player,
+            competition=season.competition,
+            season=season
+        ).first()
+
+        if bonus_pred and result.real_winner:
+            if bonus_pred.winner == result.real_winner:
+                pts_bonus_finaux += rules["winner"]
+
+            if result.real_best_try_scorer:
+                if bonus_pred.best_try_scorer.lower().strip() == result.real_best_try_scorer.lower().strip():
+                    pts_bonus_finaux += rules["bonus"]
+            if result.real_best_point_scorer:
+                if bonus_pred.best_point_scorer.lower().strip() == result.real_best_point_scorer.lower().strip():
+                    pts_bonus_finaux += rules["bonus"]
+
+        if player.user:
+            s_score, _ = SeasonScore.objects.get_or_create(
+                user=player.user,
+                competition=season.competition,
+                season=season
+            )
+            s_score.ranking_points = pts_classement + pts_bonus_finaux
+            s_score.save()

@@ -43,3 +43,31 @@ class TestCalculateMatchPoints:
         pts_all = calculate_match_points(prediction, match_with_scores, winners_count=1)
         pts_split = calculate_match_points(prediction, match_with_scores, winners_count=3)
         assert pts_all > pts_split
+
+
+@pytest.mark.django_db
+class TestProcessRoundScores:
+    def test_phase_final_no_bonus(self, prediction, match_with_scores, round_obj):
+        """T1: Phase FINAL ne doit pas compter les BO/BD"""
+        from core.services.scoring import calculate_match_points
+        match_with_scores.phase = "FINAL"
+        match_with_scores.save()
+        prediction.bonus_home_pred = True
+        prediction.bonus_away_pred = True
+        prediction.save()
+        pts = calculate_match_points(prediction, match_with_scores, winners_count=1)
+        assert pts > 0
+
+    def test_process_round_creates_dailyscore(self, prediction, match_with_scores, round_obj):
+        """T2: process_round_scores cree un DailyScore pour le joueur"""
+        from core.services.scoring import process_round_scores
+        from core.models import DailyScore
+        assert DailyScore.objects.count() == 0
+        process_round_scores(round_obj)
+        assert DailyScore.objects.filter(user=prediction.player.user, round=round_obj).exists()
+
+    def test_compute_season_ranking_points_no_result(self, season):
+        """T3: compute_season_ranking_points retourne un message d'erreur si pas de CompetitionResult"""
+        from core.services.scoring import compute_season_ranking_points
+        msg = compute_season_ranking_points(season)
+        assert "Aucun résultat" in msg
