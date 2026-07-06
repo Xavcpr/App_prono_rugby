@@ -225,7 +225,8 @@ def classement_prediction(request):
         # Récupération des bonus
         bonus, _ = CompetitionBonusPrediction.objects.get_or_create(
             player=request.user.player,
-            competition=selected_competition
+            competition=selected_competition,
+            season=season
         )
         
         winner_teams = selected_competition.teams.all().order_by("name")
@@ -321,6 +322,7 @@ def classement_prediction(request):
         "last_saved_ranking": last_saved_ranking,
     })
 
+@login_required
 def all_pronos_view(request):
     now = timezone.now()
     is_admin = request.user.is_staff or request.user.is_superuser
@@ -481,6 +483,7 @@ def all_pronos_view(request):
         "player_status": player_status, "is_admin": is_admin,
     })  
 
+@login_required
 def round_results_board(request, round_id):
     # 1. Récupération de l'objet et gestion des changements via GET
     round_obj = get_object_or_404(Round.objects.select_related('season__competition'), id=round_id)
@@ -704,6 +707,7 @@ def round_results_board(request, round_id):
     }
     return render(request, 'round_board.html', context)
 
+@staff_member_required
 def compute_round_view(request, round_id):
     round_obj = get_object_or_404(Round, id=round_id)
     # On appelle ton script de scoring
@@ -1164,6 +1168,7 @@ def declencher_calcul_points(request, season_id):
 def charte_view(request):
     return render(request, "pronos/charte.html")
 
+@login_required
 def statistics_view(request):
     comp_id = request.GET.get('competition')
     season_id = request.GET.get('season')
@@ -1265,7 +1270,7 @@ def statistics_view(request):
                     has_winner = True
                 
                 if bonus_pred.best_try_scorer and res.real_best_try_scorer:
-                    if bonus_pred.best_try_scorer.strip().lower() == res.real_best_best_try_scorer.strip().lower():
+                    if bonus_pred.best_try_scorer.strip().lower() == res.real_best_try_scorer.strip().lower():
                         has_scorer = True
 
                 if bonus_pred.best_point_scorer and res.real_best_point_scorer:
@@ -1637,7 +1642,7 @@ def home_view(request):
     for m in all_past_matches:
         if m.id not in pred_match_ids:
             no_show_list.append(m)
-            debug_log.append(f"❌ NO-SHOW : {m.home_team} vs {m.away_team} ({m.kickoff_at.strftime('%d/%m %H:%i')})")
+            debug_log.append(f"❌ NO-SHOW : {m.home_team} vs {m.away_team} ({m.kickoff_at.strftime('%d/%m %H:%M')})")
 
     context = {
         'rank_general': rank_general, 'total_players': len(user_ids_list),

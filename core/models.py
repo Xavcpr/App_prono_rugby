@@ -61,7 +61,6 @@ class Season(models.Model):
         if first_match and first_match.kickoff_at:
             now = timezone.now()
             started = now > first_match.kickoff_at
-            print(f"DEBUG: Now={now} | Kickoff={first_match.kickoff_at} | Started={started}")
             return started
         return False
 
@@ -94,7 +93,7 @@ class Round(models.Model):
     )
     
     date = models.DateField(null=True, blank=True)
-    reminder_hours_sent = models.CharField(max_length=50, blank=True, default="")
+    reminder_hours_sent = models.JSONField(blank=True, default=list, verbose_name='Heures de rappel')
 
     class Meta:
         constraints = [
@@ -193,13 +192,6 @@ class Match(models.Model):
         return None
     
     
-# ----- Configuration de scoring -----
-class ScoringConfig(models.Model):
-    competition = models.ForeignKey(Competition, on_delete=models.CASCADE)
-    category = models.CharField(max_length=50)
-    delta = models.IntegerField(default=0)
-    points = models.IntegerField(default=0)
-    phase_multipliers = models.JSONField(default=dict)
 
 # ----- Pronostics -----
 class Prediction(models.Model):
@@ -211,6 +203,10 @@ class Prediction(models.Model):
     bonus_away_pred = models.BooleanField(default=False)
     points = models.IntegerField(default=0)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["match", "player"]),
+        ]
 
 
 # ----- Scores journaliers -----

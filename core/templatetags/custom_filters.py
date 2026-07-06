@@ -28,3 +28,10 @@ def get_dict_item(dictionary, key):
     if isinstance(dictionary, dict):
         return dictionary.get(key)
     return None
+@register.filter
+def dict_key(d, key):
+    try:
+        res = d.get(int(key))
+        return res
+    except (AttributeError, TypeError, KeyError, ValueError):
+        return None

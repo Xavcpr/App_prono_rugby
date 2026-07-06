@@ -5,7 +5,7 @@ from datetime import datetime, time
 
 from .services.scoring import compute_season_ranking_points, process_round_scores
 from .models import (
-    CompetitionResult, CompetitionTeam, Season, Team, Player, Competition, Round, Match, ScoringConfig,
+    CompetitionResult, CompetitionTeam, Season, Team, Player, Competition, Round, Match,
     Prediction, DailyScore, SeasonScore, CompetitionBonusPrediction, CompetitionTeamPrediction
 )
 from .views import compute_statistics
@@ -177,4 +177,3 @@ class CompetitionResultAdmin(admin.ModelAdmin):
 admin.site.register(Team)
 admin.site.register(Player)
 admin.site.register(Competition)
-admin.site.register(ScoringConfig)

@@ -37,7 +37,7 @@ def send_round_reminders():
             continue
 
         hour_str = str(int(matched_hour))
-        already_sent = hour_str in rnd.reminder_hours_sent.split(",")
+        already_sent = hour_str in rnd.reminder_hours_sent
         if already_sent:
             continue
 
@@ -87,10 +87,10 @@ def send_round_reminders():
             )
 
         if sent_count > 0:
-            previous = rnd.reminder_hours_sent.split(",") if rnd.reminder_hours_sent else []
+            previous = list(rnd.reminder_hours_sent) if rnd.reminder_hours_sent else []
             if hour_str not in previous:
                 previous.append(hour_str)
-            Round.objects.filter(id=rnd.id).update(reminder_hours_sent=",".join(filter(None, previous)))
+            Round.objects.filter(id=rnd.id).update(reminder_hours_sent=previous)
 
 
 def notify_new_round(round_obj):

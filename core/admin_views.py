@@ -19,11 +19,11 @@ def import_teams_view(request):
                 if not name:
                     continue
 
-                _, was_created = Team.objects.get_or_create(
+                team, was_created = Team.objects.get_or_create(
                     name=name,
-                    competition=competition
                 )
                 if was_created:
+                    team.competitions.add(competition)
                     created += 1
 
             messages.success(

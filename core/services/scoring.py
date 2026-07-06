@@ -139,7 +139,7 @@ def process_round_scores(round_obj):
     current_scale = cfg["BONUS_SCALES"].get(comp_name, {})
 
     # SÉCURITÉ : On s'assure que les matchs ont la même phase que la journée
-    matches.update(phase=round_obj.phase)
+    matches.filter(phase='POOL').update(phase=round_obj.phase)
 
     match_winners_counts = {}
     for m in matches:

@@ -26,10 +26,10 @@ except ImportError:
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-SECRET_KEY = os.environ.get(
-    'DJANGO_SECRET_KEY',
-    'django-insecure-m^mge(8%rl8%tyt*82g2jvd&*)#1zl3tj7fg!lrah+3m@97w5r'
-)
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    from django.core.management.utils import get_random_secret_key
+    SECRET_KEY = get_random_secret_key()
 
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 
@@ -50,7 +50,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     # 'django_extensions',
-    'rest_framework',
     'core', 
 ]
 
@@ -119,7 +118,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'fr-fr'
 
 TIME_ZONE = "Europe/Paris"
 USE_TZ = True
@@ -149,3 +148,9 @@ LOGIN_REDIRECT_URL = "/pronos/"
 LOGOUT_REDIRECT_URL = "/accounts/login/"
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Security
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
