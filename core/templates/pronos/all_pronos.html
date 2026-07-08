@@ -111,6 +111,10 @@
       {% if current_round_obj %}
         <a href="{% url 'round_board' current_round_obj.id %}"
            class="btn btn-primary btn-sm">📊 Résultats journée</a>
+        {% if request.user.is_staff %}
+          <a href="{% url 'round_bonus' current_round_obj.id %}"
+             class="btn btn-warning btn-sm">🏆 Bonus</a>
+        {% endif %}
       {% endif %}
     </div>
     {% if is_admin and player_status %}

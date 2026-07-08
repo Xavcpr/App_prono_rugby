@@ -118,8 +118,10 @@
          class="btn-custom btn-view">👁️ Voir les pronos</a>
       <a href="{% url 'compute_points' round.id %}"
           class="btn-custom btn-compute">🔄 Recalculer</a>
-      <a href="{% url 'round_bonus' round.id %}"
-         class="btn-custom btn-edit">🏆 Bonus</a>
+      {% if request.user.is_staff %}
+        <a href="{% url 'round_bonus' round.id %}"
+           class="btn-custom btn-edit">🏆 Bonus</a>
+      {% endif %}
     </div>
   </div>
   <div style="margin-bottom: 30px;">
