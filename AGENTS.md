@@ -20,7 +20,7 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 - **Phase 5 — Bonnes pratiques (3/4)** : suppression `print()` dans `Season.has_started` ; templates 404/500 statiques ; `reminder_hours_sent` CharField → JSONField + migration 0014 ; `email_service.py` adapté.
 - **Phase 6 — Refacto scoring + tests (3/3)** : déplacement `compute_competition_points` de `views.py` → `services/scoring.py` ; ajout `@transaction.atomic` sur `compute_season_ranking_points` ; 8 nouveaux tests (T1-T8) → 17/17 OK.
 - **Phase 7 — CI, health, env (3/3)** : GitHub Actions (`tests.yml`) ; endpoint `/health/` ; `.env.example` complété avec `CRON_TOKEN`.
-- **Phase 8 — Import auto des scores (6/6)** : service `scores_importer.py` ; `team_mapping.json` ; management command `import_scores` ; vue `/cron/import-scores/<token>/` ; `SPORTSDB_API_KEY` dans settings + `.env.example` ; accent-insensitive matching.
+- **Phase 8 — Import auto des scores (3 competences)** : service `scores_importer.py` avec support Top 14, Champions Cup et 6 Nations ; `team_mapping.json` mis a jour (20 equipes) ; management command `import_scores` avec `--competition` ; vue `/cron/import-scores/<token>/` ; `SPORTSDB_API_KEY` ; accent-insensitive matching.
 
 ### In Progress
 - *(none)*
@@ -38,11 +38,12 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 ## Next Steps
 1. ~~Configurer cron-job.org pour appeler `/health/`~~ ✅
 2. ~~Récupération auto des scores~~ ✅
-3. Obtenir une clé API TheSportsDB gratuite (optionnel, améliore le quota).
-4. Ajouter `SPORTSDB_API_KEY` dans le `.env` sur PythonAnywhere.
-5. Tester les mails H-24/H-6 en semaine réelle.
-6. Points F/P dans graphiques.
-7. Inscriptions.
+3. ~~Obtenir une clé API TheSportsDB gratuite~~ (la clé `3` suffit pour commencer).
+4. ~~Ajouter `SPORTSDB_API_KEY` dans le `.env` sur PythonAnywhere~~ (valeur par défaut `3`).
+5. Creer un cron-job.org pour l'import auto : URL `/cron/import-scores/CRON_TOKEN/`, toutes les 60 min.
+6. Tester les mails H-24/H-6 en semaine réelle.
+7. Points F/P dans graphiques.
+8. Inscriptions.
 
 ## Critical Context
 - Projet : `App_prono_rugby` sur PA, dépôt git dans `backend/`.
