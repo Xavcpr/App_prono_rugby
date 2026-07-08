@@ -1355,11 +1355,14 @@ def import_scores_view(request, token):
     if token != expected:
         return HttpResponse("Invalid token", status=403)
     from core.models import Season
-    season = Season.objects.order_by("-id").first()
-    if not season:
-        return HttpResponse("No season found", status=404)
-    result = import_scores(season, dry_run=False)
-    return JsonResponse(result)
+    seasons = Season.objects.filter(competition__name__in=["Top 14", "Champions Cup", "6 Nations"])
+    if not seasons.exists():
+        return HttpResponse("No seasons found", status=404)
+    all_results = []
+    for season in seasons:
+        result = import_scores(season, dry_run=False)
+        all_results.append(result)
+    return JsonResponse({"imports": all_results})
 
 
 def bareme_view(request):

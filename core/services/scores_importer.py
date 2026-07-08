@@ -4,7 +4,7 @@ import time
 import logging
 import unicodedata
 from datetime import datetime, timedelta
-from urllib.request import urlopen, Request
+from urllib.request import Request, urlopen
 from urllib.error import URLError
 
 from django.conf import settings
@@ -14,11 +14,16 @@ from core.models import Match, Season, Team
 
 logger = logging.getLogger(__name__)
 
-SPORTSDB_LEAGUE_ID = "4430"
 MAPPING_PATH = os.path.join(os.path.dirname(__file__), "team_mapping.json")
 MAX_ROUNDS = 30
 RETRY_DELAY = 5
 MAX_RETRIES = 3
+
+COMPETITIONS = {
+    "Top 14": {"league_id": "4430"},
+    "Champions Cup": {"league_id": "4550"},
+    "6 Nations": {"league_id": "4714"},
+}
 
 
 def _api_key():
@@ -64,18 +69,24 @@ def _request(url):
     return None
 
 
-def _fetch_events(sportsdb_season):
-    url = f"{_api_base()}/eventsseason.php?id={SPORTSDB_LEAGUE_ID}&s={sportsdb_season}"
+def _sportsdb_season(season):
+    if season.competition.name == "6 Nations":
+        return season.year
+    return season.year.replace("/", "-")
+
+
+def _fetch_events(sportsdb_season, league_id):
+    url = f"{_api_base()}/eventsseason.php?id={league_id}&s={sportsdb_season}"
     data = _request(url)
     if data:
         events = data.get("events") or []
-        if len(events) >= 14:
+        if len(events) >= 3:
             logger.info("Season endpoint returned %d events", len(events))
             return events
 
     events = []
     for r in range(1, MAX_ROUNDS + 1):
-        url = f"{_api_base()}/eventsround.php?id={SPORTSDB_LEAGUE_ID}&r={r}&s={sportsdb_season}"
+        url = f"{_api_base()}/eventsround.php?id={league_id}&r={r}&s={sportsdb_season}"
         data = _request(url)
         if not data:
             continue
@@ -140,13 +151,16 @@ def _match_event_to_db_match(event, db_teams_by_name, day_window=1):
 
 @transaction.atomic
 def import_scores(season: Season, dry_run: bool = False):
-    sportsdb_season = season.year.replace("/", "-")
-    events = _fetch_events(sportsdb_season)
+    league_id = COMPETITIONS.get(season.competition.name, {}).get("league_id")
+    if not league_id:
+        return {"status": "error", "message": f"Unknown competition: {season.competition.name}"}
+
+    sportsdb_season = _sportsdb_season(season)
+    events = _fetch_events(sportsdb_season, league_id)
 
     if not events:
         return {"status": "error", "message": "No events fetched from API"}
 
-    from unicodedata import category as uc_category
     all_teams = Team.objects.all()
     db_teams_by_name = {}
     for t in all_teams:
@@ -197,4 +211,5 @@ def import_scores(season: Season, dry_run: bool = False):
         "updated": updated,
         "skipped": skipped,
         "results": results,
+        "competition": season.competition.name,
     }
