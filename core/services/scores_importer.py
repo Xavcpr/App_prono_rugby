@@ -141,7 +141,7 @@ def _match_event_to_db_match(event, db_teams_by_name, day_window=1):
 @transaction.atomic
 def import_scores(season: Season, dry_run: bool = False):
     sportsdb_season = season.year.replace("/", "-")
-    events = _fetch_events_all_rounds(sportsdb_season)
+    events = _fetch_events(sportsdb_season)
 
     if not events:
         return {"status": "error", "message": "No events fetched from API"}
