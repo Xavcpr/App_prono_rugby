@@ -26,4 +26,3 @@ jobs:
           pip install pytest pytest-django
       - name: Run tests
         run: python -m pytest tests/ -v
-        working-directory: backend
