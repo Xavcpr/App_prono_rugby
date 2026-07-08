@@ -443,11 +443,15 @@
   {{ labels|json_script:"labels-data" }}
   {{ score_series|json_script:"score-series-data" }}
   {{ rank_series|json_script:"rank-series-data" }}
+  {{ flair_series|json_script:"flair-series-data" }}
+  {{ podium_series|json_script:"podium-series-data" }}
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script>
     const labels = JSON.parse(document.getElementById("labels-data").textContent || '[]');
     const scoreSeries = JSON.parse(document.getElementById("score-series-data").textContent || '{}');
     const rankSeries  = JSON.parse(document.getElementById("rank-series-data").textContent || '{}');
+    const flairSeries  = JSON.parse(document.getElementById("flair-series-data").textContent || '{}');
+    const podiumSeries = JSON.parse(document.getElementById("podium-series-data").textContent || '{}');
 
     const colors = ['#3498db', '#e74c3c', '#27ae60', '#f39c12', '#9b59b6', '#34495e'];
 
@@ -464,7 +468,18 @@
     const opt = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } };
 
     if (document.getElementById('scoreChart')) {
-      new Chart(document.getElementById('scoreChart'), { type: "line", data: { labels, datasets: makeDatasets(scoreSeries) }, options: opt });
+      const players = Object.keys(scoreSeries);
+      const totalSeries = {};
+      for (const k of players) {
+        totalSeries[k] = scoreSeries[k].map((v, i) => v + (flairSeries[k]?.[i] || 0) + (podiumSeries[k]?.[i] || 0));
+      }
+      const mainDs = makeDatasets(totalSeries);
+      const matchOnlyDs = makeDatasets(scoreSeries).map(d => ({
+        ...d, borderDash: [4, 4], pointRadius: 0, borderWidth: 1,
+        label: d.label + ' (M)'
+      }));
+      const allDs = [...mainDs, ...matchOnlyDs].filter(d => d.data.length > 0);
+      new Chart(document.getElementById('scoreChart'), { type: "line", data: { labels, datasets: allDs }, options: opt });
     }
     if (document.getElementById('rankChart')) {
       new Chart(document.getElementById('rankChart'), { 

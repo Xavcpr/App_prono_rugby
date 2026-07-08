@@ -22,6 +22,9 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 - **Phase 7 — CI, health, env (3/3)** : GitHub Actions (`tests.yml`) ; endpoint `/health/` ; `.env.example` complété avec `CRON_TOKEN`.
 - **Phase 8 — Import auto des scores (3 competences)** : service `scores_importer.py` avec support Top 14, Champions Cup et 6 Nations ; `team_mapping.json` mis a jour (20 equipes) ; management command `import_scores` avec `--competition` ; vue `/cron/import-scores/<token>/` ; `SPORTSDB_API_KEY` ; accent-insensitive matching.
 
+### Done
+- **Phase 9 — Points F/P dans les graphiques** : ajout `flair_series` et `podium_series` dans `StatsResult` ; injection des valeurs SeasonScore dans les séries ; graphique Évolution des scores affiche désormais M+F+P (trait plein) + M seul (tirets).
+
 ### In Progress
 - *(none)*
 
@@ -42,8 +45,7 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 4. ~~Ajouter `SPORTSDB_API_KEY` dans le `.env` sur PythonAnywhere~~ (valeur par défaut `3`).
 5. Creer un cron-job.org pour l'import auto : URL `/cron/import-scores/CRON_TOKEN/`, toutes les 60 min.
 6. Tester les mails H-24/H-6 en semaine réelle.
-7. Points F/P dans graphiques.
-8. Inscriptions.
+7. Inscriptions.
 
 ## Critical Context
 - Projet : `App_prono_rugby` sur PA, dépôt git dans `backend/`.
@@ -65,4 +67,6 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 - `.github/workflows/tests.yml`
 - `core/services/scores_importer.py`
 - `core/services/team_mapping.json`
+- `core/services/statistics.py` : `StatsResult` avec `flair_series`, `podium_series`
 - `core/management/commands/import_scores.py`
+- `core/templates/statistiques.html` : graphique avec M+F+P + M (tirets)

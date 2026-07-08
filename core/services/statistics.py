@@ -47,6 +47,8 @@ class StatsResult:
     score_series: Dict[str, List[int]]
     rank_series: Dict[str, List[int]]
     gap_series: Dict[str, List[int]]
+    flair_series: Dict[str, List[int]]
+    podium_series: Dict[str, List[int]]
 
     pie_labels: List[str]
     pie_values: List[int]
@@ -140,6 +142,8 @@ def compute_statistics(competition: Optional[Competition], season: Optional[Seas
     score_series = {k: [] for k in player_keys}
     rank_series  = {k: [] for k in player_keys}
     gap_series   = {k: [] for k in player_keys}
+    flair_series   = {k: [] for k in player_keys}
+    podium_series  = {k: [] for k in player_keys}
     cumulative   = {k: 0 for k in player_keys}
 
     chopes_points_by_player = {k: 0 for k in player_keys}
@@ -154,6 +158,8 @@ def compute_statistics(competition: Optional[Competition], season: Optional[Seas
             pts_jour = day_data.get(k, 0)
             cumulative[k] += pts_jour
             score_series[k].append(cumulative[k])
+            flair_series[k].append(0)
+            podium_series[k].append(0)
 
         sorted_items = sorted(day_data.items(), key=lambda x: -x[1])
         rank = 0
@@ -307,6 +313,8 @@ def compute_statistics(competition: Optional[Competition], season: Optional[Seas
         score_series=score_series,
         rank_series=rank_series,
         gap_series=gap_series,
+        flair_series=flair_series,
+        podium_series=podium_series,
         pie_labels=[f"{i}/{pie_den}" for i in range(pie_den, -1, -1)],
         pie_values=[list(correct_outcomes.values()).count(i) for i in range(pie_den, -1, -1)],
         pie_denominator=pie_den,

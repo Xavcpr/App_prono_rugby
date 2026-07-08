@@ -871,7 +871,15 @@ def statistiques_view(request):
             }
     except Exception:
         season_scores = {}
-        
+
+    # --- 5B. INJECTION DES POINTS F/P DANS LES SÉRIES GRAPHIQUES ---
+    num_rounds = len(stats.labels)
+    for username, scores in season_scores.items():
+        if username in stats.flair_series and num_rounds > 0:
+            stats.flair_series[username][-1] = scores['ranking_pts']
+        if username in stats.podium_series and num_rounds > 0:
+            stats.podium_series[username][-1] = scores['podium_pts']
+
     # Remplissage et mise à jour de detailed_ranking
     for r in stats.detailed_ranking:
         username = r['username']
@@ -922,6 +930,8 @@ def statistiques_view(request):
         "labels": stats.labels,
         "score_series": stats.score_series,
         "rank_series": stats.rank_series,
+        "flair_series": stats.flair_series,
+        "podium_series": stats.podium_series,
         "detailed_ranking": stats.detailed_ranking,
         "choppes_or": stats.choppes_or,
         "chopes_cumulees": stats.chopes_cumulees,
