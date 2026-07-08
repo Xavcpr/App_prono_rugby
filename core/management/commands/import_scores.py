@@ -24,11 +24,17 @@ class Command(BaseCommand):
             action="store_true",
             help="Show what would be updated without writing to DB",
         )
+        parser.add_argument(
+            "--quick",
+            action="store_true",
+            help="Use only the season endpoint (faster, for cron)",
+        )
 
     def handle(self, *args, **options):
         season_year = options.get("season")
         comp_name = options.get("competition")
         dry_run = options.get("dry_run", False)
+        quick = options.get("quick", False)
 
         seasons_qs = Season.objects.all()
         if season_year:
@@ -41,7 +47,7 @@ class Command(BaseCommand):
 
         for season in seasons_qs:
             self.stdout.write(f"--- {season.competition.name} {season.year} ---")
-            result = import_scores(season, dry_run=dry_run)
+            result = import_scores(season, dry_run=dry_run, quick=quick)
 
             if result["status"] == "error":
                 self.stderr.write(self.style.ERROR(result["message"]))

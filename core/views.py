@@ -1360,7 +1360,7 @@ def import_scores_view(request, token):
         return HttpResponse("No seasons found", status=404)
     all_results = []
     for season in seasons:
-        result = import_scores(season, dry_run=False)
+        result = import_scores(season, dry_run=False, quick=True)
         all_results.append(result)
     return JsonResponse({"imports": all_results})
 

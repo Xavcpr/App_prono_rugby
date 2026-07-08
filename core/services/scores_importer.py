@@ -75,14 +75,17 @@ def _sportsdb_season(season):
     return season.year.replace("/", "-")
 
 
-def _fetch_events(sportsdb_season, league_id):
+def _fetch_events(sportsdb_season, league_id, quick=False):
     url = f"{_api_base()}/eventsseason.php?id={league_id}&s={sportsdb_season}"
     data = _request(url)
     if data:
         events = data.get("events") or []
-        if len(events) >= 3:
+        if events:
             logger.info("Season endpoint returned %d events", len(events))
             return events
+
+    if quick:
+        return []
 
     events = []
     for r in range(1, MAX_ROUNDS + 1):
@@ -150,13 +153,13 @@ def _match_event_to_db_match(event, db_teams_by_name, day_window=1):
 
 
 @transaction.atomic
-def import_scores(season: Season, dry_run: bool = False):
+def import_scores(season: Season, dry_run: bool = False, quick: bool = False):
     league_id = COMPETITIONS.get(season.competition.name, {}).get("league_id")
     if not league_id:
         return {"status": "error", "message": f"Unknown competition: {season.competition.name}"}
 
     sportsdb_season = _sportsdb_season(season)
-    events = _fetch_events(sportsdb_season, league_id)
+    events = _fetch_events(sportsdb_season, league_id, quick=quick)
 
     if not events:
         return {"status": "error", "message": "No events fetched from API"}
