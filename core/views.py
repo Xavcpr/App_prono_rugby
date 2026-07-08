@@ -19,7 +19,7 @@ from .models import (
 
 # Services
 from .services import scoring
-from django.http import JsonResponse, HttpResponse
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from .services.scoring import PHASE_MULTIPLIERS, SCORING_CONFIG, RUGBY_SCORING, process_round_scores, get_winner_side, BONUS_SCALES, compute_competition_points
 from .services.statistics import compute_statistics
 
@@ -1339,6 +1339,7 @@ def statistics_view(request):
 from django.http import HttpResponse
 from django.conf import settings
 from core.services.email_service import send_round_reminders
+from core.services.scores_importer import import_scores
 
 
 def cron_send_reminders(request, token):
@@ -1347,6 +1348,18 @@ def cron_send_reminders(request, token):
         return HttpResponse("Invalid token", status=403)
     send_round_reminders()
     return HttpResponse("OK")
+
+
+def import_scores_view(request, token):
+    expected = settings.CRON_TOKEN
+    if token != expected:
+        return HttpResponse("Invalid token", status=403)
+    from core.models import Season
+    season = Season.objects.order_by("-id").first()
+    if not season:
+        return HttpResponse("No season found", status=404)
+    result = import_scores(season, dry_run=False)
+    return JsonResponse(result)
 
 
 def bareme_view(request):

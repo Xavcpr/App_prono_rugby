@@ -142,6 +142,7 @@ EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@rugby-prono.local')
 CRON_TOKEN = os.environ.get('CRON_TOKEN', '')
+SPORTSDB_API_KEY = os.environ.get('SPORTSDB_API_KEY', '3')
 
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = "/pronos/"
