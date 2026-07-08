@@ -19,7 +19,7 @@ from .models import (
 
 # Services
 from .services import scoring
-from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse, HttpResponseRedirect
 from .services.scoring import PHASE_MULTIPLIERS, SCORING_CONFIG, RUGBY_SCORING, process_round_scores, get_winner_side, BONUS_SCALES, compute_competition_points
 from .services.statistics import compute_statistics
 
@@ -711,6 +711,25 @@ def round_results_board(request, round_id):
         'next_round_id': next_round_id,
     }
     return render(request, 'round_board.html', context)
+
+@staff_member_required
+def bonus_view(request, round_id):
+    round_obj = get_object_or_404(Round.objects.select_related("season__competition"), id=round_id)
+    matches = Match.objects.filter(round=round_obj).select_related("home_team", "away_team").order_by("kickoff_at")
+
+    if request.method == "POST":
+        for match in matches:
+            home_key = f"bo_home_{match.id}"
+            away_key = f"bo_away_{match.id}"
+            match.bonus_offense_home = home_key in request.POST
+            match.bonus_offense_away = away_key in request.POST
+            match.save()
+        messages.success(request, "Bonus enregistrés")
+        return HttpResponseRedirect(request.path)
+    return render(request, "bonus.html", {
+        "round": round_obj,
+        "matches": matches,
+    })
 
 @staff_member_required
 def compute_round_view(request, round_id):

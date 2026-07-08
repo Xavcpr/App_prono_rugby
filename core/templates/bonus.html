@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  .bonus-header {
+    margin: 20px 0;
+    background: #2c3e50;
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+  }
+  .bonus-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+  }
+  .bonus-table th, .bonus-table td {
+    border: 1px solid #bdc3c7;
+    padding: 12px;
+    text-align: center;
+  }
+  .bonus-table th {
+    background: #34495e;
+    color: white;
+  }
+  .form-check-input {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+  }
+  .btn-save {
+    background: #27ae60;
+    color: white;
+    border: none;
+    padding: 10px 30px;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 20px;
+  }
+  .btn-save:hover { opacity: 0.85; }
+  .back-link {
+    display: inline-block;
+    margin-bottom: 15px;
+    color: #3498db;
+    text-decoration: none;
+  }
+  .back-link:hover { text-decoration: underline; }
+</style>
+
+<div class="bonus-header" style="border-left: 10px solid {% if '6 Nations' in round.season.competition.name %}#e74c3c{% else %}#3498db{% endif %}">
+  <h1 style="margin: 0">{{ round.season.competition.name }}</h1>
+  <h3 style="margin: 5px 0 0 0; opacity: 0.9">Bonus Offensifs — {{ round }}</h3>
+</div>
+
+<a href="{% url 'round_board' round.id %}" class="back-link">&larr; Retour aux résultats</a>
+
+<form method="post">
+  {% csrf_token %}
+  <table class="bonus-table">
+    <thead>
+      <tr>
+        <th>Match</th>
+        <th>Score</th>
+        <th>BO Domicile</th>
+        <th>BO Extérieur</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for match in matches %}
+        <tr>
+          <td style="text-align: left; font-weight: bold;">
+            {{ match.home_team.name }} vs {{ match.away_team.name }}
+          </td>
+          <td>
+            {% if match.home_score is not None %}
+              <strong>{{ match.home_score }} - {{ match.away_score }}</strong>
+            {% else %}
+              <em>Pas encore joué</em>
+            {% endif %}
+          </td>
+          <td>
+            <input type="checkbox" name="bo_home_{{ match.id }}"
+                   class="form-check-input"
+                   {% if match.bonus_offense_home %}checked{% endif %}>
+            <label>{{ match.home_team.name }}</label>
+          </td>
+          <td>
+            <input type="checkbox" name="bo_away_{{ match.id }}"
+                   class="form-check-input"
+                   {% if match.bonus_offense_away %}checked{% endif %}>
+            <label>{{ match.away_team.name }}</label>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <button type="submit" class="btn-save">💾 Enregistrer les bonus</button>
+</form>
+{% endblock %}

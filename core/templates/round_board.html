@@ -117,7 +117,9 @@
       <a href="{% url 'all_pronos' %}?round={{ round.id }}"
          class="btn-custom btn-view">👁️ Voir les pronos</a>
       <a href="{% url 'compute_points' round.id %}"
-         class="btn-custom btn-compute">🔄 Recalculer</a>
+          class="btn-custom btn-compute">🔄 Recalculer</a>
+      <a href="{% url 'round_bonus' round.id %}"
+         class="btn-custom btn-edit">🏆 Bonus</a>
     </div>
   </div>
   <div style="margin-bottom: 30px;">
