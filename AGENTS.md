@@ -24,6 +24,7 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 
 ### Done
 - **Phase 9 — Points F/P dans les graphiques** : ajout `flair_series` et `podium_series` dans `StatsResult` ; injection des valeurs SeasonScore dans les séries ; graphique Évolution des scores affiche désormais M+F+P (trait plein) + M seul (tirets).
+- **Phase 10 — Création 6 Nations 2027** : commande `create_6nations_2027` ; création saison 2027, liaison des 6 équipes, 5 rounds, 15 matchs avec dates/heures TZ-aware depuis TheSportsDB.
 
 ### In Progress
 - *(none)*
