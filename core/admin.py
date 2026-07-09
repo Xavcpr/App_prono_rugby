@@ -175,5 +175,15 @@ class CompetitionResultAdmin(admin.ModelAdmin):
 
 # Modèles simples
 admin.site.register(Team)
-admin.site.register(Player)
+
+class PlayerAdmin(admin.ModelAdmin):
+    filter_horizontal = ('seasons',)
+    list_display = ('name', 'user', 'season_list')
+    search_fields = ('name',)
+
+    def season_list(self, obj):
+        return ", ".join(s.year for s in obj.seasons.all().order_by('-year')[:3])
+    season_list.short_description = "Saisons (3 dernières)"
+
+admin.site.register(Player, PlayerAdmin)
 admin.site.register(Competition)

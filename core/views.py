@@ -377,7 +377,8 @@ def all_pronos_view(request):
             current_round_obj = rounds.last()
 
     rows = []
-    players = Player.objects.all().select_related('user').order_by('user__username')
+    players = (Player.objects.filter(seasons=selected_season) if selected_season
+               else Player.objects.all()).select_related('user').order_by('user__username')
 
     if current_round_obj:
         matches = Match.objects.filter(round=current_round_obj).select_related('home_team', 'away_team').order_by("kickoff_at")
@@ -516,7 +517,7 @@ def round_results_board(request, round_id):
     
     seasons = Season.objects.filter(competition=selected_comp, year__gte=2025).order_by('-year')
     rounds = Round.objects.filter(season=selected_season).order_by('number')
-    players = Player.objects.all().order_by('name')
+    players = Player.objects.filter(seasons=selected_season).order_by('name')
     matches = Match.objects.filter(round=round_obj).select_related('home_team', 'away_team').order_by('kickoff_at')
     all_competitions = Competition.objects.prefetch_related(
         Prefetch('seasons', queryset=Season.objects.all().order_by('-year'))
@@ -978,7 +979,7 @@ def debug_scores_view(request):
 
     # 5. Filtrer les Rounds UNIQUEMENT pour cette saison
     rounds = Round.objects.filter(season=selected_season).select_related('season').order_by('number')
-    players = Player.objects.filter(user__isnull=False).order_by('name')
+    players = Player.objects.filter(user__isnull=False, seasons=selected_season).order_by('name')
     
     # 6. Matrice de scores (ton code reste le même, mais filtré par rounds de la saison)
     daily_scores = DailyScore.objects.filter(round__in=rounds).select_related('user', 'round')
@@ -1016,6 +1017,7 @@ def recap_pronos_classement(request):
     real_rankings = {}
     real_winner = None
     result_obj = None
+    season = None
     players = Player.objects.all().order_by('name')
     matrix = {} 
     teams_by_block = {}
@@ -1028,6 +1030,7 @@ def recap_pronos_classement(request):
         season = Season.objects.filter(competition=selected_competition).order_by("-year").first()
         
         if season:
+            players = Player.objects.filter(seasons=season).order_by('name')
             # Vérification du verrouillage
             if not season.has_started and not request.user.is_staff:
                 messages.warning(request, "Les pronostics des autres joueurs seront visibles dès le coup d'envoi !")
@@ -1076,7 +1079,7 @@ def compute_competition_points(season):
         return "Aucun résultat saisi."
 
     rules = RUGBY_SCORING.get(season.competition.name, RUGBY_SCORING["Top 14"])
-    players = Player.objects.all()
+    players = Player.objects.filter(seasons=season)
     
     for player in players:
         pts_classement = 0
