@@ -215,17 +215,19 @@ def classement_prediction(request):
     competitions = Competition.objects.all()
     # On unifie la récupération de l'ID de compétition (POST ou GET)
     competition_id = request.POST.get("competition_id") or request.GET.get("competition")
+    season_id = request.POST.get("season_id") or request.GET.get("season")
 
     selected_competition = None
     blocks = []
     bonus = None
     winner_teams = []
     season = None
+    seasons = []
 
     if competition_id:
         selected_competition = get_object_or_404(Competition, id=competition_id)
-        # On définit la saison immédiatement
-        season = Season.objects.filter(competition=selected_competition).order_by("-year").first()
+        seasons = Season.objects.filter(competition=selected_competition).order_by("-year")
+        season = seasons.filter(id=season_id).first() if season_id else seasons.first()
         
         # Récupération des bonus
         bonus, _ = CompetitionBonusPrediction.objects.get_or_create(
@@ -263,7 +265,7 @@ def classement_prediction(request):
         # VERROU : On vérifie si la compétition a commencé
         if season and season.has_started:
             messages.error(request, "La compétition a déjà commencé ! Modification impossible.")
-            return redirect(f"{request.path}?competition={selected_competition.id}")
+            return redirect(f"{request.path}?competition={selected_competition.id}&season={season.id}")
         
         # 1. Sauvegarde des Bonus
         bonus.best_try_scorer = request.POST.get("best_try_scorer", "").strip()
@@ -274,7 +276,7 @@ def classement_prediction(request):
 
         # 2. Nettoyage et 3. Enregistrement
         CompetitionTeamPrediction.objects.filter(
-            competition=selected_competition, player=request.user.player
+            competition=selected_competition, player=request.user.player, season=season
         ).delete()
 
         recorded_teams = set()
@@ -295,15 +297,17 @@ def classement_prediction(request):
                         recorded_teams.add(t_id)
         
         messages.success(request, "Vos pronostics ont été enregistrés !")
-        return redirect(f"{request.path}?competition={selected_competition.id}")
+        season_param = f"&season={season.id}" if season else ""
+        return redirect(f"{request.path}?competition={selected_competition.id}{season_param}")
 
     # --- RÉCUPÉRATION POUR AFFICHAGE (GET) ---
-    if selected_competition:
+    if selected_competition and season:
         for block in blocks:
             saved_preds = CompetitionTeamPrediction.objects.filter(
                 competition=selected_competition,
                 player=request.user.player,
-                block_key=block["key"]
+                block_key=block["key"],
+                season=season
             )
             # CRUCIAL : On s'assure que la clé est un entier (pos) 
             # et la valeur est un entier (ID de l'équipe)
@@ -311,15 +315,17 @@ def classement_prediction(request):
             
     # Récupération propre pour l'affichage du récapitulatif
     last_saved_ranking = []
-    if selected_competition:
+    if selected_competition and season:
         last_saved_ranking = CompetitionTeamPrediction.objects.filter(
             competition=selected_competition,
-            player=request.user.player
+            player=request.user.player,
+            season=season
         ).select_related('team').order_by('block_key', 'position')
 
     return render(request, "pronos/classement.html", {
         "season": season,
         "competitions": competitions,
+        "seasons": seasons,
         "selected_competition": selected_competition,
         "blocks": blocks,
         "bonus": bonus,
@@ -1011,6 +1017,7 @@ def debug_scores_view(request):
 def recap_pronos_classement(request):
     competitions = Competition.objects.all()
     competition_id = request.GET.get("competition")
+    season_id = request.GET.get("season")
     
     # Initialisation systématique pour éviter les erreurs dans le template
     selected_competition = None
@@ -1018,6 +1025,7 @@ def recap_pronos_classement(request):
     real_winner = None
     result_obj = None
     season = None
+    seasons = []
     players = Player.objects.all().order_by('name')
     matrix = {} 
     teams_by_block = {}
@@ -1025,9 +1033,10 @@ def recap_pronos_classement(request):
 
     if competition_id:
         selected_competition = get_object_or_404(Competition, id=competition_id)
+        seasons = Season.objects.filter(competition=selected_competition).order_by("-year")
         
-        # On récupère la saison MAINTENANT que selected_competition est défini
-        season = Season.objects.filter(competition=selected_competition).order_by("-year").first()
+        # On récupère la saison
+        season = seasons.filter(id=season_id).first() if season_id else seasons.first()
         
         if season:
             players = Player.objects.filter(seasons=season).order_by('name')
@@ -1043,7 +1052,7 @@ def recap_pronos_classement(request):
                 real_winner = result_obj.real_winner
 
         # Récupération des pronostics des joueurs
-        preds = CompetitionTeamPrediction.objects.filter(competition=selected_competition).select_related('player', 'team')
+        preds = CompetitionTeamPrediction.objects.filter(competition=selected_competition, season=season).select_related('player', 'team')
         
         for p in preds:
             if p.block_key not in matrix:
@@ -1058,7 +1067,7 @@ def recap_pronos_classement(request):
             
             matrix[p.block_key][p.team.id][p.player.id] = p.position
 
-        bonus_preds = CompetitionBonusPrediction.objects.filter(competition=selected_competition).select_related('player', 'winner')
+        bonus_preds = CompetitionBonusPrediction.objects.filter(competition=selected_competition, season=season).select_related('player', 'winner')
 
     return render(request, "pronos/recap_classement.html", {
         "competitions": competitions,
@@ -1070,6 +1079,8 @@ def recap_pronos_classement(request):
         "real_rankings": real_rankings,
         "real_winner": real_winner,
         "real_results": result_obj,
+        "season": season,
+        "seasons": seasons,
     })
     
     

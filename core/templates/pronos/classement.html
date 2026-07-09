@@ -103,7 +103,20 @@
             </option>
           {% endfor %}
         </select>
-        <a href="{% url 'recap_classement' %}"
+        {% if seasons %}
+          <label style="font-weight: bold; white-space: nowrap; margin-bottom: 0;">Saison :</label>
+          <select name="season"
+                  class="form-select w-auto"
+                  onchange="this.form.submit()">
+            {% for s in seasons %}
+              <option value="{{ s.id }}"
+                      {% if season.id|slugify == s.id|slugify %}selected{% endif %}>
+                {{ s.year }}
+              </option>
+            {% endfor %}
+          </select>
+        {% endif %}
+        <a href="{% url 'recap_classement' %}{% if selected_competition %}?competition={{ selected_competition.id }}{% endif %}{% if season %}&season={{ season.id }}{% endif %}"
            class="btn btn-info btn-sm text-white fw-bold"
            style="margin-left: 10px">👁️ Voir les choix des autres</a>
         <a href="{% url 'pronos' %}"
@@ -117,6 +130,9 @@
         <input type="hidden"
                name="competition_id"
                value="{{ selected_competition.id }}">
+        <input type="hidden"
+               name="season_id"
+               value="{{ season.id }}">
         {% if "Top 14" in selected_competition.name %}
           <h4 class="section-title">✨ Bonus Spéciaux (Top 14)</h4>
           <div class="bonus-card">
