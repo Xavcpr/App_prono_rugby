@@ -25,6 +25,7 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 ### Done
 - **Phase 9 — Points F/P dans les graphiques** : ajout `flair_series` et `podium_series` dans `StatsResult` ; injection des valeurs SeasonScore dans les séries ; graphique Évolution des scores affiche désormais M+F+P (trait plein) + M seul (tirets).
 - **Phase 10 — Création 6 Nations 2027** : commande `create_6nations_2027` ; création saison 2027, liaison des 6 équipes, 5 rounds, 15 matchs avec dates/heures TZ-aware depuis TheSportsDB.
+- **Phase 11 — Joueurs par saison** : ajout M2M `Player.seasons` (migration 0015) ; filtre des vues (`home_view`, `pronos_view`, `debug_scores`, `recap_pronos`, `compute_competition_points`) ; admin avec `filter_horizontal` ; commandes `backfill_player_seasons` (backfill) et `create_6nations_2027` (attribution auto).
 
 ### In Progress
 - *(none)*
@@ -70,4 +71,7 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 - `core/services/team_mapping.json`
 - `core/services/statistics.py` : `StatsResult` avec `flair_series`, `podium_series`
 - `core/management/commands/import_scores.py`
+- `core/management/commands/create_6nations_2027.py` : création 6 Nations 2027 depuis TheSportsDB
+- `core/management/commands/backfill_player_seasons.py` : backfill M2M Player.seasons
 - `core/templates/statistiques.html` : graphique avec M+F+P + M (tirets)
+- `core/admin.py` : `PlayerAdmin` avec `filter_horizontal` sur `seasons`
