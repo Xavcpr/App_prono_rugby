@@ -64,7 +64,10 @@ class Command(BaseCommand):
 
         self.stdout.write(f"{len(events)} événements trouvés")
 
-        competition = Competition.objects.get(name="6 nations")
+        competition = Competition.objects.filter(name__iexact="6 nations").first()
+        if not competition:
+            self.stdout.write(self.style.ERROR("Compétition '6 Nations' introuvable"))
+            return
 
         season, created = Season.objects.get_or_create(
             competition=competition,
