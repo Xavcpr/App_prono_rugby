@@ -127,28 +127,42 @@ def _parse_kickoff(event_date_str, event_time_str):
         return None
 
 
-def _resolve_teams(home_sportsdb, away_sportsdb, db_teams_by_name):
+def _resolve_teams(home_sportsdb, away_sportsdb, db_teams_by_name, auto_create=False):
     reverse_map = _build_reverse_map()
     home_db_name = _team_name_to_db(home_sportsdb, reverse_map)
     away_db_name = _team_name_to_db(away_sportsdb, reverse_map)
-    if not home_db_name or not away_db_name:
-        logger.warning("Unmapped teams: %s / %s", home_sportsdb, away_sportsdb)
-        return None, None
 
-    home_key = _normalize(home_db_name)
-    away_key = _normalize(away_db_name)
-    home_team = db_teams_by_name.get(home_key)
-    away_team = db_teams_by_name.get(away_key)
+    # Auto-create team if missing
+    def get_or_create(name, sportsdb_name):
+        if name:
+            key = _normalize(name)
+            team = db_teams_by_name.get(key)
+            if team:
+                return team
+        if auto_create:
+            team, _ = Team.objects.get_or_create(name=sportsdb_name)
+            db_teams_by_name[_normalize(team.name)] = team
+            # Add to mapping for next time
+            mapping = _load_mapping()
+            if sportsdb_name not in mapping:
+                mapping[sportsdb_name] = sportsdb_name
+                with open(MAPPING_PATH, "w", encoding="utf-8") as f:
+                    json.dump(mapping, f, indent=2, ensure_ascii=False)
+            logger.info("Auto-created team: %s", sportsdb_name)
+            return team
+        return None
+
+    home_team = get_or_create(home_db_name, home_sportsdb)
+    away_team = get_or_create(away_db_name, away_sportsdb)
 
     if not home_team or not away_team:
-        logger.warning("DB teams not found: %s / %s", home_db_name, away_db_name)
-        return None, None
+        logger.warning("Unmapped teams: %s / %s", home_sportsdb, away_sportsdb)
 
     return home_team, away_team
 
 
 @transaction.atomic
-def import_scores(season: Season, dry_run: bool = False, quick: bool = False, create_matches: bool = True):
+def import_scores(season: Season, dry_run: bool = False, quick: bool = False, create_matches: bool = True, auto_create_teams: bool = False):
     league_id = COMPETITIONS.get(season.competition.name, {}).get("league_id")
     if not league_id:
         return {"status": "error", "message": f"Unknown competition: {season.competition.name}"}
@@ -188,7 +202,7 @@ def import_scores(season: Season, dry_run: bool = False, quick: bool = False, cr
 
         home_sportsdb = event.get("strHomeTeam", "")
         away_sportsdb = event.get("strAwayTeam", "")
-        home_team, away_team = _resolve_teams(home_sportsdb, away_sportsdb, db_teams_by_name)
+        home_team, away_team = _resolve_teams(home_sportsdb, away_sportsdb, db_teams_by_name, auto_create=auto_create_teams)
         if not home_team or not away_team:
             skipped += 1
             continue

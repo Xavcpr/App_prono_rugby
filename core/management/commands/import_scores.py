@@ -34,6 +34,11 @@ class Command(BaseCommand):
             action="store_true",
             help="Don't create missing matches, only update scores",
         )
+        parser.add_argument(
+            "--auto-create-teams",
+            action="store_true",
+            help="Create unknown teams automatically in DB and mapping",
+        )
 
     def handle(self, *args, **options):
         season_year = options.get("season")
@@ -41,6 +46,7 @@ class Command(BaseCommand):
         dry_run = options.get("dry_run", False)
         quick = options.get("quick", False)
         no_create = options.get("no_create", False)
+        auto_create_teams = options.get("auto_create_teams", False)
 
         seasons_qs = Season.objects.all()
         if season_year:
@@ -53,7 +59,7 @@ class Command(BaseCommand):
 
         for season in seasons_qs:
             self.stdout.write(f"--- {season.competition.name} {season.year} ---")
-            result = import_scores(season, dry_run=dry_run, quick=quick, create_matches=not no_create)
+            result = import_scores(season, dry_run=dry_run, quick=quick, create_matches=not no_create, auto_create_teams=auto_create_teams)
 
             if result["status"] == "error":
                 self.stderr.write(self.style.ERROR(result["message"]))
