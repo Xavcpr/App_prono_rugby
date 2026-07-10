@@ -4,7 +4,7 @@ from core.services.scores_importer import import_scores
 
 
 class Command(BaseCommand):
-    help = "Import match scores from TheSportsDB API"
+    help = "Import match scores and fixtures from TheSportsDB API"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -29,12 +29,18 @@ class Command(BaseCommand):
             action="store_true",
             help="Use only the season endpoint (faster, for cron)",
         )
+        parser.add_argument(
+            "--no-create",
+            action="store_true",
+            help="Don't create missing matches, only update scores",
+        )
 
     def handle(self, *args, **options):
         season_year = options.get("season")
         comp_name = options.get("competition")
         dry_run = options.get("dry_run", False)
         quick = options.get("quick", False)
+        no_create = options.get("no_create", False)
 
         seasons_qs = Season.objects.all()
         if season_year:
@@ -47,7 +53,7 @@ class Command(BaseCommand):
 
         for season in seasons_qs:
             self.stdout.write(f"--- {season.competition.name} {season.year} ---")
-            result = import_scores(season, dry_run=dry_run, quick=quick)
+            result = import_scores(season, dry_run=dry_run, quick=quick, create_matches=not no_create)
 
             if result["status"] == "error":
                 self.stderr.write(self.style.ERROR(result["message"]))
@@ -56,8 +62,9 @@ class Command(BaseCommand):
             for line in result["results"]:
                 self.stdout.write(line)
 
+            created = result.get('created', 0)
             self.stdout.write(
                 self.style.SUCCESS(
-                    f"Done: {result['updated']} updated, {result['skipped']} skipped"
+                    f"Done: {created} créés, {result['updated']} mis à jour, {result['skipped']} ignorés"
                 )
             )

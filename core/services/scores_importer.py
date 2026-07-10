@@ -9,8 +9,9 @@ from urllib.error import URLError
 
 from django.conf import settings
 from django.db import transaction
+from django.utils import timezone
 
-from core.models import Match, Season, Team
+from core.models import Match, Round, Season, Team
 
 logger = logging.getLogger(__name__)
 
@@ -110,50 +111,44 @@ def _team_name_to_db(sportsdb_name, reverse_map):
     return None
 
 
-def _match_event_to_db_match(event, db_teams_by_name, day_window=1):
-    event_date_str = event.get("dateEvent", "")
+def _parse_kickoff(event_date_str, event_time_str):
     if not event_date_str:
         return None
-
+    dt_str = event_date_str
+    if event_time_str:
+        dt_str += f" {event_time_str}"
+        fmt = "%Y-%m-%d %H:%M:%S"
+    else:
+        fmt = "%Y-%m-%d"
     try:
-        event_date = datetime.strptime(event_date_str, "%Y-%m-%d").date()
-    except ValueError:
+        naive = datetime.strptime(dt_str, fmt)
+        return timezone.make_aware(naive, timezone=timezone.get_current_timezone())
+    except (ValueError, AttributeError):
         return None
 
-    home_sportsdb = event.get("strHomeTeam", "")
-    away_sportsdb = event.get("strAwayTeam", "")
 
+def _resolve_teams(home_sportsdb, away_sportsdb, db_teams_by_name):
     reverse_map = _build_reverse_map()
     home_db_name = _team_name_to_db(home_sportsdb, reverse_map)
     away_db_name = _team_name_to_db(away_sportsdb, reverse_map)
-
     if not home_db_name or not away_db_name:
         logger.warning("Unmapped teams: %s / %s", home_sportsdb, away_sportsdb)
-        return None
+        return None, None
 
-    home_key = "".join(c for c in unicodedata.normalize("NFD", home_db_name) if unicodedata.category(c) != "Mn").lower()
-    away_key = "".join(c for c in unicodedata.normalize("NFD", away_db_name) if unicodedata.category(c) != "Mn").lower()
+    home_key = _normalize(home_db_name)
+    away_key = _normalize(away_db_name)
     home_team = db_teams_by_name.get(home_key)
     away_team = db_teams_by_name.get(away_key)
 
     if not home_team or not away_team:
         logger.warning("DB teams not found: %s / %s", home_db_name, away_db_name)
-        return None
+        return None, None
 
-    start = event_date - timedelta(days=day_window)
-    end = event_date + timedelta(days=day_window)
-
-    match = Match.objects.filter(
-        home_team=home_team,
-        away_team=away_team,
-        kickoff_at__date__range=(start, end),
-    ).first()
-
-    return match
+    return home_team, away_team
 
 
 @transaction.atomic
-def import_scores(season: Season, dry_run: bool = False, quick: bool = False):
+def import_scores(season: Season, dry_run: bool = False, quick: bool = False, create_matches: bool = True):
     league_id = COMPETITIONS.get(season.competition.name, {}).get("league_id")
     if not league_id:
         return {"status": "error", "message": f"Unknown competition: {season.competition.name}"}
@@ -167,52 +162,106 @@ def import_scores(season: Season, dry_run: bool = False, quick: bool = False):
     all_teams = Team.objects.all()
     db_teams_by_name = {}
     for t in all_teams:
-        key = "".join(c for c in unicodedata.normalize("NFD", t.name) if unicodedata.category(c) != "Mn").lower()
+        key = _normalize(t.name)
         db_teams_by_name[key] = t
 
+    # Preload all rounds for this season
+    rounds_by_num = {r.number: r for r in Round.objects.filter(season=season)}
+
+    created = 0
     updated = 0
     skipped = 0
     results = []
 
     for event in events:
+        round_num = event.get("intRound")
+        if not round_num:
+            skipped += 1
+            continue
+        round_num = int(round_num)
+
+        round_obj = rounds_by_num.get(round_num)
+        if not round_obj:
+            logger.warning("Round %d not found for season %s", round_num, season)
+            skipped += 1
+            continue
+
+        home_sportsdb = event.get("strHomeTeam", "")
+        away_sportsdb = event.get("strAwayTeam", "")
+        home_team, away_team = _resolve_teams(home_sportsdb, away_sportsdb, db_teams_by_name)
+        if not home_team or not away_team:
+            skipped += 1
+            continue
+
+        kickoff = _parse_kickoff(event.get("dateEvent", ""), event.get("strTime", ""))
+
+        # Find existing match
+        match = Match.objects.filter(
+            round=round_obj, home_team=home_team, away_team=away_team
+        ).first()
+
+        if match:
+            # Update kickoff_at if changed
+            changed = False
+            if kickoff and match.kickoff_at != kickoff:
+                if dry_run:
+                    results.append(f"[DRY-RUN] MÀJ horaire {match}: {match.kickoff_at} → {kickoff}")
+                else:
+                    match.kickoff_at = kickoff
+                    changed = True
+                updated += 1
+        else:
+            # Create new match
+            if dry_run:
+                results.append(f"[DRY-RUN] Création match : {home_team} vs {away_team} @ {kickoff} (R{round_num})")
+                created += 1
+                continue
+            match = Match.objects.create(
+                round=round_obj,
+                home_team=home_team,
+                away_team=away_team,
+                kickoff_at=kickoff,
+                phase=round_obj.phase,
+            )
+            results.append(f"[CREATED] {match} @ {kickoff}")
+            created += 1
+            changed = False
+
+        # Scores
         int_home = event.get("intHomeScore")
         int_away = event.get("intAwayScore")
         status = event.get("strStatus", "")
 
-        if not int_home or not int_away or status != "FT":
-            skipped += 1
-            continue
+        if int_home and int_away and status == "FT":
+            try:
+                home_score = int(int_home)
+                away_score = int(int_away)
+            except (ValueError, TypeError):
+                skipped += 1
+                continue
 
-        try:
-            home_score = int(int_home)
-            away_score = int(int_away)
-        except (ValueError, TypeError):
-            skipped += 1
-            continue
-
-        match = _match_event_to_db_match(event, db_teams_by_name)
-
-        if not match:
-            skipped += 1
-            continue
-
-        if match.home_score is not None and match.away_score is not None:
-            skipped += 1
-            continue
-
-        if dry_run:
-            results.append(f"[DRY-RUN] {match}: {home_score}-{away_score}")
+            if match.home_score != home_score or match.away_score != away_score:
+                if dry_run:
+                    results.append(f"[DRY-RUN] Score {match}: {match.home_score or '-'}-{match.away_score or '-'} → {home_score}-{away_score}")
+                else:
+                    match.home_score = home_score
+                    match.away_score = away_score
+                    changed = True
+                    results.append(f"[SCORE] {match}: {home_score}-{away_score}")
+                updated += 1
+            else:
+                skipped += 1
         else:
-            match.home_score = home_score
-            match.away_score = away_score
+            skipped += 1
+
+        if changed and not dry_run:
             match.save()
-            results.append(f"[UPDATED] {match}: {home_score}-{away_score}")
-        updated += 1
 
     return {
         "status": "ok",
         "updated": updated,
         "skipped": skipped,
+        "created": created,
         "results": results,
         "competition": season.competition.name,
     }
