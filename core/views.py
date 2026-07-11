@@ -1398,13 +1398,35 @@ def import_scores_view(request, token):
     if token != expected:
         return HttpResponse("Invalid token", status=403)
     from core.models import Season
+    from django.core.mail import send_mail
     seasons = Season.objects.filter(competition__name__in=["Top 14", "Champions Cup", "6 Nations"])
     if not seasons.exists():
         return HttpResponse("No seasons found", status=404)
     all_results = []
+    total_created = 0
+    total_updated = 0
     for season in seasons:
         result = import_scores(season, dry_run=False, quick=True)
         all_results.append(result)
+        total_created += result.get('created', 0)
+        total_updated += result.get('updated', 0)
+    if total_created > 0 or total_updated > 0:
+        msg_lines = ["Nouveautés importées depuis TheSportsDB :"]
+        for r in all_results:
+            c = r.get('created', 0)
+            u = r.get('updated', 0)
+            if c or u:
+                msg_lines.append(f"- {r['competition']}: {c} créés, {u} mis à jour")
+        try:
+            send_mail(
+                "[Prono Rugby] Nouveaux matchs importés",
+                "\n".join(msg_lines),
+                settings.DEFAULT_FROM_EMAIL,
+                [settings.EMAIL_HOST_USER],
+                fail_silently=True,
+            )
+        except Exception:
+            pass
     return JsonResponse({"imports": all_results})
 
 
