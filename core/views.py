@@ -265,14 +265,27 @@ def classement_prediction(request):
                         "pool": pool
                     })
             else:
-                # Fallback: toutes les équipes dans un seul bloc (exécute setup_cc_pools)
-                teams = (season.teams.all() if season else selected_competition.teams.all()).order_by("name")
-                blocks.append({
-                    "key": "all",
-                    "teams": teams,
-                    "positions": list(range(1, teams.count() + 1)),
-                    "pool": None
-                })
+                # Fallback: hardcoded pools (24 equipes, 4 poules de 6)
+                from core.services.cc_pools import CC_POOLS_2627
+                teams_map = {t.name.lower(): t for t in Team.objects.all()}
+                for pool_data in CC_POOLS_2627:
+                    pool_teams = []
+                    for name in pool_data["teams"]:
+                        t = teams_map.get(name.lower())
+                        if not t:
+                            for db_name, db_t in teams_map.items():
+                                if name.lower() in db_name or db_name in name.lower():
+                                    t = db_t
+                                    break
+                        if t:
+                            pool_teams.append(t)
+                    pool_teams.sort(key=lambda x: x.name)
+                    blocks.append({
+                        "key": f"pool{pool_data['pool']}",
+                        "teams": pool_teams,
+                        "positions": list(range(1, 7)),
+                        "pool": pool_data["pool"],
+                    })
         else:
             teams = (season.teams.all() if season else selected_competition.teams.all()).order_by("name")
             blocks.append({
@@ -1568,19 +1581,9 @@ def home_view(request):
     year_groups_list = sorted(year_groups.items(), key=lambda x: x[0], reverse=True)
 
     selected_year = request.GET.get("year", "").strip()
-    active_seasons = None
 
-    if selected_year and selected_year in year_groups:
-        # Mode année spécifique : regrouper toutes les compétitions de cette année
-        active_seasons = Season.objects.filter(id__in=year_groups[selected_year]["season_ids"])
-        round_dates = Round.objects.filter(season__in=active_seasons).aggregate(
-            first=Min("date"), last=Max("date")
-        )
-        start_date = round_dates["first"] or now
-        end_date = round_dates["last"] or now
-    else:
-        selected_year = ""
-        # --- FILTRE SAISON GLISSANTE (1er Août au 1er Août) ---
+    if selected_year == "":
+        # Saison glissante (aucun filtre année)
         current_year = now.year
         if now.month < 8:
             start_date = timezone.datetime(current_year - 1, 8, 1, tzinfo=timezone.get_current_timezone())
@@ -1592,6 +1595,28 @@ def home_view(request):
         active_seasons = Season.objects.filter(
             Q(year__icontains=str(current_year)) | Q(year__icontains=str(current_year-1))
         ).distinct()
+    elif selected_year in year_groups:
+        active_seasons = Season.objects.filter(id__in=year_groups[selected_year]["season_ids"])
+        round_dates = Round.objects.filter(season__in=active_seasons).aggregate(
+            first=Min("date"), last=Max("date")
+        )
+        start_date = round_dates["first"] or now
+        end_date = round_dates["last"] or now
+    else:
+        # Par défaut : 2025-2026 (dernière saison avec données)
+        selected_year = "2025" if "2025" in year_groups else (year_groups_list[0][0] if year_groups_list else "")
+        if selected_year and selected_year in year_groups:
+            active_seasons = Season.objects.filter(id__in=year_groups[selected_year]["season_ids"])
+            round_dates = Round.objects.filter(season__in=active_seasons).aggregate(
+                first=Min("date"), last=Max("date")
+            )
+            start_date = round_dates["first"] or now
+            end_date = round_dates["last"] or now
+        else:
+            # Fallback extrême
+            start_date = now
+            end_date = now
+            active_seasons = Season.objects.none()
 
     # --- 2. PROCHAIN MATCH ---
     next_match = Match.objects.filter(kickoff_at__gt=now).select_related('home_team', 'away_team').order_by('kickoff_at').first()

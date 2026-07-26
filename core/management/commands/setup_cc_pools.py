@@ -1,14 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-
-# Pools based on EPCR July 1 draw: https://www.epcrugby.com/champions-cup/content/official-investec-champions-cup-and-epcr-challenge-pools-confirmed-for-202627-season
-POOLS_CC_2627 = {
-    1: ['Leinster', 'Glasgow', 'Pau', 'Sale Sharks', 'Leicester Tigers', 'Clermont'],
-    2: ['Toulouse', 'Lions', 'Saracens', 'La Rochelle', 'Exeter Chiefs', 'Connacht'],
-    3: ['UBB', 'Stormers', 'Racing 92', 'Munster', 'Bristol Bears', 'Gloucester'],
-    4: ['Northampton Saints', 'Bath Rugby', 'Cardiff', 'Montpellier', 'Stade français', 'Bulls'],
-}
+from core.services.cc_pools import CC_POOLS_2627
 
 
 class Command(BaseCommand):
@@ -33,8 +26,9 @@ class Command(BaseCommand):
         created_count = 0
         missing = []
 
-        for pool_num, team_names in POOLS_CC_2627.items():
-            for name in team_names:
+        for pool_data in CC_POOLS_2627:
+            pool_num = pool_data["pool"]
+            for name in pool_data["teams"]:
                 team = teams_map.get(name)
                 if not team:
                     for db_name, t in teams_map.items():
@@ -46,7 +40,6 @@ class Command(BaseCommand):
                         missing.append(f'{name} (pool {pool_num})')
                         continue
                     else:
-                        # Auto-create missing teams
                         team = Team.objects.create(name=name)
                         teams_map[name] = team
                         self.stdout.write(f"  Created team: {name}")
@@ -69,7 +62,8 @@ class Command(BaseCommand):
         if missing:
             self.stderr.write(f"Dry-run missing teams: {', '.join(missing)}")
 
+        total_teams = sum(len(p["teams"]) for p in CC_POOLS_2627)
         if dry_run:
-            self.stdout.write(f"\nWould create {sum(len(v) for v in POOLS_CC_2627.values())} CompetitionTeam entries")
+            self.stdout.write(f"\nWould create {total_teams} CompetitionTeam entries")
         else:
             self.stdout.write(self.style.SUCCESS(f"Done: {created_count} CompetitionTeam entries created"))

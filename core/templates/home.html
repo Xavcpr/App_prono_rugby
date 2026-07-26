@@ -20,8 +20,8 @@
             <p class="text-uppercase small mb-1 opacity-75">Classement Général</p>
             <select id="seasonSelect" class="form-select form-select-sm text-center mx-auto mb-2 bg-transparent text-white border-white"
                     style="max-width: 220px;"
-                    onchange="const url = new URL(window.location); url.searchParams.set('year', this.value); url.searchParams.delete('season'); window.location = url;">
-                <option value="" class="text-dark" {% if not selected_year %}selected{% endif %}>Saison glissante</option>
+                    onchange="const url = new URL(window.location); if (this.value) { url.searchParams.set('year', this.value); } else { url.searchParams.delete('year'); } window.location = url;">
+                <option value="" class="text-dark" {% if selected_year == '' %}selected{% endif %}>Saison glissante</option>
                 {% for key, group in year_groups %}
                     <option value="{{ key }}" class="text-dark" {% if key == selected_year %}selected{% endif %}>
                         {{ group.label }}
