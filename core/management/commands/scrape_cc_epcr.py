@@ -11,11 +11,39 @@ FIXTURES_PATH = os.path.normpath(
 ROUND_PHASE_MAP = {1: 'POOL', 2: 'POOL', 3: 'POOL', 4: 'POOL',
                     5: 'R16', 6: 'QF', 7: 'SF', 8: 'FINAL'}
 
-# Teams that exist in the API/JSON but not yet in the DB — auto-created
+# Teams that exist in the API/JSON but definitely not in the DB — auto-created
 NEW_TEAMS = [
     'Exeter Chiefs', 'Cardiff', 'Connacht', 'Munster',
     'Northampton Saints', 'Lions',
 ]
+
+# JSON name → alternative DB names to try (for pre-existing teams)
+ALIASES = {
+    'Bath Rugby': ['Bath', 'Bath Rugby'],
+    'Bristol Bears': ['Bristol', 'Bristol Bears'],
+    'Bulls': ['Bulls', 'Vodacom Bulls', 'Blue Bulls'],
+    'Leicester Tigers': ['Leicester', 'Leicester Tigers'],
+    'Sale Sharks': ['Sale', 'Sale Sharks'],
+}
+
+
+def resolve_team(name, teams_map):
+    """Find a team by name, trying exact match then aliases."""
+    if name in teams_map:
+        return teams_map[name]
+    aliases = ALIASES.get(name, [])
+    for alias in aliases:
+        if alias in teams_map:
+            return teams_map[alias]
+    # Case-insensitive search
+    for db_name, team in teams_map.items():
+        if db_name.lower() == name.lower():
+            return team
+    # Partial match
+    for db_name, team in teams_map.items():
+        if name.lower() in db_name.lower() or db_name.lower() in name.lower():
+            return team
+    return None
 
 
 def load_fixtures():
@@ -42,9 +70,9 @@ class Command(BaseCommand):
         cc_comp = Competition.objects.get(name='Champions Cup')
         teams_map = {t.name: t for t in Team.objects.all()}
 
-        # Auto-create missing teams and link to CC season
+        # Auto-create truly new teams and link to CC season
         for name in NEW_TEAMS:
-            if name not in teams_map:
+            if resolve_team(name, teams_map) is None:
                 if dry_run:
                     self.stdout.write(f"  Would create team: {name}")
                 else:
@@ -62,15 +90,16 @@ class Command(BaseCommand):
             self.stderr.write("No fixtures found.")
             return
 
-        # Verify all teams exist (skip in dry-run since teams aren't created yet)
+        # Verify with flexible matching
         if not dry_run:
-            missing = set()
+            unresolved = set()
             for m in fixtures:
                 for side in ('home', 'away'):
-                    if m[side] not in teams_map:
-                        missing.add(m[side])
-            if missing:
-                self.stderr.write(f"Missing teams: {', '.join(sorted(missing))}")
+                    if resolve_team(m[side], teams_map) is None:
+                        unresolved.add(m[side])
+            if unresolved:
+                self.stderr.write(f"Unresolvable teams: {', '.join(sorted(unresolved))}")
+                self.stderr.write("Add them to ALIASES or NEW_TEAMS and re-run.")
                 return
 
         if dry_run:
@@ -102,12 +131,14 @@ class Command(BaseCommand):
                     except ValueError:
                         pass
 
-                home_team = teams_map[m['home']]
-                away_team = teams_map[m['away']]
+                home_team = resolve_team(m['home'], teams_map)
+                away_team = resolve_team(m['away'], teams_map)
 
                 if dry_run:
                     dt_str = m.get('date', '??')
-                    self.stdout.write(f"  {dt_str}  {m['home']} vs {m['away']}")
+                    h_name = home_team.name if home_team else m['home']
+                    a_name = away_team.name if away_team else m['away']
+                    self.stdout.write(f"  {dt_str}  {h_name} vs {a_name}")
                     continue
 
                 _, match_created = Match.objects.update_or_create(
