@@ -46,6 +46,15 @@ def _get_adjacent_rounds(rounds_qs, current_round_id):
     return (None, None)
 
 
+def _find_next_round(rounds_qs, now):
+    """Return the first round with upcoming (kickoff_at >= now) or undated matches.
+       Falls back to the last round if all matches are in the past."""
+    for r in rounds_qs:
+        if r.matches.filter(kickoff_at__gte=now).exists() or r.matches.filter(kickoff_at__isnull=True).exists():
+            return r
+    return rounds_qs.last()
+
+
 # ------------------
 # PRONOS VIEW
 # ------------------
@@ -71,9 +80,12 @@ def pronos_view(request):
     if competition_id:
         selected_comp = competitions.filter(id=competition_id).first()
     else:
-        # Par défaut : compétition du prochain round à venir
-        next_r = Round.objects.filter(date__gte=now.date()).order_by("date").first()
-        selected_comp = next_r.season.competition if next_r else competitions.first()
+        # Compétition du prochain match à venir (toute compétition confondue)
+        next_match = Match.objects.filter(kickoff_at__gte=now).order_by('kickoff_at').first()
+        if next_match:
+            selected_comp = next_match.round.season.competition
+        else:
+            selected_comp = competitions.first()
 
     # Choix de la saison
     seasons = Season.objects.filter(competition=selected_comp,year__gte=2025).order_by('-year')
@@ -85,10 +97,7 @@ def pronos_view(request):
     # Choix du round
     rounds = Round.objects.filter(season=selected_season).order_by('number')
     if not round_id:
-        # On cherche le prochain round de CETTE saison
-        current_r_obj = rounds.filter(date__gte=now.date()).order_by("date").first()
-        if not current_r_obj:
-            current_r_obj = rounds.last()
+        current_r_obj = _find_next_round(rounds, now)
         round_id = str(current_r_obj.id) if current_r_obj else None
     else:
         current_r_obj = rounds.filter(id=round_id).first()
@@ -349,9 +358,11 @@ def all_pronos_view(request):
     if comp_id:
         selected_comp = all_competitions.filter(id=comp_id).first()
     else:
-        # Automatisme par défaut au premier chargement
-        near_round = Round.objects.filter(date__gte=now.date()).order_by("date").first()
-        selected_comp = near_round.season.competition if near_round else all_competitions.first()
+        next_match = Match.objects.filter(kickoff_at__gte=now).order_by('kickoff_at').first()
+        if next_match:
+            selected_comp = next_match.round.season.competition
+        else:
+            selected_comp = all_competitions.first()
 
     # 3. Détermination de la saison (FILTRÉE par la compétition choisie)
     seasons = Season.objects.filter(competition=selected_comp).order_by('-year')
@@ -375,12 +386,7 @@ def all_pronos_view(request):
 
     # PRIORITÉ 2 : Si aucun round choisi (ou ID invalide), on lance l'automatisme
     if not current_round_obj:
-        # On cherche le round le plus proche de maintenant dans la saison sélectionnée
-        current_round_obj = rounds.filter(date__gte=now.date()).order_by("date").first()
-        
-        # PRIORITÉ 3 : Si tous les rounds sont passés, on prend le dernier
-        if not current_round_obj:
-            current_round_obj = rounds.last()
+        current_round_obj = _find_next_round(rounds, now)
 
     rows = []
     players = (Player.objects.filter(seasons=selected_season) if selected_season

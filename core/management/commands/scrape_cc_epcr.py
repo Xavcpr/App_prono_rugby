@@ -1,6 +1,7 @@
 import json, os
 from datetime import datetime
 from collections import defaultdict
+from zoneinfo import ZoneInfo
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
@@ -127,7 +128,7 @@ class Command(BaseCommand):
                 if m.get('date'):
                     try:
                         dt = datetime.strptime(m['date'], '%Y-%m-%d %H:%M')
-                        kickoff = timezone.make_aware(dt)
+                        kickoff = timezone.make_aware(dt, timezone=ZoneInfo('Europe/Paris'))
                     except ValueError:
                         pass
 

@@ -1,10 +1,10 @@
-import json, urllib.request, ssl, re
-from datetime import datetime, date, time as dtime
+import json, os
+from datetime import datetime
+from collections import defaultdict
+from zoneinfo import ZoneInfo
 
-import django
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from django.db import transaction
 
 ctx = ssl.create_default_context()
 
@@ -201,8 +201,7 @@ class Command(BaseCommand):
             for m in matches_data:
                 time_str = m['time_str'] or '00:00'
                 kickoff_naive = datetime.strptime(f'{m["date_str"]} {time_str}', '%Y-%m-%d %H:%M')
-                from datetime import timezone as dt_tz
-                kickoff = timezone.make_aware(kickoff_naive, timezone=dt_tz.utc)
+                kickoff = timezone.make_aware(kickoff_naive, timezone=ZoneInfo('Europe/Paris'))
                 home_team = teams_map[m['home']]
                 away_team = teams_map[m['away']]
 
