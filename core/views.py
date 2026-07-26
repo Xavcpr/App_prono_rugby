@@ -266,7 +266,12 @@ def classement_prediction(request):
                     })
             else:
                 # Fallback: hardcoded pools (24 equipes, 4 poules de 6)
-                from core.services.cc_pools import CC_POOLS_2627
+                CC_POOLS_2627 = [
+                    {"pool": 1, "teams": ["Leinster","Glasgow","Pau","Sale Sharks","Leicester Tigers","Clermont"]},
+                    {"pool": 2, "teams": ["Toulouse","Lions","Saracens","La Rochelle","Exeter Chiefs","Connacht"]},
+                    {"pool": 3, "teams": ["UBB","Stormers","Racing 92","Munster","Bristol Bears","Gloucester"]},
+                    {"pool": 4, "teams": ["Northampton Saints","Bath Rugby","Cardiff","Montpellier","Stade français","Bulls"]},
+                ]
                 teams_map = {t.name.lower(): t for t in Team.objects.all()}
                 for pool_data in CC_POOLS_2627:
                     pool_teams = []
@@ -1575,48 +1580,24 @@ def home_view(request):
     year_groups = {}
     for s in all_seasons:
         key = get_season_key(s.year)
+        # Ne garder que 2025+ (2025-2026 et 2026-2027)
+        if not key.isdigit() or int(key) < 2025:
+            continue
         if key not in year_groups:
             year_groups[key] = {"label": f"{key}-{int(key)+1}", "season_ids": []}
         year_groups[key]["season_ids"].append(s.id)
     year_groups_list = sorted(year_groups.items(), key=lambda x: x[0], reverse=True)
 
     selected_year = request.GET.get("year", "").strip()
-
-    if selected_year == "":
-        # Saison glissante (aucun filtre année)
-        current_year = now.year
-        if now.month < 8:
-            start_date = timezone.datetime(current_year - 1, 8, 1, tzinfo=timezone.get_current_timezone())
-            end_date = timezone.datetime(current_year, 8, 1, tzinfo=timezone.get_current_timezone())
-        else:
-            start_date = timezone.datetime(current_year, 8, 1, tzinfo=timezone.get_current_timezone())
-            end_date = timezone.datetime(current_year + 1, 8, 1, tzinfo=timezone.get_current_timezone())
-
-        active_seasons = Season.objects.filter(
-            Q(year__icontains=str(current_year)) | Q(year__icontains=str(current_year-1))
-        ).distinct()
-    elif selected_year in year_groups:
-        active_seasons = Season.objects.filter(id__in=year_groups[selected_year]["season_ids"])
-        round_dates = Round.objects.filter(season__in=active_seasons).aggregate(
-            first=Min("date"), last=Max("date")
-        )
-        start_date = round_dates["first"] or now
-        end_date = round_dates["last"] or now
-    else:
-        # Par défaut : 2025-2026 (dernière saison avec données)
+    if not selected_year or selected_year not in year_groups:
         selected_year = "2025" if "2025" in year_groups else (year_groups_list[0][0] if year_groups_list else "")
-        if selected_year and selected_year in year_groups:
-            active_seasons = Season.objects.filter(id__in=year_groups[selected_year]["season_ids"])
-            round_dates = Round.objects.filter(season__in=active_seasons).aggregate(
-                first=Min("date"), last=Max("date")
-            )
-            start_date = round_dates["first"] or now
-            end_date = round_dates["last"] or now
-        else:
-            # Fallback extrême
-            start_date = now
-            end_date = now
-            active_seasons = Season.objects.none()
+
+    active_seasons = Season.objects.filter(id__in=year_groups[selected_year]["season_ids"])
+    round_dates = Round.objects.filter(season__in=active_seasons).aggregate(
+        first=Min("date"), last=Max("date")
+    )
+    start_date = round_dates["first"] or now
+    end_date = round_dates["last"] or now
 
     # --- 2. PROCHAIN MATCH ---
     next_match = Match.objects.filter(kickoff_at__gt=now).select_related('home_team', 'away_team').order_by('kickoff_at').first()
