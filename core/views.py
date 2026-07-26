@@ -1646,7 +1646,7 @@ def home_view(request):
 
     selected_year = request.GET.get("year", "").strip()
     if not selected_year or selected_year not in year_groups:
-        selected_year = "2025" if "2025" in year_groups else (year_groups_list[0][0] if year_groups_list else "")
+        selected_year = year_groups_list[0][0] if year_groups_list else ""
 
     active_seasons = Season.objects.filter(id__in=year_groups[selected_year]["season_ids"])
     round_dates = Round.objects.filter(season__in=active_seasons).aggregate(
@@ -1742,7 +1742,13 @@ def home_view(request):
     hof_rank = next((i + 1 for i, (name, _) in enumerate(hof_ranking) if name.lower().strip() in target_names), "?")
 
     # --- 5. TROPHÃ‰ES ET RANGS ---
-    all_users = User.objects.filter(player__isnull=False).distinct()
+    all_users = User.objects.filter(
+        player__isnull=False
+    ).annotate(
+        player_season_count=Count('player__seasons')
+    ).filter(
+        Q(player__seasons__in=active_seasons) | Q(player_season_count=0)
+    ).distinct()
     user_ids_list = list(all_users.values_list('id', flat=True))
     user_counts = {u.id: {'chopes': 0, 'cuilleres': 0, 'perfects': 0, 'demis': 0} for u in all_users}
 
