@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout as auth_logout, update_session_auth_hash
 from django.contrib import messages
 from django.utils import timezone
-from django.db.models import Prefetch, Sum, Count, Q
+from django.db.models import Prefetch, Sum, Count, Q, Min, Max
 from .forms import SettingsForm
 from django.contrib.admin.views.decorators import staff_member_required
 from datetime import datetime, timedelta
@@ -245,7 +245,7 @@ def classement_prediction(request):
             season=season
         )
         
-        winner_teams = selected_competition.teams.all().order_by("name")
+        winner_teams = (season.teams.all() if season else selected_competition.teams.all()).order_by("name")
 
         # --- On prépare les BLOCKS ici pour qu'ils existent en GET ET en POST ---
         if selected_competition.name.lower() == "champions cup":
@@ -260,7 +260,7 @@ def classement_prediction(request):
                     "pool": pool
                 })
         else:
-            teams = selected_competition.teams.all().order_by("name")
+            teams = (season.teams.all() if season else selected_competition.teams.all()).order_by("name")
             blocks.append({
                 "key": "all",
                 "teams": teams,
@@ -769,7 +769,8 @@ def statistiques_view(request):
         Q(rounds__dailyscore__points__gt=0) |
         Q(seasonscore__match_points__gt=0) |
         Q(seasonscore__ranking_points__gt=0) |
-        Q(seasonscore__podium_points__gt=0)
+        Q(seasonscore__podium_points__gt=0) |
+        Q(rounds__matches__kickoff_at__isnull=False)  # saisons avec matchs programmés (même sans scores)
     ).distinct().order_by("-year", "competition__name")
     
     if competition:
@@ -816,13 +817,11 @@ def statistiques_view(request):
                 'year': s.year
             })
 
-    # Limiter le dropdown aux 2 saisons les plus récentes
+    # Trier du plus récent au plus ancien
     if not competition:
         distinct_seasons.sort(key=lambda x: int(x['year']), reverse=True)
     else:
-        # En mode compétition, extraire l'année de début pour le tri
         distinct_seasons.sort(key=lambda x: int(get_season_key(x['year'])), reverse=True)
-    distinct_seasons = distinct_seasons[:2]
 
     # 3. Sélection de la saison
     selected_season = None
@@ -1533,18 +1532,37 @@ def home_view(request):
     user = request.user
     now = timezone.now()
 
-    # --- 1. FILTRE SAISON GLISSANTE (1er Août au 1er Août) ---
-    current_year = now.year
-    if now.month < 8:
-        start_date = timezone.datetime(current_year - 1, 8, 1, tzinfo=timezone.get_current_timezone())
-        end_date = timezone.datetime(current_year, 8, 1, tzinfo=timezone.get_current_timezone())
-    else:
-        start_date = timezone.datetime(current_year, 8, 1, tzinfo=timezone.get_current_timezone())
-        end_date = timezone.datetime(current_year + 1, 8, 1, tzinfo=timezone.get_current_timezone())
+    # --- 0. SÉLECTEUR DE SAISON ---
+    season_id = request.GET.get("season", "").strip()
+    selected_season_id = 0
+    if season_id and season_id.isdigit():
+        selected_season_id = int(season_id)
 
-    active_seasons = Season.objects.filter(
-        Q(year__icontains=str(current_year)) | Q(year__icontains=str(current_year-1))
-    ).distinct()
+    all_seasons = Season.objects.all().order_by("-year", "competition__name")
+
+    if selected_season_id:
+        selected_season = get_object_or_404(Season, id=selected_season_id)
+        active_seasons = Season.objects.filter(competition=selected_season.competition, year=selected_season.year)
+        # Déterminer les dates à partir des rounds de la saison
+        round_dates = Round.objects.filter(season__in=active_seasons).aggregate(
+            first=Min("date"), last=Max("date")
+        )
+        start_date = round_dates["first"] or now
+        end_date = round_dates["last"] or now
+    else:
+        selected_season = None
+        # --- FILTRE SAISON GLISSANTE (1er Août au 1er Août) ---
+        current_year = now.year
+        if now.month < 8:
+            start_date = timezone.datetime(current_year - 1, 8, 1, tzinfo=timezone.get_current_timezone())
+            end_date = timezone.datetime(current_year, 8, 1, tzinfo=timezone.get_current_timezone())
+        else:
+            start_date = timezone.datetime(current_year, 8, 1, tzinfo=timezone.get_current_timezone())
+            end_date = timezone.datetime(current_year + 1, 8, 1, tzinfo=timezone.get_current_timezone())
+
+        active_seasons = Season.objects.filter(
+            Q(year__icontains=str(current_year)) | Q(year__icontains=str(current_year-1))
+        ).distinct()
 
     # --- 2. PROCHAIN MATCH ---
     next_match = Match.objects.filter(kickoff_at__gt=now).select_related('home_team', 'away_team').order_by('kickoff_at').first()
@@ -1781,6 +1799,8 @@ def home_view(request):
             debug_log.append(f"❌ NO-SHOW : {m.home_team} vs {m.away_team} ({m.kickoff_at.strftime('%d/%m %H:%M')})")
 
     context = {
+        'selected_season_id': selected_season_id,
+        'all_seasons': all_seasons,
         'rank_general': rank_general, 'total_players': len(user_ids_list),
         'evolution': evolution,
         'hof_rank': hof_rank, 'total_points_all': user_row.get('total_global', 0),
