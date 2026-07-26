@@ -63,6 +63,17 @@ def _players_for_season(season):
     return Player.objects.annotate(sc=Count('seasons')).filter(q).distinct().order_by('name')
 
 
+def _latest_season(seasons_qs):
+    """Retourne la saison la plus récente d'un queryset, basé sur la clé année (ex: 2026 pour 2026/2027)."""
+    from .management.commands.backfill_player_seasons import get_season_key
+    seasons = list(seasons_qs)
+    valid = [(s, get_season_key(s.year)) for s in seasons if get_season_key(s.year).isdigit()]
+    if not valid:
+        return seasons_qs.first()
+    max_key = max(int(k) for _, k in valid)
+    return next((s for s, k in valid if int(k) == max_key), seasons_qs.first())
+
+
 # ------------------
 # PRONOS VIEW
 # ------------------
@@ -100,7 +111,7 @@ def pronos_view(request):
     if season_id:
         selected_season = seasons.filter(id=season_id).first()
     else:
-        selected_season = seasons.first()
+        selected_season = _latest_season(seasons)
 
     # Choix du round
     rounds = Round.objects.filter(season=selected_season).order_by('number')
