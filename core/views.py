@@ -1,4 +1,4 @@
-import os, logging
+﻿import os, logging
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout as auth_logout, update_session_auth_hash
@@ -10,7 +10,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from datetime import datetime, timedelta
 from django.contrib.auth.models import User
 
-# Modèles conservés
+# ModÃ¨les conservÃ©s
 from .models import (
     Competition, Season, Round, Match, Player, 
     Prediction, DailyScore, SeasonScore, CompetitionResult,
@@ -64,23 +64,23 @@ def pronos_view(request):
     try:
         player = user.player
     except Player.DoesNotExist:
-        messages.error(request, "Votre compte n’est pas encore lié à un joueur.")
+        messages.error(request, "Votre compte nâ€™est pas encore liÃ© Ã  un joueur.")
         return redirect("logout")
 
-    # 1. RÉCUPÉRATION DES PARAMÈTRES
+    # 1. RÃ‰CUPÃ‰RATION DES PARAMÃˆTRES
     competition_id = request.GET.get("competition")
     season_id = request.GET.get("season")
     round_id = request.GET.get("round")
     now = timezone.now()
 
-    # 2. LOGIQUE DES MENUS DÉROULANTS
+    # 2. LOGIQUE DES MENUS DÃ‰ROULANTS
     competitions = Competition.objects.all().order_by('name')
     
-    # Choix de la compétition
+    # Choix de la compÃ©tition
     if competition_id:
         selected_comp = competitions.filter(id=competition_id).first()
     else:
-        # Compétition du prochain match à venir (toute compétition confondue)
+        # CompÃ©tition du prochain match Ã  venir (toute compÃ©tition confondue)
         next_match = Match.objects.filter(kickoff_at__gte=now).order_by('kickoff_at').first()
         if next_match:
             selected_comp = next_match.round.season.competition
@@ -103,7 +103,7 @@ def pronos_view(request):
         current_r_obj = rounds.filter(id=round_id).first()
 
     # 3. GESTION DU POST (SAUVEGARDE)
-    # On garde ta logique de sauvegarde très robuste, elle est parfaite.
+    # On garde ta logique de sauvegarde trÃ¨s robuste, elle est parfaite.
     if request.method == "POST":
         matches_to_save = Match.objects.filter(round_id=round_id)
         for match in matches_to_save:
@@ -125,10 +125,10 @@ def pronos_view(request):
                     )
                 except ValueError: continue
 
-        messages.success(request, "Pronostics enregistrés !")
+        messages.success(request, "Pronostics enregistrÃ©s !")
         return redirect(f"{request.path}?competition={selected_comp.id}&season={selected_season.id}&round={round_id}")
 
-    # 4. PRÉPARATION AFFICHAGE
+    # 4. PRÃ‰PARATION AFFICHAGE
     matches = Match.objects.filter(round_id=round_id).select_related("home_team", "away_team", "round").order_by("kickoff_at")
     predictions_by_match = {p.match_id: p for p in Prediction.objects.filter(player=player, match__round_id=round_id)}
 
@@ -172,7 +172,7 @@ def settings_view(request):
         if form.is_valid():
             user = form.save()
             update_session_auth_hash(request, user)
-            messages.success(request, 'Paramètres mis à jour !')
+            messages.success(request, 'ParamÃ¨tres mis Ã  jour !')
             return redirect('settings')
         else:
             messages.error(request, 'Corrigez les erreurs ci-dessous.')
@@ -196,13 +196,13 @@ def competition_ranking_view(request):
     if selected_competition_id:
         selected_competition = get_object_or_404(Competition, id=selected_competition_id)
         
-        # On récupère la saison la plus récente pour cette compétition
-        selected_season = Season.objects.filter(competition=selected_competition).order_by('-year').first()
+        # On rÃ©cupÃ¨re la saison la plus rÃ©cente pour cette compÃ©tition
+        selected_season = Season.objects.filter(competition=selected_competition, year__gte=2025).order_by('-year').first()
         
         if selected_season:
-            # On récupère les pronos de classement liés au joueur ET à la saison
+            # On rÃ©cupÃ¨re les pronos de classement liÃ©s au joueur ET Ã  la saison
             rankings = CompetitionTeamPrediction.objects.filter(
-                player__user=request.user, # On filtre par l'utilisateur connecté
+                player__user=request.user, # On filtre par l'utilisateur connectÃ©
                 competition=selected_competition,
                 season=selected_season
             ).order_by("position")
@@ -241,7 +241,7 @@ def classement_prediction(request):
 
 def _classement_prediction(request):
     competitions = Competition.objects.all()
-    # On unifie la récupération de l'ID de compétition (POST ou GET)
+    # On unifie la rÃ©cupÃ©ration de l'ID de compÃ©tition (POST ou GET)
     competition_id = request.POST.get("competition_id") or request.GET.get("competition")
     season_id = request.POST.get("season_id") or request.GET.get("season")
 
@@ -254,10 +254,10 @@ def _classement_prediction(request):
 
     if competition_id:
         selected_competition = get_object_or_404(Competition, id=competition_id)
-        seasons = Season.objects.filter(competition=selected_competition).order_by("-year")
+        seasons = Season.objects.filter(competition=selected_competition, year__gte=2025).order_by("-year")
         season = seasons.filter(id=season_id).first() if season_id else seasons.first()
         
-        # Récupération des bonus
+        # RÃ©cupÃ©ration des bonus
         bonus, _ = CompetitionBonusPrediction.objects.get_or_create(
             player=request.user.player,
             competition=selected_competition,
@@ -269,7 +269,7 @@ def _classement_prediction(request):
         except Exception:
             winner_teams = Team.objects.none()
 
-        # --- On prépare les BLOCKS ici pour qu'ils existent en GET ET en POST ---
+        # --- On prÃ©pare les BLOCKS ici pour qu'ils existent en GET ET en POST ---
         if selected_competition.name.lower() == "champions cup":
             try:
                 has_pool_data = CompetitionTeam.objects.filter(
@@ -292,7 +292,7 @@ def _classement_prediction(request):
                         {"pool": 1, "teams": ["Leinster","Glasgow","Pau","Sale Sharks","Leicester Tigers","Clermont"]},
                         {"pool": 2, "teams": ["Toulouse","Lions","Saracens","La Rochelle","Exeter Chiefs","Connacht"]},
                         {"pool": 3, "teams": ["UBB","Stormers","Racing 92","Munster","Bristol Bears","Gloucester"]},
-                        {"pool": 4, "teams": ["Northampton Saints","Bath Rugby","Cardiff","Montpellier","Stade français","Bulls"]},
+                        {"pool": 4, "teams": ["Northampton Saints","Bath Rugby","Cardiff","Montpellier","Stade franÃ§ais","Bulls"]},
                     ]
                     teams_map = {t.name: t for t in Team.objects.all()}
                     for pool_data in CC_POOLS_2627:
@@ -321,7 +321,7 @@ def _classement_prediction(request):
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).exception("CC pools error")
-                # Fallback ultime : un seul bloc avec toutes les équipes
+                # Fallback ultime : un seul bloc avec toutes les Ã©quipes
                 all_teams_list = list(Team.objects.all())
                 blocks.append({
                     "key": "all",
@@ -341,9 +341,9 @@ def _classement_prediction(request):
     # --- SAUVEGARDE (POST) ---
     if request.method == "POST" and selected_competition:
         
-        # VERROU : On vérifie si la compétition a commencé
+        # VERROU : On vÃ©rifie si la compÃ©tition a commencÃ©
         if season and season.has_started:
-            messages.error(request, "La compétition a déjà commencé ! Modification impossible.")
+            messages.error(request, "La compÃ©tition a dÃ©jÃ  commencÃ© ! Modification impossible.")
             return redirect(f"{request.path}?competition={selected_competition.id}&season={season.id}")
         
         # 1. Sauvegarde des Bonus
@@ -375,11 +375,11 @@ def _classement_prediction(request):
                         )
                         recorded_teams.add(t_id)
         
-        messages.success(request, "Vos pronostics ont été enregistrés !")
+        messages.success(request, "Vos pronostics ont Ã©tÃ© enregistrÃ©s !")
         season_param = f"&season={season.id}" if season else ""
         return redirect(f"{request.path}?competition={selected_competition.id}{season_param}")
 
-    # --- RÉCUPÉRATION POUR AFFICHAGE (GET) ---
+    # --- RÃ‰CUPÃ‰RATION POUR AFFICHAGE (GET) ---
     if selected_competition and season:
         for block in blocks:
             saved_preds = CompetitionTeamPrediction.objects.filter(
@@ -388,11 +388,11 @@ def _classement_prediction(request):
                 block_key=block["key"],
                 season=season
             )
-            # CRUCIAL : On s'assure que la clé est un entier (pos) 
-            # et la valeur est un entier (ID de l'équipe)
+            # CRUCIAL : On s'assure que la clÃ© est un entier (pos) 
+            # et la valeur est un entier (ID de l'Ã©quipe)
             block["saved"] = {int(p.position): int(p.team.id) for p in saved_preds}
             
-    # Récupération propre pour l'affichage du récapitulatif
+    # RÃ©cupÃ©ration propre pour l'affichage du rÃ©capitulatif
     last_saved_ranking = []
     if selected_competition and season:
         last_saved_ranking = CompetitionTeamPrediction.objects.filter(
@@ -417,14 +417,14 @@ def all_pronos_view(request):
     now = timezone.now()
     is_admin = request.user.is_staff or request.user.is_superuser
     
-    # 1. Récupération des IDs
+    # 1. RÃ©cupÃ©ration des IDs
     comp_id = request.GET.get("comp")
     season_id = request.GET.get("season")
     round_id = request.GET.get("round")
 
     all_competitions = Competition.objects.all().order_by('name')
     
-    # 2. Détermination de la compétition
+    # 2. DÃ©termination de la compÃ©tition
     if comp_id:
         selected_comp = all_competitions.filter(id=comp_id).first()
     else:
@@ -434,27 +434,27 @@ def all_pronos_view(request):
         else:
             selected_comp = all_competitions.first()
 
-    # 3. Détermination de la saison (FILTRÉE par la compétition choisie)
-    seasons = Season.objects.filter(competition=selected_comp).order_by('-year')
+    # 3. DÃ©termination de la saison (FILTRÃ‰E par la compÃ©tition choisie)
+    seasons = Season.objects.filter(competition=selected_comp, year__gte=2025).order_by('-year')
     
     if season_id and seasons.filter(id=season_id).exists():
         selected_season = seasons.filter(id=season_id).first()
     else:
-        # Si on change de comp, season_id devient invalide, on prend la plus récente de la nouvelle comp
+        # Si on change de comp, season_id devient invalide, on prend la plus rÃ©cente de la nouvelle comp
         selected_season = seasons.first()
 
-    # 4. Détermination des journées (FILTRÉES par la saison choisie)
+    # 4. DÃ©termination des journÃ©es (FILTRÃ‰ES par la saison choisie)
     rounds = Round.objects.filter(season=selected_season).order_by('number')
 
-    # 5. Détermination du Round final à afficher
-    # On initialise à None
+    # 5. DÃ©termination du Round final Ã  afficher
+    # On initialise Ã  None
     current_round_obj = None
 
-    # PRIORITÉ 1 : L'utilisateur a choisi un round manuellement
+    # PRIORITÃ‰ 1 : L'utilisateur a choisi un round manuellement
     if round_id and round_id.isdigit():
         current_round_obj = rounds.filter(id=round_id).first()
 
-    # PRIORITÉ 2 : Si aucun round choisi (ou ID invalide), on lance l'automatisme
+    # PRIORITÃ‰ 2 : Si aucun round choisi (ou ID invalide), on lance l'automatisme
     if not current_round_obj:
         current_round_obj = _find_next_round(rounds, now)
 
@@ -479,7 +479,7 @@ def all_pronos_view(request):
             for p in players:
                 prono = next((pred for pred in predictions if pred.match_id == m.id and pred.player_id == p.id), None)
                 
-                # Init du dictionnaire de données pour le template
+                # Init du dictionnaire de donnÃ©es pour le template
                 p_dict = {
                     'has_prono': prono is not None,
                     'score_home': None, 'score_away': None,
@@ -511,23 +511,23 @@ def all_pronos_view(request):
                             if m.bonus_offense_away: p_dict['bo_away_ok'] = True
                             else: p_dict['bo_away_ko'] = True
                         
-                        # 3. Bonus Défensifs (BD) - Logique Auto
-                        # Home prédit BD
+                        # 3. Bonus DÃ©fensifs (BD) - Logique Auto
+                        # Home prÃ©dit BD
                         if prono.home_score_pred < prono.away_score_pred and (prono.away_score_pred - prono.home_score_pred) <= threshold:
                             if real_bd == 'HOME' or m.home_score == m.away_score: p_dict['bd_home_ok'] = True
                             else: p_dict['bd_home_ko'] = True
-                        # Away prédit BD
+                        # Away prÃ©dit BD
                         if prono.away_score_pred < prono.home_score_pred and (prono.home_score_pred - prono.away_score_pred) <= threshold:
                             if real_bd == 'AWAY' or m.home_score == m.away_score: p_dict['bd_away_ok'] = True
                             else: p_dict['bd_away_ko'] = True
                     else:
-                        # Match non joué : Orange si un bonus est "dans les tuyaux"
+                        # Match non jouÃ© : Orange si un bonus est "dans les tuyaux"
                         if prono.bonus_home_pred or (prono.home_score_pred < prono.away_score_pred and (prono.away_score_pred - prono.home_score_pred) <= threshold):
                             p_dict['pending_home'] = True
                         if prono.bonus_away_pred or (prono.away_score_pred < prono.home_score_pred and (prono.home_score_pred - prono.away_score_pred) <= threshold):
                             p_dict['pending_away'] = True
 
-                    # Background couleur selon vainqueur prédit
+                    # Background couleur selon vainqueur prÃ©dit
                     if prono.home_score_pred > prono.away_score_pred: p_dict['class'] = "bg-home-win"
                     elif prono.away_score_pred > prono.home_score_pred: p_dict['class'] = "bg-away-win"
                     else: p_dict['class'] = "bg-draw"
@@ -550,7 +550,7 @@ def all_pronos_view(request):
         rounds, current_round_obj.id if current_round_obj else None
     )
 
-    # Stats prédictions pour l'admin
+    # Stats prÃ©dictions pour l'admin
     player_status = []
     if current_round_obj:
         match_ids = {m.id for m in matches}
@@ -576,7 +576,7 @@ def all_pronos_view(request):
 
 @login_required
 def round_results_board(request, round_id):
-    # 1. Récupération de l'objet et gestion des changements via GET
+    # 1. RÃ©cupÃ©ration de l'objet et gestion des changements via GET
     round_obj = get_object_or_404(Round.objects.select_related('season__competition'), id=round_id)
     
     new_comp_id = request.GET.get('comp')
@@ -596,7 +596,7 @@ def round_results_board(request, round_id):
         if first_round:
             return redirect('round_board', round_id=first_round.id)
 
-    # 2. Préparation des données de base
+    # 2. PrÃ©paration des donnÃ©es de base
     selected_comp = round_obj.season.competition
     selected_season = round_obj.season
     
@@ -610,20 +610,20 @@ def round_results_board(request, round_id):
         Prefetch('seasons', queryset=Season.objects.all().order_by('-year'))
     ).distinct()
 
-    # 3. Configuration du Barème et des Multiplicateurs
+    # 3. Configuration du BarÃ¨me et des Multiplicateurs
     comp_name = round_obj.season.competition.name
     current_scale = scoring.BONUS_SCALES.get(comp_name, {})
     
-    # Multiplicateur de compétition (ex: 6 Nations)
+    # Multiplicateur de compÃ©tition (ex: 6 Nations)
     comp_multiplier = 2 if ("6 Nations" in comp_name or "Six Nations" in comp_name) else 1
     
     # Multiplicateur de phase (ex: POOL=1, R16=1.25, QF=1.5...)
     phase_multiplier = scoring.PHASE_MULTIPLIERS.get(round_obj.phase, 1.0)
     
-    # Sécurité pour les bonus BO/BD (Uniquement en POOL)
+    # SÃ©curitÃ© pour les bonus BO/BD (Uniquement en POOL)
     is_pool_phase = (round_obj.phase == "POOL")
 
-    # 4. Toutes les prédictions du round en UNE requête
+    # 4. Toutes les prÃ©dictions du round en UNE requÃªte
     all_preds = list(Prediction.objects.filter(
         match__round=round_obj
     ).select_related(
@@ -642,7 +642,7 @@ def round_results_board(request, round_id):
         if pr.player_id in preds_by_player:
             preds_by_player[pr.player_id].append(pr)
 
-    # 5. Pré-calcul des gagnants par match (Partage du pool)
+    # 5. PrÃ©-calcul des gagnants par match (Partage du pool)
     match_winners_counts = {}
     for m in matches:
         if m.home_score is not None and m.away_score is not None:
@@ -733,14 +733,14 @@ def round_results_board(request, round_id):
                 if diff_err in scoring.SCORING_CONFIG['DIFF_TABLE']:
                     stats['diff'] += scoring.SCORING_CONFIG['DIFF_TABLE'][diff_err]
 
-            # --- Extérieur et Nul ---
+            # --- ExtÃ©rieur et Nul ---
             real_winner_obj = m.winner()
             if real_winner_obj == m.away_team and pr.away_score_pred > pr.home_score_pred:
                 stats['ext'] += scoring.SCORING_CONFIG['AWAY_WIN_BONUS']
             if real_winner_obj == "DRAW" and pr.home_score_pred == pr.away_score_pred and pred_winner_side != "NO SHOW":
                 stats['draw'] += scoring.SCORING_CONFIG['DRAW_BONUS']
 
-        # Bonus de Palier (basé sur le nombre de gagnants trouvés)
+        # Bonus de Palier (basÃ© sur le nombre de gagnants trouvÃ©s)
         daily_bonus = 0
         for threshold in sorted(current_scale.keys(), reverse=True):
             if stats['winners'] >= threshold:
@@ -771,7 +771,7 @@ def round_results_board(request, round_id):
             'rank_class': ''
         })
 
-    # 7. Attribution des médailles
+    # 7. Attribution des mÃ©dailles
     scores_uniques = sorted(list(set(t['score'] for t in totals_display if t['score'] > 0)), reverse=True)
     if scores_uniques:
         min_score = min(t['score'] for t in totals_display)
@@ -812,7 +812,7 @@ def bonus_view(request, round_id):
             match.bonus_offense_home = home_key in request.POST
             match.bonus_offense_away = away_key in request.POST
             match.save()
-        messages.success(request, "Bonus enregistrés")
+        messages.success(request, "Bonus enregistrÃ©s")
         return HttpResponseRedirect(request.path)
     return render(request, "bonus.html", {
         "round": round_obj,
@@ -824,7 +824,7 @@ def compute_round_view(request, round_id):
     round_obj = get_object_or_404(Round, id=round_id)
     # On appelle ton script de scoring
     process_round_scores(round_obj)
-    # Une fois fini, on revient sur la page des résultats
+    # Une fois fini, on revient sur la page des rÃ©sultats
     return redirect('round_board', round_id=round_id)
 
 @login_required
@@ -834,25 +834,25 @@ def statistiques_view(request):
     
     competitions = Competition.objects.all().order_by("name")
 
-    # 1. Gestion de la Compétition
+    # 1. Gestion de la CompÃ©tition
     competition = None
     if competition_id and competition_id.isdigit():
         competition = Competition.objects.filter(id=int(competition_id)).first()
 
-    # 2. Gestion des Saisons & Construction des libellés uniques pour le menu
+    # 2. Gestion des Saisons & Construction des libellÃ©s uniques pour le menu
     seasons_qs = Season.objects.filter(
         Q(rounds__dailyscore__points__gt=0) |
         Q(seasonscore__match_points__gt=0) |
         Q(seasonscore__ranking_points__gt=0) |
         Q(seasonscore__podium_points__gt=0) |
-        Q(rounds__matches__kickoff_at__isnull=False)  # saisons avec matchs programmés (même sans scores)
+        Q(rounds__matches__kickoff_at__isnull=False)  # saisons avec matchs programmÃ©s (mÃªme sans scores)
     ).distinct().order_by("-year", "competition__name")
     
     if competition:
         seasons_qs = seasons_qs.filter(competition=competition)
 
-    # Helper : extraire l'année de début d'une saison
-    # "2025/2026" → "2025", "2026" (6 Nations) → "2025", "2024-2025" → "2024"
+    # Helper : extraire l'annÃ©e de dÃ©but d'une saison
+    # "2025/2026" â†’ "2025", "2026" (6 Nations) â†’ "2025", "2024-2025" â†’ "2024"
     def get_season_key(year_str):
         if '/' in year_str:
             return year_str.split('/')[0]
@@ -863,13 +863,13 @@ def statistiques_view(request):
         return year_str
 
     distinct_seasons = []
-    season_key_to_id = {}     # "2025" → 1 (pour le dropdown)
-    season_groups = {}        # "2025" → [Season.id, ...] (pour le filtrage)
+    season_key_to_id = {}     # "2025" â†’ 1 (pour le dropdown)
+    season_groups = {}        # "2025" â†’ [Season.id, ...] (pour le filtrage)
     id_counter = 1
 
     for s in seasons_qs:
         if not competition:
-            # Mode global : regrouper par clé de saison (ex: Top14 2025/2026 + 6N 2026 → "2025-2026")
+            # Mode global : regrouper par clÃ© de saison (ex: Top14 2025/2026 + 6N 2026 â†’ "2025-2026")
             season_key = get_season_key(s.year)
             if season_key not in season_groups:
                 season_groups[season_key] = []
@@ -884,7 +884,7 @@ def statistiques_view(request):
                 })
                 id_counter += 1
         else:
-            # Mode compétition spécifique : garder l'ID unique de la saison
+            # Mode compÃ©tition spÃ©cifique : garder l'ID unique de la saison
             season_key = get_season_key(s.year)
             distinct_seasons.append({
                 'id': s.id,
@@ -892,19 +892,19 @@ def statistiques_view(request):
                 'year': s.year
             })
 
-    # Trier du plus récent au plus ancien
+    # Trier du plus rÃ©cent au plus ancien
     if not competition:
         distinct_seasons.sort(key=lambda x: int(x['year']), reverse=True)
     else:
         distinct_seasons.sort(key=lambda x: int(get_season_key(x['year'])), reverse=True)
 
-    # 3. Sélection de la saison
+    # 3. SÃ©lection de la saison
     selected_season = None
     selected_year = None
 
     if season_id:
         if competition:
-            # Mode compétition : season_id = Season.pk
+            # Mode compÃ©tition : season_id = Season.pk
             if season_id.isdigit():
                 selected_season = Season.objects.filter(id=int(season_id)).first()
                 if selected_season:
@@ -918,7 +918,7 @@ def statistiques_view(request):
                         selected_year = key
                         break
     
-    # Si aucune saison sélectionnée, prendre la plus récente par défaut
+    # Si aucune saison sÃ©lectionnÃ©e, prendre la plus rÃ©cente par dÃ©faut
     if not selected_year and not selected_season:
         if not competition and distinct_seasons:
             selected_year = distinct_seasons[0]['year']
@@ -933,7 +933,7 @@ def statistiques_view(request):
     else:
         stats = compute_statistics(competition, season=selected_season)
 
-    # --- 5. SÉCURISATION ET SYNCHRONISATION DES SCORES DEPUIS SEASONSCORE ---
+    # --- 5. SÃ‰CURISATION ET SYNCHRONISATION DES SCORES DEPUIS SEASONSCORE ---
     season_scores = {}
     try:
         qs = SeasonScore.objects.all()
@@ -942,7 +942,7 @@ def statistiques_view(request):
             if selected_season:
                 qs = qs.filter(season=selected_season)
         else:
-            # Mode global : filtrer par les IDs des saisons du groupe sélectionné
+            # Mode global : filtrer par les IDs des saisons du groupe sÃ©lectionnÃ©
             if selected_year and selected_year in season_groups:
                 qs = qs.filter(season_id__in=season_groups[selected_year])
             
@@ -961,7 +961,7 @@ def statistiques_view(request):
     except Exception:
         season_scores = {}
 
-    # --- 5B. INJECTION DES POINTS F/P DANS LES SÉRIES GRAPHIQUES ---
+    # --- 5B. INJECTION DES POINTS F/P DANS LES SÃ‰RIES GRAPHIQUES ---
     num_rounds = len(stats.labels)
     for username, scores in season_scores.items():
         if username in stats.flair_series and num_rounds > 0:
@@ -969,12 +969,12 @@ def statistiques_view(request):
         if username in stats.podium_series and num_rounds > 0:
             stats.podium_series[username][-1] = scores['podium_pts']
 
-    # Remplissage et mise à jour de detailed_ranking
+    # Remplissage et mise Ã  jour de detailed_ranking
     for r in stats.detailed_ranking:
         username = r['username']
         user_scores = season_scores.get(username, {'match_pts': 0, 'ranking_pts': 0, 'podium_pts': 0})
         
-        # On injecte les valeurs synchronisées
+        # On injecte les valeurs synchronisÃ©es
         r['match_pts'] = user_scores['match_pts'] if user_scores['match_pts'] > 0 else r.get('points', 0)
         r['ranking_pts'] = user_scores['ranking_pts']
         r['podium_pts'] = user_scores['podium_pts']
@@ -982,10 +982,10 @@ def statistiques_view(request):
         # Recalcul strict du total
         r['total_global'] = r['match_pts'] + r['ranking_pts'] + r['podium_pts']
 
-    # Tri par total global décroissant, puis par points de matchs
+    # Tri par total global dÃ©croissant, puis par points de matchs
     stats.detailed_ranking.sort(key=lambda x: (x['total_global'], x['match_pts']), reverse=True)
     
-    # On cherche la dernière journée modifiée pour le bouton Résultats
+    # On cherche la derniÃ¨re journÃ©e modifiÃ©e pour le bouton RÃ©sultats
     last_round_id = None
     if selected_season:
         lr = Round.objects.filter(
@@ -1042,10 +1042,10 @@ def statistiques_view(request):
 
 @login_required
 def debug_scores_view(request):
-    # 1. Récupérer toutes les compétitions pour le premier menu
+    # 1. RÃ©cupÃ©rer toutes les compÃ©titions pour le premier menu
     competitions = Competition.objects.all().order_by('name')
     
-    # 2. Récupérer la compétition sélectionnée
+    # 2. RÃ©cupÃ©rer la compÃ©tition sÃ©lectionnÃ©e
     competition_id = request.GET.get('competition')
     if competition_id:
         selected_competition = get_object_or_404(Competition, id=competition_id)
@@ -1053,12 +1053,12 @@ def debug_scores_view(request):
         selected_competition = competitions.first()
 
     if not selected_competition:
-        return render(request, "debug_scores.html", {"error": "Aucune compétition trouvée"})
+        return render(request, "debug_scores.html", {"error": "Aucune compÃ©tition trouvÃ©e"})
 
-    # 3. Récupérer les SAISONS de cette compétition pour le deuxième menu
-    seasons = Season.objects.filter(competition=selected_competition).order_by('-year')
+    # 3. RÃ©cupÃ©rer les SAISONS de cette compÃ©tition pour le deuxiÃ¨me menu
+    seasons = Season.objects.filter(competition=selected_competition, year__gte=2025).order_by('-year')
     
-    # 4. Récupérer la saison sélectionnée (ou la dernière par défaut)
+    # 4. RÃ©cupÃ©rer la saison sÃ©lectionnÃ©e (ou la derniÃ¨re par dÃ©faut)
     season_id = request.GET.get('season')
     if season_id:
         selected_season = get_object_or_404(Season, id=season_id)
@@ -1071,7 +1071,7 @@ def debug_scores_view(request):
     if not players:
         players = Player.objects.filter(user__isnull=False).order_by('name')
     
-    # 6. Matrice de scores (ton code reste le même, mais filtré par rounds de la saison)
+    # 6. Matrice de scores (ton code reste le mÃªme, mais filtrÃ© par rounds de la saison)
     daily_scores = DailyScore.objects.filter(round__in=rounds).select_related('user', 'round')
     score_matrix = {}
     for score in daily_scores:
@@ -1103,7 +1103,7 @@ def recap_pronos_classement(request):
     competition_id = request.GET.get("competition")
     season_id = request.GET.get("season")
     
-    # Initialisation systématique pour éviter les erreurs dans le template
+    # Initialisation systÃ©matique pour Ã©viter les erreurs dans le template
     selected_competition = None
     real_rankings = {}
     real_winner = None
@@ -1117,27 +1117,27 @@ def recap_pronos_classement(request):
 
     if competition_id:
         selected_competition = get_object_or_404(Competition, id=competition_id)
-        seasons = Season.objects.filter(competition=selected_competition).order_by("-year")
+        seasons = Season.objects.filter(competition=selected_competition, year__gte=2025).order_by("-year")
         
-        # On récupère la saison
+        # On rÃ©cupÃ¨re la saison
         season = seasons.filter(id=season_id).first() if season_id else seasons.first()
         
         if season:
             players = Player.objects.filter(seasons=season).order_by('name')
             if not players:
                 players = Player.objects.all().order_by('name')
-            # Vérification du verrouillage
+            # VÃ©rification du verrouillage
             if not season.has_started and not request.user.is_staff:
-                messages.warning(request, "Les pronostics des autres joueurs seront visibles dès le coup d'envoi !")
+                messages.warning(request, "Les pronostics des autres joueurs seront visibles dÃ¨s le coup d'envoi !")
                 return redirect('pronos')
             
-            # Récupération des résultats réels (SORTI DU ELSE, il doit être ici !)
+            # RÃ©cupÃ©ration des rÃ©sultats rÃ©els (SORTI DU ELSE, il doit Ãªtre ici !)
             result_obj = CompetitionResult.objects.filter(season=season).first()
             if result_obj:
                 real_rankings = result_obj.rankings_json
                 real_winner = result_obj.real_winner
 
-        # Récupération des pronostics des joueurs
+        # RÃ©cupÃ©ration des pronostics des joueurs
         preds = CompetitionTeamPrediction.objects.filter(competition=selected_competition, season=season).select_related('player', 'team')
         
         for p in preds:
@@ -1173,7 +1173,7 @@ def recap_pronos_classement(request):
 def compute_competition_points(season):
     result = CompetitionResult.objects.filter(season=season).first()
     if not result:
-        return "Aucun résultat saisi."
+        return "Aucun rÃ©sultat saisi."
 
     rules = RUGBY_SCORING.get(season.competition.name, RUGBY_SCORING["Top 14"])
     players = Player.objects.filter(seasons=season)
@@ -1222,7 +1222,7 @@ def compute_competition_points(season):
             s_score, _ = SeasonScore.objects.get_or_create(
                 user=player.user, 
                 competition=season.competition,
-                season=season  # Crucial pour ne pas écraser 2025
+                season=season  # Crucial pour ne pas Ã©craser 2025
             )
             s_score.ranking_points = pts_classement + pts_bonus_finaux
             s_score.save()       
@@ -1237,9 +1237,9 @@ def admin_saisie_resultats(request):
 
     if competition_id:
         selected_competition = get_object_or_404(Competition, id=competition_id)
-        season = Season.objects.filter(competition=selected_competition).order_by("-year").first()
+        season = Season.objects.filter(competition=selected_competition, year__gte=2025).order_by("-year").first()
         
-        # Préparation des blocs (Même logique que ta vue classement_prediction)
+        # PrÃ©paration des blocs (MÃªme logique que ta vue classement_prediction)
         if selected_competition.name.lower() == "champions cup":
             for pool in range(1, 5):
                 comp_teams = CompetitionTeam.objects.filter(competition=selected_competition, season=season, pool=pool)
@@ -1259,7 +1259,7 @@ def admin_saisie_resultats(request):
     if request.method == "POST":
         res_obj, _ = CompetitionResult.objects.get_or_create(season=season)
         
-        # 1. Sauvegarde des bonus réels
+        # 1. Sauvegarde des bonus rÃ©els
         res_obj.real_best_try_scorer = request.POST.get("real_best_try_scorer", "").strip()
         res_obj.real_best_point_scorer = request.POST.get("real_best_point_scorer", "").strip()
         winner_id = request.POST.get("real_winner")
@@ -1276,7 +1276,7 @@ def admin_saisie_resultats(request):
         
         res_obj.rankings_json = rank_data
         res_obj.save()
-        messages.success(request, "Résultats officiels enregistrés !")
+        messages.success(request, "RÃ©sultats officiels enregistrÃ©s !")
         return redirect(f"{request.path}?competition={selected_competition.id}")
 
     return render(request, "pronos/admin_saisie_resultats.html", {
@@ -1290,13 +1290,13 @@ def admin_saisie_resultats(request):
 @staff_member_required
 def declencher_calcul_points(request, season_id):
     season = get_object_or_404(Season, id=season_id)
-    # On appelle la fonction de calcul définie précédemment
+    # On appelle la fonction de calcul dÃ©finie prÃ©cÃ©demment
     message_resultat = compute_competition_points(season)
     
     if isinstance(message_resultat, str):
         messages.error(request, message_resultat)
     else:
-        messages.success(request, "Les points de classement ont été mis à jour pour tous les joueurs !")
+        messages.success(request, "Les points de classement ont Ã©tÃ© mis Ã  jour pour tous les joueurs !")
         
     return redirect('recap_classement')
 
@@ -1331,11 +1331,11 @@ def statistics_view(request):
         if t > max_occurence: max_occurence = t
         if h > max_h: max_h = h
         if a > max_a: max_a = a
-    # --- 2. CLASSEMENT DÉTAILLÉ & PODIUM ---
+    # --- 2. CLASSEMENT DÃ‰TAILLÃ‰ & PODIUM ---
     detailed_ranking = []
     flair_ranking = []
     
-    # CONVERSION STRICTE DES PARAMÈTRES EN ENTIERS POUR L'ORM
+    # CONVERSION STRICTE DES PARAMÃˆTRES EN ENTIERS POUR L'ORM
     try:
         comp_id = int(comp_id) if comp_id else None
     except (ValueError, TypeError):
@@ -1346,15 +1346,15 @@ def statistics_view(request):
     except (ValueError, TypeError):
         season_id = None
     
-    # 1. Gestion de la saison par défaut liée à la compétition choisie
+    # 1. Gestion de la saison par dÃ©faut liÃ©e Ã  la compÃ©tition choisie
     if not season_id:
         if comp_id:
-            # On cherche d'abord s'il y a une saison qui a des résultats de fin de saison validés
+            # On cherche d'abord s'il y a une saison qui a des rÃ©sultats de fin de saison validÃ©s
             active_season_res = CompetitionResult.objects.filter(season__competition_id=comp_id).order_by('-season__year').first()
             if active_season_res:
                 default_season = active_season_res.season
             else:
-                default_season = Season.objects.filter(competition_id=comp_id).order_by('-year').first()
+                default_season = Season.objects.filter(competition_id=comp_id, year__gte=2025).order_by('-year').first()
         else:
             default_season = Season.objects.all().order_by('-year').first()
             
@@ -1371,7 +1371,7 @@ def statistics_view(request):
             
         scores = scores_query.select_related('user')
         
-        # Si la requête est vide ou ne donne rien, fallback de secours sur la compétition globale
+        # Si la requÃªte est vide ou ne donne rien, fallback de secours sur la compÃ©tition globale
         if not scores.exists() and comp_id:
             scores = SeasonScore.objects.filter(competition_id=comp_id).select_related('user')
         
@@ -1379,7 +1379,7 @@ def statistics_view(request):
         if not res and comp_id:
             res = CompetitionResult.objects.filter(season__competition_id=comp_id).first()
 
-        # Pré-chargement des bonus prédictions en une requête
+        # PrÃ©-chargement des bonus prÃ©dictions en une requÃªte
         bonus_preds_qs = CompetitionBonusPrediction.objects.select_related('player__user')
         if season_id:
             bonus_preds_qs = bonus_preds_qs.filter(season_id=season_id)
@@ -1487,7 +1487,7 @@ def import_scores_view(request, token):
         return HttpResponse("Invalid token", status=403)
     from core.models import Season
     from django.core.mail import send_mail
-    seasons = Season.objects.filter(competition__name__in=["Top 14", "Champions Cup", "6 Nations"])
+    seasons = Season.objects.filter(competition__name__in=["Top 14", "Champions Cup", "6 Nations"], year__gte=2025)
     if not seasons.exists():
         return HttpResponse("No seasons found", status=404)
     all_results = []
@@ -1499,15 +1499,15 @@ def import_scores_view(request, token):
         total_created += result.get('created', 0)
         total_updated += result.get('updated', 0)
     if total_created > 0 or total_updated > 0:
-        msg_lines = ["Nouveautés importées depuis TheSportsDB :"]
+        msg_lines = ["NouveautÃ©s importÃ©es depuis TheSportsDB :"]
         for r in all_results:
             c = r.get('created', 0)
             u = r.get('updated', 0)
             if c or u:
-                msg_lines.append(f"- {r['competition']}: {c} créés, {u} mis à jour")
+                msg_lines.append(f"- {r['competition']}: {c} crÃ©Ã©s, {u} mis Ã  jour")
         try:
             send_mail(
-                "[Prono Rugby] Nouveaux matchs importés",
+                "[Prono Rugby] Nouveaux matchs importÃ©s",
                 "\n".join(msg_lines),
                 settings.DEFAULT_FROM_EMAIL,
                 [settings.EMAIL_HOST_USER],
@@ -1561,7 +1561,7 @@ def hall_of_fame_view(request):
     current_year = datetime.now().year
     data = {}
 
-    # 1. Historique des saisons passées (SeasonHistory)
+    # 1. Historique des saisons passÃ©es (SeasonHistory)
     histories = SeasonHistory.objects.all()
     for record in histories:
         _compute_hof_entry(
@@ -1570,7 +1570,7 @@ def hall_of_fame_view(request):
             record.user is not None
         )
 
-    # 2. Saison en cours (SeasonScore temps réel)
+    # 2. Saison en cours (SeasonScore temps rÃ©el)
     now = timezone.now()
     if now.month < 8:
         start_year = current_year - 1
@@ -1596,7 +1596,7 @@ def hall_of_fame_view(request):
                     True
                 )
 
-    # Tri des détails et classement final
+    # Tri des dÃ©tails et classement final
     for player in data.values():
         player['history_details'].sort(key=lambda x: x['year'], reverse=True)
 
@@ -1615,7 +1615,7 @@ def home_view(request):
     user = request.user
     now = timezone.now()
 
-    # --- 0. SÉLECTEUR DE SAISON (groupé par année) ---
+    # --- 0. SÃ‰LECTEUR DE SAISON (groupÃ© par annÃ©e) ---
     def get_season_key(year_str):
         if '/' in year_str:
             return year_str.split('/')[0]
@@ -1651,7 +1651,7 @@ def home_view(request):
     # --- 2. PROCHAIN MATCH ---
     next_match = Match.objects.filter(kickoff_at__gt=now).select_related('home_team', 'away_team').order_by('kickoff_at').first()
 
-    # --- 3. STATS GÉNÉRALES (Classement général) ---
+    # --- 3. STATS GÃ‰NÃ‰RALES (Classement gÃ©nÃ©ral) ---
     active_season_ids = list(active_seasons.values_list('id', flat=True))
     stats = compute_statistics(competition=None, season_ids=active_season_ids)
 
@@ -1691,7 +1691,7 @@ def home_view(request):
             except (ValueError, IndexError):
                 continue
         if idx_7d is not None:
-            # Classement enrichi à J-7 (matches + flairs + podiums)
+            # Classement enrichi Ã  J-7 (matches + flairs + podiums)
             enriched_past = {}
             for uname in stats.score_series:
                 match_pts = stats.score_series[uname][idx_7d]
@@ -1708,7 +1708,7 @@ def home_view(request):
     # --- 4. HALL OF FAME ---
     hof_data = {}
 
-    # 4a. Historique des saisons passées
+    # 4a. Historique des saisons passÃ©es
     for record in SeasonHistory.objects.all():
         name_db = record.display_name.strip()
         n = now.year - record.season_year
@@ -1716,7 +1716,7 @@ def home_view(request):
         score_annee = perf * (0.9 ** n)
         hof_data[name_db] = hof_data.get(name_db, 0) + score_annee
 
-    # 4b. Saison en cours (SeasonScore temps réel)
+    # 4b. Saison en cours (SeasonScore temps rÃ©el)
     if active_season_ids:
         ss_qs = SeasonScore.objects.filter(season_id__in=active_season_ids).select_related('user')
         totals = {}
@@ -1734,12 +1734,12 @@ def home_view(request):
     target_names = [user.username.lower(), player.name.lower()]
     hof_rank = next((i + 1 for i, (name, _) in enumerate(hof_ranking) if name.lower().strip() in target_names), "?")
 
-    # --- 5. TROPHÉES ET RANGS ---
+    # --- 5. TROPHÃ‰ES ET RANGS ---
     all_users = User.objects.filter(player__isnull=False).distinct()
     user_ids_list = list(all_users.values_list('id', flat=True))
     user_counts = {u.id: {'chopes': 0, 'cuilleres': 0, 'perfects': 0, 'demis': 0} for u in all_users}
 
-    # Toutes les prédictions de la période en UNE requête
+    # Toutes les prÃ©dictions de la pÃ©riode en UNE requÃªte
     all_preds = Prediction.objects.filter(
         match__kickoff_at__range=(start_date, now),
         match__home_score__isnull=False
@@ -1760,7 +1760,7 @@ def home_view(request):
             elif p.home_score_pred == m.home_score or p.away_score_pred == m.away_score:
                 user_counts[u.id]['demis'] += 1
 
-    # Tous les DailyScores de la période en UNE requête
+    # Tous les DailyScores de la pÃ©riode en UNE requÃªte
     all_ds = DailyScore.objects.filter(
         round__date__range=(start_date, end_date)
     ).select_related('user', 'round__season__competition').order_by('round_id', '-points')
@@ -1812,7 +1812,7 @@ def home_view(request):
                             s_bd_ok += 1
 
         if s_bo_p > 0 or s_bd_p > 0:
-            debug_log.append(f"📅 {str(r)} : BO {s_bo_ok}/{s_bo_p} | BD {s_bd_ok}/{s_bd_p}")
+            debug_log.append(f"ðŸ“… {str(r)} : BO {s_bo_ok}/{s_bo_p} | BD {s_bd_ok}/{s_bd_p}")
 
     my_stats = user_counts.get(user.id)
     rank_chopes = sum(1 for v in user_counts.values() if v['chopes'] > my_stats['chopes']) + 1
@@ -1820,7 +1820,7 @@ def home_view(request):
     rank_perfects = sum(1 for v in user_counts.values() if v['perfects'] > my_stats['perfects']) + 1
     rank_demis = sum(1 for v in user_counts.values() if v['demis'] > my_stats['demis']) + 1
 
-    # --- 6. ANALYSE PAR COMPÉTITION ---
+    # --- 6. ANALYSE PAR COMPÃ‰TITION ---
     all_past_matches = Match.objects.filter(kickoff_at__range=(start_date, now))
     preds_done = Prediction.objects.filter(
         player=player, match__in=all_past_matches
@@ -1874,13 +1874,13 @@ def home_view(request):
             'rank': s_rank, 'pts': total_pts, 'bo': f"{s_bo_ok}/{s_bo_p}", 'bd': f"{s_bd_ok}/{s_bd_p}"
         })
 
-    # --- 7. DÉTECTION NO-SHOW ---
+    # --- 7. DÃ‰TECTION NO-SHOW ---
     pred_match_ids = {p.match_id for p in preds_done_list}
     no_show_list = []
     for m in all_past_matches:
         if m.id not in pred_match_ids:
             no_show_list.append(m)
-            debug_log.append(f"❌ NO-SHOW : {m.home_team} vs {m.away_team} ({m.kickoff_at.strftime('%d/%m %H:%M')})")
+            debug_log.append(f"âŒ NO-SHOW : {m.home_team} vs {m.away_team} ({m.kickoff_at.strftime('%d/%m %H:%M')})")
 
     context = {
         'year_groups': year_groups_list,
