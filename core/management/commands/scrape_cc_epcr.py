@@ -48,7 +48,8 @@ class Command(BaseCommand):
                 if dry_run:
                     self.stdout.write(f"  Would create team: {name}")
                 else:
-                    t = Team.objects.create(name=name, competition=cc_comp)
+                    t = Team.objects.create(name=name)
+                    t.competitions.add(cc_comp)
                     t.seasons.add(season)
                     teams_map[name] = t
                     self.stdout.write(f"  Created team: {name}")
