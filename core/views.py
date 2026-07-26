@@ -249,15 +249,29 @@ def classement_prediction(request):
 
         # --- On prépare les BLOCKS ici pour qu'ils existent en GET ET en POST ---
         if selected_competition.name.lower() == "champions cup":
-            for pool in range(1, 5):
-                comp_teams = CompetitionTeam.objects.filter(
-                    competition=selected_competition, season=season, pool=pool
-                ).select_related("team")
+            has_pool_data = CompetitionTeam.objects.filter(
+                competition=selected_competition, season=season
+            ).exists()
+            if has_pool_data:
+                for pool in range(1, 5):
+                    comp_teams = CompetitionTeam.objects.filter(
+                        competition=selected_competition, season=season, pool=pool
+                    ).select_related("team")
+                    pool_teams = [ct.team for ct in comp_teams]
+                    blocks.append({
+                        "key": f"pool{pool}",
+                        "teams": pool_teams,
+                        "positions": list(range(1, 7)),
+                        "pool": pool
+                    })
+            else:
+                # Fallback: toutes les équipes dans un seul bloc (exécute setup_cc_pools)
+                teams = (season.teams.all() if season else selected_competition.teams.all()).order_by("name")
                 blocks.append({
-                    "key": f"pool{pool}",
-                    "teams": [ct.team for ct in comp_teams],
-                    "positions": list(range(1, 7)),
-                    "pool": pool
+                    "key": "all",
+                    "teams": teams,
+                    "positions": list(range(1, teams.count() + 1)),
+                    "pool": None
                 })
         else:
             teams = (season.teams.all() if season else selected_competition.teams.all()).order_by("name")
@@ -843,9 +857,11 @@ def statistiques_view(request):
                         selected_year = key
                         break
     
-    # Si une compétition spécifique est demandée sans choix de saison, on prend la plus récente
-    if not selected_year and not selected_season and competition:
-        if distinct_seasons:
+    # Si aucune saison sélectionnée, prendre la plus récente par défaut
+    if not selected_year and not selected_season:
+        if not competition and distinct_seasons:
+            selected_year = distinct_seasons[0]['year']
+        elif competition and distinct_seasons:
             selected_season = Season.objects.filter(id=distinct_seasons[0]['id']).first()
             if selected_season:
                 selected_year = selected_season.year
@@ -1532,25 +1548,38 @@ def home_view(request):
     user = request.user
     now = timezone.now()
 
-    # --- 0. SÉLECTEUR DE SAISON ---
-    season_id = request.GET.get("season", "").strip()
-    selected_season_id = 0
-    if season_id and season_id.isdigit():
-        selected_season_id = int(season_id)
+    # --- 0. SÉLECTEUR DE SAISON (groupé par année) ---
+    def get_season_key(year_str):
+        if '/' in year_str:
+            return year_str.split('/')[0]
+        if '-' in year_str:
+            return year_str.split('-')[0]
+        if year_str.isdigit():
+            return str(int(year_str) - 1)
+        return year_str
 
-    all_seasons = Season.objects.all().order_by("-year", "competition__name")
+    all_seasons = Season.objects.all().order_by("year")
+    year_groups = {}
+    for s in all_seasons:
+        key = get_season_key(s.year)
+        if key not in year_groups:
+            year_groups[key] = {"label": f"{key}-{int(key)+1}", "season_ids": []}
+        year_groups[key]["season_ids"].append(s.id)
+    year_groups_list = sorted(year_groups.items(), key=lambda x: x[0], reverse=True)
 
-    if selected_season_id:
-        selected_season = get_object_or_404(Season, id=selected_season_id)
-        active_seasons = Season.objects.filter(competition=selected_season.competition, year=selected_season.year)
-        # Déterminer les dates à partir des rounds de la saison
+    selected_year = request.GET.get("year", "").strip()
+    active_seasons = None
+
+    if selected_year and selected_year in year_groups:
+        # Mode année spécifique : regrouper toutes les compétitions de cette année
+        active_seasons = Season.objects.filter(id__in=year_groups[selected_year]["season_ids"])
         round_dates = Round.objects.filter(season__in=active_seasons).aggregate(
             first=Min("date"), last=Max("date")
         )
         start_date = round_dates["first"] or now
         end_date = round_dates["last"] or now
     else:
-        selected_season = None
+        selected_year = ""
         # --- FILTRE SAISON GLISSANTE (1er Août au 1er Août) ---
         current_year = now.year
         if now.month < 8:
@@ -1799,8 +1828,8 @@ def home_view(request):
             debug_log.append(f"❌ NO-SHOW : {m.home_team} vs {m.away_team} ({m.kickoff_at.strftime('%d/%m %H:%M')})")
 
     context = {
-        'selected_season_id': selected_season_id,
-        'all_seasons': all_seasons,
+        'year_groups': year_groups_list,
+        'selected_year': selected_year,
         'rank_general': rank_general, 'total_players': len(user_ids_list),
         'evolution': evolution,
         'hof_rank': hof_rank, 'total_points_all': user_row.get('total_global', 0),
