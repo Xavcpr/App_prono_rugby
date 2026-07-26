@@ -1,0 +1,1276 @@
+[
+  {
+    "journee": 1,
+    "date": "2026-09-05",
+    "time": "19:00",
+    "home": "Bayonne",
+    "away": "Toulon"
+  },
+  {
+    "journee": 1,
+    "date": "2026-09-05",
+    "time": "19:00",
+    "home": "Castres",
+    "away": "Vannes"
+  },
+  {
+    "journee": 1,
+    "date": "2026-09-05",
+    "time": "19:00",
+    "home": "Lyon",
+    "away": "Clermont"
+  },
+  {
+    "journee": 1,
+    "date": "2026-09-05",
+    "time": "19:00",
+    "home": "Montpellier",
+    "away": "Pau"
+  },
+  {
+    "journee": 1,
+    "date": "2026-09-05",
+    "time": "19:00",
+    "home": "Stade français",
+    "away": "Perpignan"
+  },
+  {
+    "journee": 1,
+    "date": "2026-09-05",
+    "time": "21:15",
+    "home": "UBB",
+    "away": "Racing 92"
+  },
+  {
+    "journee": 1,
+    "date": "2026-09-06",
+    "time": "21:05",
+    "home": "La Rochelle",
+    "away": "Toulouse"
+  },
+  {
+    "journee": 2,
+    "date": "2026-09-12",
+    "time": "16:35",
+    "home": "Perpignan",
+    "away": "Castres"
+  },
+  {
+    "journee": 2,
+    "date": "2026-09-12",
+    "time": "16:35",
+    "home": "Vannes",
+    "away": "Montpellier"
+  },
+  {
+    "journee": 2,
+    "date": "2026-09-12",
+    "time": "16:35",
+    "home": "Clermont",
+    "away": "Stade français"
+  },
+  {
+    "journee": 2,
+    "date": "2026-09-12",
+    "time": "16:35",
+    "home": "Pau",
+    "away": "Bayonne"
+  },
+  {
+    "journee": 2,
+    "date": "2026-09-12",
+    "time": "16:35",
+    "home": "Racing 92",
+    "away": "Lyon"
+  },
+  {
+    "journee": 2,
+    "date": "2026-09-12",
+    "time": "21:00",
+    "home": "Toulon",
+    "away": "La Rochelle"
+  },
+  {
+    "journee": 2,
+    "date": "2026-09-13",
+    "time": "21:05",
+    "home": "Toulouse",
+    "away": "UBB"
+  },
+  {
+    "journee": 3,
+    "date": "2026-09-19",
+    "time": "14:30",
+    "home": "Castres",
+    "away": "Toulon"
+  },
+  {
+    "journee": 3,
+    "date": "2026-09-19",
+    "time": "16:35",
+    "home": "Bayonne",
+    "away": "Clermont"
+  },
+  {
+    "journee": 3,
+    "date": "2026-09-19",
+    "time": "16:35",
+    "home": "La Rochelle",
+    "away": "Racing 92"
+  },
+  {
+    "journee": 3,
+    "date": "2026-09-19",
+    "time": "16:35",
+    "home": "Lyon",
+    "away": "Pau"
+  },
+  {
+    "journee": 3,
+    "date": "2026-09-19",
+    "time": "16:35",
+    "home": "Montpellier",
+    "away": "Perpignan"
+  },
+  {
+    "journee": 3,
+    "date": "2026-09-19",
+    "time": "21:00",
+    "home": "Vannes",
+    "away": "Toulouse"
+  },
+  {
+    "journee": 3,
+    "date": "2026-09-20",
+    "time": "21:05",
+    "home": "UBB",
+    "away": "Stade français"
+  },
+  {
+    "journee": 4,
+    "date": "2026-09-26",
+    "time": "14:30",
+    "home": "Perpignan",
+    "away": "UBB"
+  },
+  {
+    "journee": 4,
+    "date": "2026-09-26",
+    "time": "16:35",
+    "home": "Clermont",
+    "away": "Castres"
+  },
+  {
+    "journee": 4,
+    "date": "2026-09-26",
+    "time": "16:35",
+    "home": "Stade français",
+    "away": "Lyon"
+  },
+  {
+    "journee": 4,
+    "date": "2026-09-26",
+    "time": "16:35",
+    "home": "Racing 92",
+    "away": "Bayonne"
+  },
+  {
+    "journee": 4,
+    "date": "2026-09-26",
+    "time": "16:35",
+    "home": "Toulon",
+    "away": "Vannes"
+  },
+  {
+    "journee": 4,
+    "date": "2026-09-26",
+    "time": "21:00",
+    "home": "Pau",
+    "away": "La Rochelle"
+  },
+  {
+    "journee": 4,
+    "date": "2026-09-27",
+    "time": "21:05",
+    "home": "Toulouse",
+    "away": "Montpellier"
+  },
+  {
+    "journee": 5,
+    "date": "2026-10-03",
+    "time": "14:30",
+    "home": "UBB",
+    "away": "Lyon"
+  },
+  {
+    "journee": 5,
+    "date": "2026-10-03",
+    "time": "16:35",
+    "home": "Bayonne",
+    "away": "Stade français"
+  },
+  {
+    "journee": 5,
+    "date": "2026-10-03",
+    "time": "16:35",
+    "home": "Vannes",
+    "away": "Pau"
+  },
+  {
+    "journee": 5,
+    "date": "2026-10-03",
+    "time": "16:35",
+    "home": "La Rochelle",
+    "away": "Clermont"
+  },
+  {
+    "journee": 5,
+    "date": "2026-10-03",
+    "time": "16:35",
+    "home": "Racing 92",
+    "away": "Perpignan"
+  },
+  {
+    "journee": 5,
+    "date": "2026-10-03",
+    "time": "21:00",
+    "home": "Castres",
+    "away": "Toulouse"
+  },
+  {
+    "journee": 5,
+    "date": "2026-10-04",
+    "time": "21:05",
+    "home": "Montpellier",
+    "away": "Toulon"
+  },
+  {
+    "journee": 6,
+    "date": "2026-10-10",
+    "time": "00:00",
+    "home": "Perpignan",
+    "away": "Vannes"
+  },
+  {
+    "journee": 6,
+    "date": "2026-10-10",
+    "time": "00:00",
+    "home": "Clermont",
+    "away": "UBB"
+  },
+  {
+    "journee": 6,
+    "date": "2026-10-10",
+    "time": "00:00",
+    "home": "Lyon",
+    "away": "La Rochelle"
+  },
+  {
+    "journee": 6,
+    "date": "2026-10-10",
+    "time": "00:00",
+    "home": "Stade français",
+    "away": "Montpellier"
+  },
+  {
+    "journee": 6,
+    "date": "2026-10-10",
+    "time": "00:00",
+    "home": "Pau",
+    "away": "Castres"
+  },
+  {
+    "journee": 6,
+    "date": "2026-10-10",
+    "time": "00:00",
+    "home": "Toulon",
+    "away": "Racing 92"
+  },
+  {
+    "journee": 6,
+    "date": "2026-10-10",
+    "time": "00:00",
+    "home": "Toulouse",
+    "away": "Bayonne"
+  },
+  {
+    "journee": 7,
+    "date": "2026-10-24",
+    "time": "00:00",
+    "home": "Bayonne",
+    "away": "Lyon"
+  },
+  {
+    "journee": 7,
+    "date": "2026-10-24",
+    "time": "00:00",
+    "home": "Vannes",
+    "away": "Clermont"
+  },
+  {
+    "journee": 7,
+    "date": "2026-10-24",
+    "time": "00:00",
+    "home": "Castres",
+    "away": "Stade français"
+  },
+  {
+    "journee": 7,
+    "date": "2026-10-24",
+    "time": "00:00",
+    "home": "La Rochelle",
+    "away": "UBB"
+  },
+  {
+    "journee": 7,
+    "date": "2026-10-24",
+    "time": "00:00",
+    "home": "Racing 92",
+    "away": "Montpellier"
+  },
+  {
+    "journee": 7,
+    "date": "2026-10-24",
+    "time": "00:00",
+    "home": "Toulon",
+    "away": "Pau"
+  },
+  {
+    "journee": 7,
+    "date": "2026-10-24",
+    "time": "00:00",
+    "home": "Toulouse",
+    "away": "Perpignan"
+  },
+  {
+    "journee": 8,
+    "date": "2026-10-31",
+    "time": "00:00",
+    "home": "Perpignan",
+    "away": "Toulon"
+  },
+  {
+    "journee": 8,
+    "date": "2026-10-31",
+    "time": "00:00",
+    "home": "UBB",
+    "away": "Bayonne"
+  },
+  {
+    "journee": 8,
+    "date": "2026-10-31",
+    "time": "00:00",
+    "home": "Clermont",
+    "away": "Racing 92"
+  },
+  {
+    "journee": 8,
+    "date": "2026-10-31",
+    "time": "00:00",
+    "home": "Lyon",
+    "away": "Vannes"
+  },
+  {
+    "journee": 8,
+    "date": "2026-10-31",
+    "time": "00:00",
+    "home": "Montpellier",
+    "away": "Castres"
+  },
+  {
+    "journee": 8,
+    "date": "2026-10-31",
+    "time": "00:00",
+    "home": "Stade français",
+    "away": "La Rochelle"
+  },
+  {
+    "journee": 8,
+    "date": "2026-10-31",
+    "time": "00:00",
+    "home": "Pau",
+    "away": "Toulouse"
+  },
+  {
+    "journee": 9,
+    "date": "2026-11-07",
+    "time": "00:00",
+    "home": "Vannes",
+    "away": "UBB"
+  },
+  {
+    "journee": 9,
+    "date": "2026-11-07",
+    "time": "00:00",
+    "home": "Castres",
+    "away": "Racing 92"
+  },
+  {
+    "journee": 9,
+    "date": "2026-11-07",
+    "time": "00:00",
+    "home": "La Rochelle",
+    "away": "Bayonne"
+  },
+  {
+    "journee": 9,
+    "date": "2026-11-07",
+    "time": "00:00",
+    "home": "Montpellier",
+    "away": "Lyon"
+  },
+  {
+    "journee": 9,
+    "date": "2026-11-07",
+    "time": "00:00",
+    "home": "Pau",
+    "away": "Perpignan"
+  },
+  {
+    "journee": 9,
+    "date": "2026-11-07",
+    "time": "00:00",
+    "home": "Toulon",
+    "away": "Stade français"
+  },
+  {
+    "journee": 9,
+    "date": "2026-11-07",
+    "time": "00:00",
+    "home": "Toulouse",
+    "away": "Clermont"
+  },
+  {
+    "journee": 10,
+    "date": "2026-11-28",
+    "time": "00:00",
+    "home": "Bayonne",
+    "away": "Castres"
+  },
+  {
+    "journee": 10,
+    "date": "2026-11-28",
+    "time": "00:00",
+    "home": "UBB",
+    "away": "Montpellier"
+  },
+  {
+    "journee": 10,
+    "date": "2026-11-28",
+    "time": "00:00",
+    "home": "Clermont",
+    "away": "Toulon"
+  },
+  {
+    "journee": 10,
+    "date": "2026-11-28",
+    "time": "00:00",
+    "home": "La Rochelle",
+    "away": "Perpignan"
+  },
+  {
+    "journee": 10,
+    "date": "2026-11-28",
+    "time": "00:00",
+    "home": "Lyon",
+    "away": "Toulouse"
+  },
+  {
+    "journee": 10,
+    "date": "2026-11-28",
+    "time": "00:00",
+    "home": "Stade français",
+    "away": "Vannes"
+  },
+  {
+    "journee": 10,
+    "date": "2026-11-28",
+    "time": "00:00",
+    "home": "Racing 92",
+    "away": "Pau"
+  },
+  {
+    "journee": 11,
+    "date": "2026-12-05",
+    "time": "00:00",
+    "home": "Perpignan",
+    "away": "Clermont"
+  },
+  {
+    "journee": 11,
+    "date": "2026-12-05",
+    "time": "00:00",
+    "home": "Vannes",
+    "away": "Bayonne"
+  },
+  {
+    "journee": 11,
+    "date": "2026-12-05",
+    "time": "00:00",
+    "home": "Castres",
+    "away": "Lyon"
+  },
+  {
+    "journee": 11,
+    "date": "2026-12-05",
+    "time": "00:00",
+    "home": "Montpellier",
+    "away": "La Rochelle"
+  },
+  {
+    "journee": 11,
+    "date": "2026-12-05",
+    "time": "00:00",
+    "home": "Pau",
+    "away": "Stade français"
+  },
+  {
+    "journee": 11,
+    "date": "2026-12-05",
+    "time": "00:00",
+    "home": "Toulon",
+    "away": "UBB"
+  },
+  {
+    "journee": 11,
+    "date": "2026-12-05",
+    "time": "00:00",
+    "home": "Toulouse",
+    "away": "Racing 92"
+  },
+  {
+    "journee": 12,
+    "date": "2026-12-19",
+    "time": "00:00",
+    "home": "Bayonne",
+    "away": "Perpignan"
+  },
+  {
+    "journee": 12,
+    "date": "2026-12-19",
+    "time": "00:00",
+    "home": "UBB",
+    "away": "Pau"
+  },
+  {
+    "journee": 12,
+    "date": "2026-12-19",
+    "time": "00:00",
+    "home": "Clermont",
+    "away": "Montpellier"
+  },
+  {
+    "journee": 12,
+    "date": "2026-12-19",
+    "time": "00:00",
+    "home": "La Rochelle",
+    "away": "Castres"
+  },
+  {
+    "journee": 12,
+    "date": "2026-12-19",
+    "time": "00:00",
+    "home": "Lyon",
+    "away": "Toulon"
+  },
+  {
+    "journee": 12,
+    "date": "2026-12-19",
+    "time": "00:00",
+    "home": "Stade français",
+    "away": "Toulouse"
+  },
+  {
+    "journee": 12,
+    "date": "2026-12-19",
+    "time": "00:00",
+    "home": "Racing 92",
+    "away": "Vannes"
+  },
+  {
+    "journee": 13,
+    "date": "2026-12-26",
+    "time": "00:00",
+    "home": "Perpignan",
+    "away": "Lyon"
+  },
+  {
+    "journee": 13,
+    "date": "2026-12-26",
+    "time": "00:00",
+    "home": "Vannes",
+    "away": "La Rochelle"
+  },
+  {
+    "journee": 13,
+    "date": "2026-12-26",
+    "time": "00:00",
+    "home": "Castres",
+    "away": "UBB"
+  },
+  {
+    "journee": 13,
+    "date": "2026-12-26",
+    "time": "00:00",
+    "home": "Montpellier",
+    "away": "Bayonne"
+  },
+  {
+    "journee": 13,
+    "date": "2026-12-26",
+    "time": "00:00",
+    "home": "Pau",
+    "away": "Clermont"
+  },
+  {
+    "journee": 13,
+    "date": "2026-12-26",
+    "time": "00:00",
+    "home": "Racing 92",
+    "away": "Stade français"
+  },
+  {
+    "journee": 13,
+    "date": "2026-12-26",
+    "time": "00:00",
+    "home": "Toulouse",
+    "away": "Toulon"
+  },
+  {
+    "journee": 14,
+    "date": "2027-01-02",
+    "time": "00:00",
+    "home": "Bayonne",
+    "away": "Toulouse"
+  },
+  {
+    "journee": 14,
+    "date": "2027-01-02",
+    "time": "00:00",
+    "home": "UBB",
+    "away": "Perpignan"
+  },
+  {
+    "journee": 14,
+    "date": "2027-01-02",
+    "time": "00:00",
+    "home": "Clermont",
+    "away": "Vannes"
+  },
+  {
+    "journee": 14,
+    "date": "2027-01-02",
+    "time": "00:00",
+    "home": "La Rochelle",
+    "away": "Pau"
+  },
+  {
+    "journee": 14,
+    "date": "2027-01-02",
+    "time": "00:00",
+    "home": "Lyon",
+    "away": "Racing 92"
+  },
+  {
+    "journee": 14,
+    "date": "2027-01-02",
+    "time": "00:00",
+    "home": "Stade français",
+    "away": "Castres"
+  },
+  {
+    "journee": 14,
+    "date": "2027-01-02",
+    "time": "00:00",
+    "home": "Toulon",
+    "away": "Montpellier"
+  },
+  {
+    "journee": 15,
+    "date": "2027-01-23",
+    "time": "00:00",
+    "home": "Vannes",
+    "away": "Perpignan"
+  },
+  {
+    "journee": 15,
+    "date": "2027-01-23",
+    "time": "00:00",
+    "home": "Castres",
+    "away": "Clermont"
+  },
+  {
+    "journee": 15,
+    "date": "2027-01-23",
+    "time": "00:00",
+    "home": "Montpellier",
+    "away": "Stade français"
+  },
+  {
+    "journee": 15,
+    "date": "2027-01-23",
+    "time": "00:00",
+    "home": "Pau",
+    "away": "Lyon"
+  },
+  {
+    "journee": 15,
+    "date": "2027-01-23",
+    "time": "00:00",
+    "home": "Racing 92",
+    "away": "UBB"
+  },
+  {
+    "journee": 15,
+    "date": "2027-01-23",
+    "time": "00:00",
+    "home": "Toulon",
+    "away": "Bayonne"
+  },
+  {
+    "journee": 15,
+    "date": "2027-01-23",
+    "time": "00:00",
+    "home": "Toulouse",
+    "away": "La Rochelle"
+  },
+  {
+    "journee": 16,
+    "date": "2027-01-30",
+    "time": "00:00",
+    "home": "Perpignan",
+    "away": "Stade français"
+  },
+  {
+    "journee": 16,
+    "date": "2027-01-30",
+    "time": "00:00",
+    "home": "UBB",
+    "away": "Vannes"
+  },
+  {
+    "journee": 16,
+    "date": "2027-01-30",
+    "time": "00:00",
+    "home": "Clermont",
+    "away": "Toulouse"
+  },
+  {
+    "journee": 16,
+    "date": "2027-01-30",
+    "time": "00:00",
+    "home": "La Rochelle",
+    "away": "Toulon"
+  },
+  {
+    "journee": 16,
+    "date": "2027-01-30",
+    "time": "00:00",
+    "home": "Lyon",
+    "away": "Bayonne"
+  },
+  {
+    "journee": 16,
+    "date": "2027-01-30",
+    "time": "00:00",
+    "home": "Pau",
+    "away": "Montpellier"
+  },
+  {
+    "journee": 16,
+    "date": "2027-01-30",
+    "time": "00:00",
+    "home": "Racing 92",
+    "away": "Castres"
+  },
+  {
+    "journee": 17,
+    "date": "2027-02-20",
+    "time": "00:00",
+    "home": "Bayonne",
+    "away": "La Rochelle"
+  },
+  {
+    "journee": 17,
+    "date": "2027-02-20",
+    "time": "00:00",
+    "home": "Perpignan",
+    "away": "Pau"
+  },
+  {
+    "journee": 17,
+    "date": "2027-02-20",
+    "time": "00:00",
+    "home": "Vannes",
+    "away": "Castres"
+  },
+  {
+    "journee": 17,
+    "date": "2027-02-20",
+    "time": "00:00",
+    "home": "Montpellier",
+    "away": "Racing 92"
+  },
+  {
+    "journee": 17,
+    "date": "2027-02-20",
+    "time": "00:00",
+    "home": "Stade français",
+    "away": "UBB"
+  },
+  {
+    "journee": 17,
+    "date": "2027-02-20",
+    "time": "00:00",
+    "home": "Toulon",
+    "away": "Clermont"
+  },
+  {
+    "journee": 17,
+    "date": "2027-02-20",
+    "time": "00:00",
+    "home": "Toulouse",
+    "away": "Lyon"
+  },
+  {
+    "journee": 18,
+    "date": "2027-02-27",
+    "time": "00:00",
+    "home": "UBB",
+    "away": "Toulon"
+  },
+  {
+    "journee": 18,
+    "date": "2027-02-27",
+    "time": "00:00",
+    "home": "Castres",
+    "away": "Perpignan"
+  },
+  {
+    "journee": 18,
+    "date": "2027-02-27",
+    "time": "00:00",
+    "home": "Clermont",
+    "away": "Bayonne"
+  },
+  {
+    "journee": 18,
+    "date": "2027-02-27",
+    "time": "00:00",
+    "home": "La Rochelle",
+    "away": "Stade français"
+  },
+  {
+    "journee": 18,
+    "date": "2027-02-27",
+    "time": "00:00",
+    "home": "Lyon",
+    "away": "Montpellier"
+  },
+  {
+    "journee": 18,
+    "date": "2027-02-27",
+    "time": "00:00",
+    "home": "Pau",
+    "away": "Vannes"
+  },
+  {
+    "journee": 18,
+    "date": "2027-02-27",
+    "time": "00:00",
+    "home": "Racing 92",
+    "away": "Toulouse"
+  },
+  {
+    "journee": 19,
+    "date": "2027-03-20",
+    "time": "00:00",
+    "home": "Bayonne",
+    "away": "UBB"
+  },
+  {
+    "journee": 19,
+    "date": "2027-03-20",
+    "time": "00:00",
+    "home": "Perpignan",
+    "away": "Racing 92"
+  },
+  {
+    "journee": 19,
+    "date": "2027-03-20",
+    "time": "00:00",
+    "home": "Castres",
+    "away": "La Rochelle"
+  },
+  {
+    "journee": 19,
+    "date": "2027-03-20",
+    "time": "00:00",
+    "home": "Montpellier",
+    "away": "Clermont"
+  },
+  {
+    "journee": 19,
+    "date": "2027-03-20",
+    "time": "00:00",
+    "home": "Stade français",
+    "away": "Pau"
+  },
+  {
+    "journee": 19,
+    "date": "2027-03-20",
+    "time": "00:00",
+    "home": "Toulon",
+    "away": "Lyon"
+  },
+  {
+    "journee": 19,
+    "date": "2027-03-20",
+    "time": "00:00",
+    "home": "Toulouse",
+    "away": "Vannes"
+  },
+  {
+    "journee": 20,
+    "date": "2027-03-27",
+    "time": "00:00",
+    "home": "Bayonne",
+    "away": "Montpellier"
+  },
+  {
+    "journee": 20,
+    "date": "2027-03-27",
+    "time": "00:00",
+    "home": "Perpignan",
+    "away": "La Rochelle"
+  },
+  {
+    "journee": 20,
+    "date": "2027-03-27",
+    "time": "00:00",
+    "home": "UBB",
+    "away": "Toulouse"
+  },
+  {
+    "journee": 20,
+    "date": "2027-03-27",
+    "time": "00:00",
+    "home": "Vannes",
+    "away": "Stade français"
+  },
+  {
+    "journee": 20,
+    "date": "2027-03-27",
+    "time": "00:00",
+    "home": "Clermont",
+    "away": "Pau"
+  },
+  {
+    "journee": 20,
+    "date": "2027-03-27",
+    "time": "00:00",
+    "home": "Lyon",
+    "away": "Castres"
+  },
+  {
+    "journee": 20,
+    "date": "2027-03-27",
+    "time": "00:00",
+    "home": "Racing 92",
+    "away": "Toulon"
+  },
+  {
+    "journee": 21,
+    "date": "2027-04-17",
+    "time": "00:00",
+    "home": "Castres",
+    "away": "Bayonne"
+  },
+  {
+    "journee": 21,
+    "date": "2027-04-17",
+    "time": "00:00",
+    "home": "La Rochelle",
+    "away": "Vannes"
+  },
+  {
+    "journee": 21,
+    "date": "2027-04-17",
+    "time": "00:00",
+    "home": "Lyon",
+    "away": "Perpignan"
+  },
+  {
+    "journee": 21,
+    "date": "2027-04-17",
+    "time": "00:00",
+    "home": "Montpellier",
+    "away": "UBB"
+  },
+  {
+    "journee": 21,
+    "date": "2027-04-17",
+    "time": "00:00",
+    "home": "Stade français",
+    "away": "Clermont"
+  },
+  {
+    "journee": 21,
+    "date": "2027-04-17",
+    "time": "00:00",
+    "home": "Pau",
+    "away": "Racing 92"
+  },
+  {
+    "journee": 21,
+    "date": "2027-04-17",
+    "time": "00:00",
+    "home": "Toulon",
+    "away": "Toulouse"
+  },
+  {
+    "journee": 22,
+    "date": "2027-04-24",
+    "time": "00:00",
+    "home": "Bayonne",
+    "away": "Pau"
+  },
+  {
+    "journee": 22,
+    "date": "2027-04-24",
+    "time": "00:00",
+    "home": "Perpignan",
+    "away": "Montpellier"
+  },
+  {
+    "journee": 22,
+    "date": "2027-04-24",
+    "time": "00:00",
+    "home": "UBB",
+    "away": "La Rochelle"
+  },
+  {
+    "journee": 22,
+    "date": "2027-04-24",
+    "time": "00:00",
+    "home": "Vannes",
+    "away": "Toulon"
+  },
+  {
+    "journee": 22,
+    "date": "2027-04-24",
+    "time": "00:00",
+    "home": "Clermont",
+    "away": "Lyon"
+  },
+  {
+    "journee": 22,
+    "date": "2027-04-24",
+    "time": "00:00",
+    "home": "Stade français",
+    "away": "Racing 92"
+  },
+  {
+    "journee": 22,
+    "date": "2027-04-24",
+    "time": "00:00",
+    "home": "Toulouse",
+    "away": "Castres"
+  },
+  {
+    "journee": 23,
+    "date": "2027-05-08",
+    "time": "00:00",
+    "home": "Bayonne",
+    "away": "Vannes"
+  },
+  {
+    "journee": 23,
+    "date": "2027-05-08",
+    "time": "00:00",
+    "home": "Clermont",
+    "away": "Perpignan"
+  },
+  {
+    "journee": 23,
+    "date": "2027-05-08",
+    "time": "00:00",
+    "home": "Lyon",
+    "away": "Stade français"
+  },
+  {
+    "journee": 23,
+    "date": "2027-05-08",
+    "time": "00:00",
+    "home": "Montpellier",
+    "away": "Toulouse"
+  },
+  {
+    "journee": 23,
+    "date": "2027-05-08",
+    "time": "00:00",
+    "home": "Pau",
+    "away": "UBB"
+  },
+  {
+    "journee": 23,
+    "date": "2027-05-08",
+    "time": "00:00",
+    "home": "Racing 92",
+    "away": "La Rochelle"
+  },
+  {
+    "journee": 23,
+    "date": "2027-05-08",
+    "time": "00:00",
+    "home": "Toulon",
+    "away": "Castres"
+  },
+  {
+    "journee": 24,
+    "date": "2027-05-15",
+    "time": "00:00",
+    "home": "Perpignan",
+    "away": "Bayonne"
+  },
+  {
+    "journee": 24,
+    "date": "2027-05-15",
+    "time": "00:00",
+    "home": "UBB",
+    "away": "Clermont"
+  },
+  {
+    "journee": 24,
+    "date": "2027-05-15",
+    "time": "00:00",
+    "home": "Vannes",
+    "away": "Racing 92"
+  },
+  {
+    "journee": 24,
+    "date": "2027-05-15",
+    "time": "00:00",
+    "home": "Castres",
+    "away": "Montpellier"
+  },
+  {
+    "journee": 24,
+    "date": "2027-05-15",
+    "time": "00:00",
+    "home": "La Rochelle",
+    "away": "Lyon"
+  },
+  {
+    "journee": 24,
+    "date": "2027-05-15",
+    "time": "00:00",
+    "home": "Stade français",
+    "away": "Toulon"
+  },
+  {
+    "journee": 24,
+    "date": "2027-05-15",
+    "time": "00:00",
+    "home": "Toulouse",
+    "away": "Pau"
+  },
+  {
+    "journee": 25,
+    "date": "2027-05-29",
+    "time": "00:00",
+    "home": "Bayonne",
+    "away": "Racing 92"
+  },
+  {
+    "journee": 25,
+    "date": "2027-05-29",
+    "time": "00:00",
+    "home": "Castres",
+    "away": "Pau"
+  },
+  {
+    "journee": 25,
+    "date": "2027-05-29",
+    "time": "00:00",
+    "home": "Clermont",
+    "away": "La Rochelle"
+  },
+  {
+    "journee": 25,
+    "date": "2027-05-29",
+    "time": "00:00",
+    "home": "Lyon",
+    "away": "UBB"
+  },
+  {
+    "journee": 25,
+    "date": "2027-05-29",
+    "time": "00:00",
+    "home": "Montpellier",
+    "away": "Vannes"
+  },
+  {
+    "journee": 25,
+    "date": "2027-05-29",
+    "time": "00:00",
+    "home": "Toulon",
+    "away": "Perpignan"
+  },
+  {
+    "journee": 25,
+    "date": "2027-05-29",
+    "time": "00:00",
+    "home": "Toulouse",
+    "away": "Stade français"
+  },
+  {
+    "journee": 26,
+    "date": "2027-06-05",
+    "time": "00:00",
+    "home": "Perpignan",
+    "away": "Toulouse"
+  },
+  {
+    "journee": 26,
+    "date": "2027-06-05",
+    "time": "00:00",
+    "home": "UBB",
+    "away": "Castres"
+  },
+  {
+    "journee": 26,
+    "date": "2027-06-05",
+    "time": "00:00",
+    "home": "Vannes",
+    "away": "Lyon"
+  },
+  {
+    "journee": 26,
+    "date": "2027-06-05",
+    "time": "00:00",
+    "home": "La Rochelle",
+    "away": "Montpellier"
+  },
+  {
+    "journee": 26,
+    "date": "2027-06-05",
+    "time": "00:00",
+    "home": "Stade français",
+    "away": "Bayonne"
+  },
+  {
+    "journee": 26,
+    "date": "2027-06-05",
+    "time": "00:00",
+    "home": "Pau",
+    "away": "Toulon"
+  },
+  {
+    "journee": 26,
+    "date": "2027-06-05",
+    "time": "00:00",
+    "home": "Racing 92",
+    "away": "Clermont"
+  }
+]

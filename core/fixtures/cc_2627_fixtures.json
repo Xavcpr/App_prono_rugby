@@ -1,0 +1,338 @@
+[
+  {
+    "round": 1,
+    "phase": "POOL",
+    "date": "",
+    "home": "Gloucester",
+    "away": "UBB"
+  },
+  {
+    "round": 1,
+    "phase": "POOL",
+    "date": "",
+    "home": "Sale Sharks",
+    "away": "Glasgow"
+  },
+  {
+    "round": 1,
+    "phase": "POOL",
+    "date": "",
+    "home": "Bulls",
+    "away": "Stade français"
+  },
+  {
+    "round": 1,
+    "phase": "POOL",
+    "date": "",
+    "home": "Clermont",
+    "away": "Leinster"
+  },
+  {
+    "round": 1,
+    "phase": "POOL",
+    "date": "",
+    "home": "Stormers",
+    "away": "Bristol Bears"
+  },
+  {
+    "round": 1,
+    "phase": "POOL",
+    "date": "",
+    "home": "Connacht",
+    "away": "Saracens"
+  },
+  {
+    "round": 1,
+    "phase": "POOL",
+    "date": "",
+    "home": "La Rochelle",
+    "away": "Lions"
+  },
+  {
+    "round": 1,
+    "phase": "POOL",
+    "date": "",
+    "home": "Munster",
+    "away": "Racing 92"
+  },
+  {
+    "round": 1,
+    "phase": "POOL",
+    "date": "",
+    "home": "Bath Rugby",
+    "away": "Montpellier"
+  },
+  {
+    "round": 1,
+    "phase": "POOL",
+    "date": "",
+    "home": "Pau",
+    "away": "Leicester Tigers"
+  },
+  {
+    "round": 1,
+    "phase": "POOL",
+    "date": "",
+    "home": "Toulouse",
+    "away": "Exeter Chiefs"
+  },
+  {
+    "round": 1,
+    "phase": "POOL",
+    "date": "",
+    "home": "Northampton Saints",
+    "away": "Cardiff"
+  },
+  {
+    "round": 2,
+    "phase": "POOL",
+    "date": "",
+    "home": "Stade français",
+    "away": "Northampton Saints"
+  },
+  {
+    "round": 2,
+    "phase": "POOL",
+    "date": "",
+    "home": "Glasgow",
+    "away": "Pau"
+  },
+  {
+    "round": 2,
+    "phase": "POOL",
+    "date": "",
+    "home": "Lions",
+    "away": "Toulouse"
+  },
+  {
+    "round": 2,
+    "phase": "POOL",
+    "date": "",
+    "home": "Leicester Tigers",
+    "away": "Clermont"
+  },
+  {
+    "round": 2,
+    "phase": "POOL",
+    "date": "",
+    "home": "Montpellier",
+    "away": "Bulls"
+  },
+  {
+    "round": 2,
+    "phase": "POOL",
+    "date": "",
+    "home": "Leinster",
+    "away": "Sale Sharks"
+  },
+  {
+    "round": 2,
+    "phase": "POOL",
+    "date": "",
+    "home": "Saracens",
+    "away": "La Rochelle"
+  },
+  {
+    "round": 2,
+    "phase": "POOL",
+    "date": "",
+    "home": "Bristol Bears",
+    "away": "Munster"
+  },
+  {
+    "round": 2,
+    "phase": "POOL",
+    "date": "",
+    "home": "Cardiff",
+    "away": "Bath Rugby"
+  },
+  {
+    "round": 2,
+    "phase": "POOL",
+    "date": "",
+    "home": "Exeter Chiefs",
+    "away": "Connacht"
+  },
+  {
+    "round": 2,
+    "phase": "POOL",
+    "date": "",
+    "home": "UBB",
+    "away": "Stormers"
+  },
+  {
+    "round": 2,
+    "phase": "POOL",
+    "date": "",
+    "home": "Racing 92",
+    "away": "Gloucester"
+  },
+  {
+    "round": 3,
+    "phase": "POOL",
+    "date": "",
+    "home": "Glasgow",
+    "away": "Leicester Tigers"
+  },
+  {
+    "round": 3,
+    "phase": "POOL",
+    "date": "",
+    "home": "Gloucester",
+    "away": "Stormers"
+  },
+  {
+    "round": 3,
+    "phase": "POOL",
+    "date": "",
+    "home": "Exeter Chiefs",
+    "away": "La Rochelle"
+  },
+  {
+    "round": 3,
+    "phase": "POOL",
+    "date": "",
+    "home": "Bulls",
+    "away": "Bath Rugby"
+  },
+  {
+    "round": 3,
+    "phase": "POOL",
+    "date": "",
+    "home": "Leinster",
+    "away": "Pau"
+  },
+  {
+    "round": 3,
+    "phase": "POOL",
+    "date": "",
+    "home": "Montpellier",
+    "away": "Northampton Saints"
+  },
+  {
+    "round": 3,
+    "phase": "POOL",
+    "date": "",
+    "home": "Connacht",
+    "away": "Toulouse"
+  },
+  {
+    "round": 3,
+    "phase": "POOL",
+    "date": "",
+    "home": "Stade français",
+    "away": "Cardiff"
+  },
+  {
+    "round": 3,
+    "phase": "POOL",
+    "date": "",
+    "home": "Racing 92",
+    "away": "Bristol Bears"
+  },
+  {
+    "round": 3,
+    "phase": "POOL",
+    "date": "",
+    "home": "Saracens",
+    "away": "Lions"
+  },
+  {
+    "round": 3,
+    "phase": "POOL",
+    "date": "",
+    "home": "UBB",
+    "away": "Munster"
+  },
+  {
+    "round": 3,
+    "phase": "POOL",
+    "date": "",
+    "home": "Sale Sharks",
+    "away": "Clermont"
+  },
+  {
+    "round": 4,
+    "phase": "POOL",
+    "date": "",
+    "home": "Northampton Saints",
+    "away": "Bulls"
+  },
+  {
+    "round": 4,
+    "phase": "POOL",
+    "date": "",
+    "home": "Cardiff",
+    "away": "Montpellier"
+  },
+  {
+    "round": 4,
+    "phase": "POOL",
+    "date": "",
+    "home": "Pau",
+    "away": "Sale Sharks"
+  },
+  {
+    "round": 4,
+    "phase": "POOL",
+    "date": "",
+    "home": "Lions",
+    "away": "Exeter Chiefs"
+  },
+  {
+    "round": 4,
+    "phase": "POOL",
+    "date": "",
+    "home": "Stormers",
+    "away": "Racing 92"
+  },
+  {
+    "round": 4,
+    "phase": "POOL",
+    "date": "",
+    "home": "Bristol Bears",
+    "away": "UBB"
+  },
+  {
+    "round": 4,
+    "phase": "POOL",
+    "date": "",
+    "home": "La Rochelle",
+    "away": "Connacht"
+  },
+  {
+    "round": 4,
+    "phase": "POOL",
+    "date": "",
+    "home": "Munster",
+    "away": "Gloucester"
+  },
+  {
+    "round": 4,
+    "phase": "POOL",
+    "date": "",
+    "home": "Clermont",
+    "away": "Glasgow"
+  },
+  {
+    "round": 4,
+    "phase": "POOL",
+    "date": "",
+    "home": "Leicester Tigers",
+    "away": "Leinster"
+  },
+  {
+    "round": 4,
+    "phase": "POOL",
+    "date": "",
+    "home": "Toulouse",
+    "away": "Saracens"
+  },
+  {
+    "round": 4,
+    "phase": "POOL",
+    "date": "",
+    "home": "Bath Rugby",
+    "away": "Stade français"
+  }
+]

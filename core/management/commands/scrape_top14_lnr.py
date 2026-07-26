@@ -124,8 +124,25 @@ def scrape_top14_2627():
     return all_matches
 
 
+def _load_fixtures():
+    """Try to load fixtures from JSON file, fall back to scraping."""
+    import os
+    json_path = os.path.join(os.path.dirname(__file__), '..', '..', 'fixtures', 'top14_2627_fixtures.json')
+    json_path = os.path.normpath(json_path)
+    if os.path.exists(json_path):
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        # Normalize field names
+        for m in data:
+            m['journee'] = int(m['journee'])
+            m['date_str'] = m.pop('date')
+            m['time_str'] = m.pop('time')
+        return data
+    return scrape_top14_2627()
+
+
 class Command(BaseCommand):
-    help = "Scrape Top 14 2026/2027 fixtures from LNR website and create/update matches"
+    help = "Load Top 14 2026/2027 fixtures from JSON file (or scrape LNR if JSON missing)"
 
     def add_arguments(self, parser):
         parser.add_argument('--dry-run', action='store_true', help="Print matches without creating")
@@ -140,24 +157,20 @@ class Command(BaseCommand):
             self.stderr.write("Season Top 14 2026/2027 not found. Run create_top14_2627 first.")
             return
 
-        # Build mapping from DB name -> Team
-        teams_map = {}
-        for t in Team.objects.all():
-            teams_map[t.name] = t
+        teams_map = {t.name: t for t in Team.objects.all()}
 
         if 'Vannes' not in teams_map:
-            self.stderr.write("Vannes team not found in DB; run migrations first.")
+            self.stderr.write("Vannes team not found in DB; run create_top14_2627 first.")
             return
 
-        self.stdout.write(f"Scraping LNR website for Top 14 2026/2027...")
-        scraped = scrape_top14_2627()
-        self.stdout.write(f"Found {len(scraped)} matches total")
+        self.stdout.write("Loading Top 14 2026/2027 fixtures...")
+        scraped = _load_fixtures()
+        self.stdout.write(f"Loaded {len(scraped)} matches total")
 
         if not scraped:
-            self.stderr.write("No matches scraped. Aborting.")
+            self.stderr.write("No fixtures found. Aborting.")
             return
 
-        # Verify all teams exist
         missing_teams = set()
         for m in scraped:
             for side in ('home', 'away'):
@@ -172,12 +185,7 @@ class Command(BaseCommand):
         else:
             self.stdout.write("\n=== Creating/updating ===")
 
-        created = 0
-        updated = 0
-        skipped = 0
-        errors = []
-
-        # Group by journee
+        created = updated = skipped = 0
         from collections import defaultdict
         by_journee = defaultdict(list)
         for m in scraped:
@@ -185,21 +193,16 @@ class Command(BaseCommand):
 
         for journee_num in sorted(by_journee.keys()):
             matches_data = by_journee[journee_num]
-
-            # Get or create round
-            round_obj, round_created = Round.objects.get_or_create(
-                season=season, number=journee_num,
-                defaults={'phase': 'POOL'}
-            )
-
+            round_obj, _ = Round.objects.get_or_create(
+                season=season, number=journee_num, defaults={'phase': 'POOL'})
             if dry_run:
                 self.stdout.write(f"\nRound {journee_num}:")
 
             for m in matches_data:
-                kickoff_naive = datetime.strptime(f'{m["date_str"]} {m["time_str"]}', '%Y-%m-%d %H:%M')
+                time_str = m['time_str'] or '00:00'
+                kickoff_naive = datetime.strptime(f'{m["date_str"]} {time_str}', '%Y-%m-%d %H:%M')
                 from datetime import timezone as dt_tz
                 kickoff = timezone.make_aware(kickoff_naive, timezone=dt_tz.utc)
-
                 home_team = teams_map[m['home']]
                 away_team = teams_map[m['away']]
 
@@ -207,12 +210,9 @@ class Command(BaseCommand):
                     self.stdout.write(f"  {m['date_str']} {m['time_str']}  {m['home']} vs {m['away']}")
                     continue
 
-                match, match_created = Match.objects.update_or_create(
-                    round=round_obj,
-                    home_team=home_team,
-                    away_team=away_team,
-                    defaults={'kickoff_at': kickoff},
-                )
+                _, match_created = Match.objects.update_or_create(
+                    round=round_obj, home_team=home_team, away_team=away_team,
+                    defaults={'kickoff_at': kickoff})
                 if match_created:
                     created += 1
                 else:
@@ -220,5 +220,5 @@ class Command(BaseCommand):
 
         if not dry_run:
             self.stdout.write(self.style.SUCCESS(
-                f"Done: {created} created, {updated} updated, {skipped} skipped"
+                f"Done: {created} created, {updated} updated"
             ))
