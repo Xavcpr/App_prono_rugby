@@ -20,6 +20,19 @@ class Player(models.Model):
     def __str__(self):
         return self.name
 
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        if is_new and not self.seasons.exists():
+            # Auto-assigner les 3 saisons les plus récentes (2026/2027)
+            from .management.commands.backfill_player_seasons import get_season_key
+            all_s = list(Season.objects.all())
+            valid = [s for s in all_s if get_season_key(s.year).isdigit()]
+            if valid:
+                max_key = max(int(get_season_key(s.year)) for s in valid)
+                latest = [s for s in valid if int(get_season_key(s.year)) == max_key]
+                self.seasons.set(latest)
+
 # ----- Compétitions -----
 class Competition(models.Model):
     name = models.CharField(max_length=100)
