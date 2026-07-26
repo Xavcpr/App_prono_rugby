@@ -275,18 +275,23 @@ def classement_prediction(request):
                         {"pool": 3, "teams": ["UBB","Stormers","Racing 92","Munster","Bristol Bears","Gloucester"]},
                         {"pool": 4, "teams": ["Northampton Saints","Bath Rugby","Cardiff","Montpellier","Stade français","Bulls"]},
                     ]
-                    teams_map = {t.name.lower(): t for t in Team.objects.all()}
+                    teams_map = {t.name: t for t in Team.objects.all()}
                     for pool_data in CC_POOLS_2627:
                         pool_teams = []
                         for name in pool_data["teams"]:
-                            t = teams_map.get(name.lower())
+                            t = teams_map.get(name)
                             if not t:
                                 for db_name, db_t in teams_map.items():
-                                    if name.lower() in db_name or db_name in name.lower():
+                                    if name.lower() in db_name.lower() or db_name.lower() in name.lower():
                                         t = db_t
                                         break
-                            if t:
-                                pool_teams.append(t)
+                            if not t:
+                                # Auto-create missing teams (ex: Lions, Exeter Chiefs, etc.)
+                                t = Team.objects.create(name=name)
+                                teams_map[name] = t
+                                if season:
+                                    t.seasons.add(season)
+                            pool_teams.append(t)
                         pool_teams.sort(key=lambda x: x.name)
                         blocks.append({
                             "key": f"pool{pool_data['pool']}",
@@ -298,11 +303,11 @@ def classement_prediction(request):
                 import logging
                 logging.getLogger(__name__).exception("CC pools error")
                 # Fallback ultime : un seul bloc avec toutes les équipes
-                all_teams = (season.teams.all() if season else selected_competition.teams.all()).order_by("name") if hasattr(selected_competition, 'teams') else Team.objects.none()
+                all_teams_list = list(Team.objects.all())
                 blocks.append({
                     "key": "all",
-                    "teams": list(all_teams),
-                    "positions": list(range(1, all_teams.count() + 1)),
+                    "teams": all_teams_list,
+                    "positions": list(range(1, len(all_teams_list) + 1)),
                     "pool": None,
                 })
         else:
