@@ -150,25 +150,96 @@ class Command(BaseCommand):
             else:
                 match_val_map[m.id] = 0
 
-        # --- TABLEAU HAUT (classement journée) ---
-        # Ligne 1 = en-têtes
+        # --- TABLEAU BAS d'abord (matchs + pronos) ---
+        B = 20
+        fix_headers = ["Domicile","vs","Extérieur","Nb D","BO D réel","Score D","-","Score E","BO E réel","","Valeur",""]
+        for ci, h in enumerate(fix_headers, 1):
+            _c(ws, B, ci, h, font=HDR_FONT, fill=HDR_FILL, align=CENTER)
+
+        # En-têtes joueurs
+        p_cols = []
+        col = 13
+        for p in players:
+            abbr = p.name.split()[0][:8]
+            p_cols.append((col, col + 5))
+            _c(ws, B, col, abbr, font=HDR_FONT, fill=HDR_FILL, align=CENTER)
+            for off in range(1, 6):
+                ws.cell(row=B, column=col + off).fill = HDR_FILL
+                ws.cell(row=B, column=col + off).border = THIN
+            col += 6
+
+        # Matchs
+        for mi, m in enumerate(matches):
+            row = B + 1 + mi
+            if row > B + 12:
+                break
+            _c(ws, row, 1, m.home_team.name if m.home_team else "", align=RIGHT)
+            _c(ws, row, 2, "-", align=CENTER)
+            _c(ws, row, 3, m.away_team.name if m.away_team else "", align=LEFT)
+            n_pred_dom = sum(1 for pr in all_preds if pr.match_id == m.id and pr.home_score_pred is not None and pr.home_score_pred > pr.away_score_pred)
+            _c(ws, row, 4, n_pred_dom if n_pred_dom else "", align=CENTER)
+            if m.home_score is not None:
+                _c(ws, row, 5, "X" if m.bonus_offense_home else "", align=CENTER)
+                _c(ws, row, 6, m.home_score, align=CENTER)
+                _c(ws, row, 7, "-", align=CENTER)
+                _c(ws, row, 8, m.away_score, align=CENTER)
+                _c(ws, row, 9, "X" if m.bonus_offense_away else "", align=CENTER)
+            _c(ws, row, 11, match_val_map.get(m.id, 0) if m.home_score is not None else "", align=CENTER)
+
+            for pi, pl in enumerate(players):
+                sc_start = p_cols[pi][0]
+                pr = pred_idx.get((pl.id, m.id))
+                if pr and pr.home_score_pred is not None and m.home_score is not None:
+                    boh, boa = pr.bonus_home_pred, pr.bonus_away_pred
+                    boh_ok = boh and m.bonus_offense_home
+                    boa_ok = boa and m.bonus_offense_away
+                    _c(ws, row, sc_start, "X" if boh else "",
+                       font=GRN_FONT if boh_ok else (RED_FONT if boh else None),
+                       fill=GRN_FILL if boh_ok else (RED_FILL if boh and not boh_ok else None), align=CENTER)
+                    _c(ws, row, sc_start + 1, pr.home_score_pred,
+                       fill=GRN_FILL if pr.home_score_pred == m.home_score else None,
+                       font=GRN_FONT if pr.home_score_pred == m.home_score else None, align=CENTER)
+                    _c(ws, row, sc_start + 2, "-", align=CENTER)
+                    _c(ws, row, sc_start + 3, pr.away_score_pred,
+                       fill=GRN_FILL if pr.away_score_pred == m.away_score else None,
+                       font=GRN_FONT if pr.away_score_pred == m.away_score else None, align=CENTER)
+                    _c(ws, row, sc_start + 4, "X" if boa else "",
+                       font=GRN_FONT if boa_ok else (RED_FONT if boa else None),
+                       fill=GRN_FILL if boa_ok else (RED_FILL if boa and not boa_ok else None), align=CENTER)
+                    _c(ws, row, sc_start + 5, pr.points or 0, font=BLU_FONT, fill=BLU_FILL, align=CENTER)
+                else:
+                    for off in range(6):
+                        _c(ws, row, sc_start + off, "", align=CENTER)
+
+        # Totaux
+        tr = B + 1 + n_matches + 1
+        _c(ws, tr, 1, "TOTAUX", font=BOLD, fill=YEL_FILL, align=RIGHT)
+        for pi, pl in enumerate(players):
+            ec = p_cols[pi][1]
+            first_r = B + 1
+            last_r = B + n_matches
+            formula = f"=SUM({get_column_letter(ec)}{first_r}:{get_column_letter(ec)}{last_r})"
+            _c(ws, tr, ec, formula, font=Font(bold=True, color="9C0006", size=11), fill=TOT_FILL, align=CENTER)
+
+        for r in range(B + 1 + n_matches, B + 13):
+            ws.row_dimensions[r].hidden = True
+
+        # --- TABLEAU HAUT (classement journée) — écrit APRÈS le tableau bas ---
         hdr_top = [
-            (24,"Rang"), (25,29,"Joueur"), (30,32,"Score J"),
-            (33,34,"Bons"), (35,36,"Bonus J"),
-            (37,38,"Pts bons"), (39,40,"Pts ½/Pile"),
-            (41,42,"Pts Off"), (43,44,"Pts Def"),
-            (45,46,"Pts Diff"), (47,48,"Pts Somme"),
-            (49,50,"Pts Away"),
+            (24, "Rang"), (25, 29, "Joueur"), (30, 32, "Score J"),
+            (33, 34, "Bons"), (35, 36, "Bonus J"),
+            (37, 38, "Pts bons"), (39, 40, "Pts ½/Pile"),
+            (41, 42, "Pts Off"), (43, 44, "Pts Def"),
+            (45, 46, "Pts Diff"), (47, 48, "Pts Somme"),
+            (49, 50, "Pts Away"),
         ]
         for h in hdr_top:
-            if len(h)==2:
-                _c(ws,1,h[0],h[1],font=HDR_FONT,fill=HDR_FILL,align=CENTER)
+            if len(h) == 2:
+                _c(ws, 1, h[0], h[1], font=HDR_FONT, fill=HDR_FILL, align=CENTER)
             else:
-                _merge(ws,1,1,h[0],h[1],h[2],font=HDR_FONT,fill=HDR_FILL,align=CENTER)
+                _merge(ws, 1, 1, h[0], h[1], h[2], font=HDR_FONT, fill=HDR_FILL, align=CENTER)
 
-        # Trier joueurs par score DailyScore décroissant
         sorted_players = sorted(players, key=lambda p: -(daily_pts.get(p.user_id, 0)))
-
         for i, p in enumerate(sorted_players):
             row = i + 2
             total_pts = daily_pts.get(p.user_id, 0)
@@ -179,121 +250,21 @@ class Command(BaseCommand):
                     day_bonus = scale[t]
                     break
             fill = ALT_FILL if i % 2 == 0 else None
-            _c(ws,row,24,i+1,align=CENTER)
-            _merge(ws,row,row,25,29,p.name,fill=fill,align=LEFT)
-            _merge(ws,row,row,30,32,total_pts,font=BLU_FONT,fill=fill,align=CENTER)
-            _merge(ws,row,row,33,34,f"{n_correct}/{n_matches}",fill=fill,align=CENTER)
-            _merge(ws,row,row,35,36,day_bonus if day_bonus else "",fill=fill,align=CENTER)
-            # Les colonnes AK-AW ne sont pas stockées précisément sans recalcul
-            # On laisse vides pour l'instant
-            for c in (37,38): _c(ws,row,c,"",fill=fill)
-            for c in (39,40): _c(ws,row,c,"",fill=fill)
-            for c in (41,42): _c(ws,row,c,"",fill=fill)
-            for c in (43,44): _c(ws,row,c,"",fill=fill)
-            for c in (45,46): _c(ws,row,c,"",fill=fill)
-            for c in (47,48): _c(ws,row,c,"",fill=fill)
-            for c in (49,50): _c(ws,row,c,"",fill=fill)
+            _c(ws, row, 24, i + 1, align=CENTER)
+            _merge(ws, row, row, 25, 29, p.name, fill=fill, align=LEFT)
+            _merge(ws, row, row, 30, 32, total_pts, font=BLU_FONT, fill=fill, align=CENTER)
+            _merge(ws, row, row, 33, 34, f"{n_correct}/{n_matches}", fill=fill, align=CENTER)
+            _merge(ws, row, row, 35, 36, day_bonus if day_bonus else "", fill=fill, align=CENTER)
+            for c1, c2 in [(37, 38), (39, 40), (41, 42), (43, 44), (45, 46), (47, 48), (49, 50)]:
+                for cc in range(c1, c2 + 1):
+                    _c(ws, row, cc, "", fill=fill)
 
-        # --- TABLEAU BAS (matchs + pronos individuels) ---
-        B = 20  # ligne de départ
-        # En-têtes fixes A-L
-        fix_headers = ["Domicile","vs","Extérieur","Nb D","BO D réel","Score D","-","Score E","BO E réel","","Valeur",""]
-        for ci, h in enumerate(fix_headers, 1):
-            _c(ws,B,ci,h,font=HDR_FONT,fill=HDR_FILL,align=CENTER)
-
-        # En-têtes joueurs : 6 colonnes par joueur
-        p_cols = []
-        col = 13
-        for p in players:
-            abbr = p.name.split()[0][:8]
-            for off in range(6):
-                _c(ws,B,col+off,"",font=HDR_FONT,fill=HDR_FILL,align=CENTER)
-            p_cols.append((col, col+5))
-            _c(ws,B,col,abbr,font=HDR_FONT,fill=HDR_FILL,align=CENTER)
-            col += 6
-
-        # Remplir les lignes matchs
-        for mi, m in enumerate(matches):
-            row = B + 1 + mi
-            if row > B + 12:
-                break
-
-            _c(ws,row,1,m.home_team.name if m.home_team else "",align=RIGHT)
-            _c(ws,row,2,"-",align=CENTER)
-            _c(ws,row,3,m.away_team.name if m.away_team else "",align=LEFT)
-
-            n_pred_dom = sum(1 for pr in all_preds if pr.match_id==m.id and pr.home_score_pred is not None and pr.home_score_pred > pr.away_score_pred)
-            _c(ws,row,4,n_pred_dom if n_pred_dom else "",align=CENTER)
-
-            if m.home_score is not None:
-                _c(ws,row,5,"X" if m.bonus_offense_home else "",align=CENTER)
-                _c(ws,row,6,m.home_score,align=CENTER)
-                _c(ws,row,7,"-",align=CENTER)
-                _c(ws,row,8,m.away_score,align=CENTER)
-                _c(ws,row,9,"X" if m.bonus_offense_away else "",align=CENTER)
-
-            _c(ws,row,11,match_val_map.get(m.id,0) if m.home_score is not None else "",align=CENTER)
-
-            # Pronos individuels
-            for pi, pl in enumerate(players):
-                sc, ec = p_cols[pi]
-                pr = pred_idx.get((pl.id, m.id))
-                if pr and pr.home_score_pred is not None and m.home_score is not None:
-                    # BO D
-                    boh = pr.bonus_home_pred
-                    boh_ok = boh and m.bonus_offense_home
-                    _c(ws,row,sc,"X" if boh else "",
-                       font=GRN_FONT if boh_ok else (RED_FONT if boh else None),
-                       fill=GRN_FILL if boh_ok else (RED_FILL if boh and not m.bonus_offense_home else None),
-                       align=CENTER)
-                    # Score D
-                    perf_h = pr.home_score_pred == m.home_score
-                    _c(ws,row,sc+1,pr.home_score_pred,
-                       fill=GRN_FILL if perf_h else None,
-                       font=GRN_FONT if perf_h else None, align=CENTER)
-                    _c(ws,row,sc+2,"-",align=CENTER)
-                    # Score E
-                    perf_a = pr.away_score_pred == m.away_score
-                    _c(ws,row,sc+3,pr.away_score_pred,
-                       fill=GRN_FILL if perf_a else None,
-                       font=GRN_FONT if perf_a else None, align=CENTER)
-                    # BO E
-                    boa = pr.bonus_away_pred
-                    boa_ok = boa and m.bonus_offense_away
-                    _c(ws,row,sc+4,"X" if boa else "",
-                       font=GRN_FONT if boa_ok else (RED_FONT if boa else None),
-                       fill=GRN_FILL if boa_ok else (RED_FILL if boa and not m.bonus_offense_away else None),
-                       align=CENTER)
-                    # Points
-                    _c(ws,row,sc+5,pr.points or 0,
-                       font=BLU_FONT, fill=BLU_FILL, align=CENTER)
-                else:
-                    for off in range(6):
-                        _c(ws,row,sc+off,"",align=CENTER)
-
-        # Ligne totaux
-        tr = B + 1 + n_matches + 1
-        _c(ws,tr,1,"TOTAUX",font=BOLD,fill=YEL_FILL,align=RIGHT)
-        for pi, pl in enumerate(players):
-            ec = p_cols[pi][1]
-            # Points = somme de la colonne "Pts" (6e colonne du bloc = ec)
-            first = B + 1
-            last = B + n_matches
-            formula = f"=SUM({get_column_letter(ec)}{first}:{get_column_letter(ec)}{last})"
-            _c(ws,tr,ec,formula,font=Font(bold=True,color="9C0006",size=11),
-               fill=TOT_FILL,align=CENTER)
-
-        # Masquer les lignes match vides
-        for r in range(B+1+n_matches, B+13):
-            ws.row_dimensions[r].hidden = True
-
-        # Largeurs
+        # Largeurs & gel
         ws.column_dimensions["A"].width = 16
         ws.column_dimensions["B"].width = 4
         ws.column_dimensions["C"].width = 16
-        for col_letter in ["D","E","F","G","H","I","K"]:
-            ws.column_dimensions[col_letter].width = 8
+        for cl in "DEFGHIK":
+            ws.column_dimensions[cl].width = 8
         ws.column_dimensions["J"].width = 3
         ws.column_dimensions["L"].width = 3
-
         ws.freeze_panes = "B2"
