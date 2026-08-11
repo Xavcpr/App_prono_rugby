@@ -587,7 +587,144 @@ def all_pronos_view(request):
         "selected_season": selected_season, "current_round_obj": current_round_obj,
         "prev_round_id": prev_round_id, "next_round_id": next_round_id,
         "player_status": player_status, "is_admin": is_admin,
-    })  
+    })
+
+
+@staff_member_required
+def export_pronos_xlsx(request):
+    """Export Excel de la journée affichée : A-I = match + scores réels,
+       puis 5 colonnes par joueur (BO D, Score D, -, Score E, BO E)."""
+    comp_id = request.GET.get("comp")
+    season_id = request.GET.get("season")
+    round_id = request.GET.get("round")
+
+    now = timezone.now()
+    all_competitions = Competition.objects.all().order_by('name')
+    selected_comp = all_competitions.filter(id=comp_id).first() if comp_id else all_competitions.first()
+
+    seasons = Season.objects.filter(competition=selected_comp, year__gte=2025).order_by('-year')
+    selected_season = seasons.filter(id=season_id).first() if season_id else seasons.first()
+
+    rounds = Round.objects.filter(season=selected_season).order_by('number')
+    current_round_obj = rounds.filter(id=round_id).first() if round_id else None
+    if not current_round_obj:
+        current_round_obj = _find_next_round(rounds, now)
+
+    matches = (Match.objects.filter(round=current_round_obj).select_related('home_team', 'away_team')
+               .order_by("kickoff_at") if current_round_obj else Match.objects.none())
+    players = list(_players_for_season(selected_season).order_by('name'))
+    predictions = Prediction.objects.filter(match__round=current_round_obj)
+
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.utils import get_column_letter
+    except ImportError:
+        messages.error(request, "openpyxl n'est pas installé sur le serveur.")
+        return redirect('all_pronos')
+
+    # Abréviation compétition pour le nom d'onglet (ex: Top14_J1, CC_J2, T6N_J4)
+    comp_name = selected_comp.name if selected_comp else ""
+    if "6 nations" in comp_name.lower():
+        abbr = "T6N"
+    elif "champions" in comp_name.lower():
+        abbr = "CC"
+    elif "top" in comp_name.lower():
+        abbr = "Top14"
+    else:
+        abbr = comp_name.replace(" ", "") or "Pronos"
+    sheet_title = f"{abbr}_J{current_round_obj.number}" if current_round_obj else abbr
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = sheet_title[:31]
+
+    hdr_fill = PatternFill("solid", fgColor="4472C4")
+    hdr_font = Font(bold=True, color="FFFFFF", size=11)
+    thin = Border(left=Side("thin"), right=Side("thin"), top=Side("thin"), bottom=Side("thin"))
+    center = Alignment(horizontal="center", vertical="center")
+
+    # Ligne d'en-tête (colonne 1..9 fixes)
+    fix_headers = ["Domicile", "-", "Extérieur", "BO D réel", "Score D", "-", "Score E", "BO E réel", ""]
+    for i, h in enumerate(fix_headers, 1):
+        c = ws.cell(row=1, column=i, value=h)
+        c.font = hdr_font
+        c.fill = hdr_fill
+        c.alignment = center
+        c.border = thin
+
+    # Un bloc de 5 colonnes par joueur
+    player_cols = []
+    col = 10  # colonne J
+    for p in players:
+        ws.merge_cells(start_row=1, start_column=col, end_row=1, end_column=col + 4)
+        c = ws.cell(row=1, column=col, value=p.name)
+        c.font = hdr_font
+        c.fill = hdr_fill
+        c.alignment = center
+        for off in range(5):
+            ws.cell(row=1, column=col + off).fill = hdr_fill
+            ws.cell(row=1, column=col + off).border = thin
+        player_cols.append((col, col + 4))
+        col += 5
+
+    # Remplir les matchs
+    for mi, m in enumerate(matches):
+        row = mi + 2
+        values = [
+            m.home_team.name if m.home_team else "",
+            "-",
+            m.away_team.name if m.away_team else "",
+            "X" if m.bonus_offense_home else "",
+            m.home_score if m.home_score is not None else "",
+            "-",
+            m.away_score if m.away_score is not None else "",
+            "X" if m.bonus_offense_away else "",
+            "",
+        ]
+        for i, v in enumerate(values, 1):
+            c = ws.cell(row=row, column=i, value=v)
+            c.border = thin
+            c.alignment = center
+
+        # Pronos des joueurs
+        match_preds = {pr.player_id: pr for pr in predictions if pr.match_id == m.id}
+        for p, (sc, _ec) in zip(players, player_cols):
+            pr = match_preds.get(p.id)
+            if pr and pr.home_score_pred is not None:
+                cells = [
+                    "X" if pr.bonus_home_pred else "",
+                    pr.home_score_pred,
+                    "-",
+                    pr.away_score_pred,
+                    "X" if pr.bonus_away_pred else "",
+                ]
+            else:
+                cells = ["", "", "-", "", ""]
+            for off, v in enumerate(cells):
+                c = ws.cell(row=row, column=sc + off, value=v)
+                c.border = thin
+                c.alignment = center
+
+    # Largeurs
+    ws.column_dimensions["A"].width = 16
+    ws.column_dimensions["B"].width = 4
+    ws.column_dimensions["C"].width = 16
+    for letter in "D E F G H".split():
+        ws.column_dimensions[letter].width = 9
+    for _, (sc, _ec) in enumerate(player_cols):
+        ws.column_dimensions[get_column_letter(sc)].width = 8
+
+    ws.freeze_panes = "B2"
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    round_slug = f"J{current_round_obj.number}" if current_round_obj else ""
+    fname = f"{sheet_title}_{now.strftime('%Y%m%d')}.xlsx"
+    response["Content-Disposition"] = f'attachment; filename="{fname}"'
+    wb.save(response)
+    return response  
 
 @login_required
 def round_results_board(request, round_id):

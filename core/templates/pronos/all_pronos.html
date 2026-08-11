@@ -112,6 +112,8 @@
         <a href="{% url 'round_board' current_round_obj.id %}"
            class="btn btn-primary btn-sm">📊 Résultats journée</a>
         {% if request.user.is_staff %}
+          <a href="{% url 'export_pronos_xlsx' %}?comp={{ selected_comp.id }}&season={{ selected_season.id }}&round={{ current_round_obj.id }}"
+             class="btn btn-success btn-sm">⬇️ Export Excel</a>
           <a href="{% url 'round_bonus' current_round_obj.id %}"
              class="btn btn-warning btn-sm">🏆 Bonus</a>
         {% endif %}
