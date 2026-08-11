@@ -720,8 +720,9 @@ def export_pronos_xlsx(request):
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+    season_slug = selected_season.year.replace("/", "_").replace("-", "_") if selected_season else ""
     round_slug = f"J{current_round_obj.number}" if current_round_obj else ""
-    fname = f"{sheet_title}_{now.strftime('%Y%m%d')}.xlsx"
+    fname = f"{season_slug}_{sheet_title}.xlsx"
     response["Content-Disposition"] = f'attachment; filename="{fname}"'
     wb.save(response)
     return response  
