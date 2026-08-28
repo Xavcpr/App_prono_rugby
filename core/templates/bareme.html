@@ -85,14 +85,14 @@
                     X_C{"Fin de compétition"}
                     X_C --> X_W["Bon vainqueur ?"]
                     X_W -- "oui top14"--> X_T["{{ t14.winner }} pt"]:::greenNode
-                    X_T -- "meilleur marqueur ?" --> X_S["{{ t14.bonus }} pt"]:::greenNode
-                    X_S -- "meilleur réalisateur ?" --> X_R["{{ t14.bonus }} pt"]:::greenNode
                     X_W -- "oui CC"--> X_H["{{ cc.winner }} pt"]:::greenNode
                     X_W -- "oui 6 nations"--> X_N["{{ 6nations.winner }} pt"]:::greenNode
-                    X_W -- non --> X_Y["Pronostiqueur dans le top3 ?"]
+                    X_W -- non --> X_Y["Marqueur / Réalisateur dans le Top 3 ?"]
                     X_R & X_H & X_N --> X_Y
-                    X_Y --> X_P["voir tableau podium"]:::goldNode
-                    X_P --> Z_Z["Somme totale !"]:::blueNode
+                    X_Y --> X_P["voir tableau bonus meilleur marqueur/réalisateur"]:::goldNode
+                    X_P --> X_R["Pronostiqueur dans le Top 3 ?"]
+                    X_R --> X_T["voir tableau podium"]:::goldNode
+                    X_R --> Z_Z["Somme totale !"]:::blueNode
                     end
                     %% Styles CSS pour les noeuds
                     classDef greenNode fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724;
@@ -104,7 +104,9 @@
         </div>
     </div>
     <div class="card shadow-sm mb-5 border-success">
-        <div class="card-header bg-success text-white fw-bold">🏅 Bonus Meilleur Marqueur & Meilleur Réalisateur (par compétition)</div>
+        <div class="card-header bg-success text-white fw-bold">
+            🏅 Bonus Meilleur Marqueur & Meilleur Réalisateur (par compétition)
+        </div>
         <div class="card-body p-0 text-center">
             {% if is_ancien %}
                 <table class="table table-bordered mb-0">
