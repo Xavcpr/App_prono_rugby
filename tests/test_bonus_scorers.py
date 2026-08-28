@@ -239,6 +239,32 @@ class TestAdminSaisieResultats:
         assert "Dupont, Ntamack" in html
         assert "Penaud" in html
 
+    def test_post_saves_on_selected_season(self, client, user):
+        """Le défaut vise la dernière saison ; en choisisant la saison, on vise celle-là."""
+        comp = Competition.objects.create(name="6 nations")
+        s2 = Season.objects.create(competition=comp, year="2027")
+        s1 = Season.objects.create(competition=comp, year="2026")
+        user.is_staff = True
+        user.save()
+        client.force_login(user)
+
+        url = f"{reverse('admin_saisie_resultats')}?competition={comp.id}&season={s1.id}"
+        client.post(
+            url,
+            {
+                "real_best_try_scorer_1": "Alldritt",
+                "real_best_try_scorer_2": "",
+                "real_best_try_scorer_3": "",
+                "real_best_point_scorer_1": "Jaminet",
+                "real_best_point_scorer_2": "",
+                "real_best_point_scorer_3": "",
+            },
+            secure=True,
+        )
+        res_old = CompetitionResult.objects.get(season=s1)
+        assert res_old.real_best_try_scorers["1"] == ["Alldritt"]
+        assert not CompetitionResult.objects.filter(season=s2).exists()
+
 
 @pytest.mark.django_db
 class TestRenderPages:

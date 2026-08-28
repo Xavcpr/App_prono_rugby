@@ -1390,13 +1390,16 @@ def compute_competition_points(season):
 def admin_saisie_resultats(request):
     competitions = Competition.objects.all()
     competition_id = request.GET.get("competition")
+    season_id = request.GET.get("season")
     selected_competition = None
     blocks = []
     season = None
+    seasons = []
 
     if competition_id:
         selected_competition = get_object_or_404(Competition, id=competition_id)
-        season = Season.objects.filter(competition=selected_competition, year__gte=2025).order_by("-year").first()
+        seasons = Season.objects.filter(competition=selected_competition, year__gte=2025).order_by("-year")
+        season = seasons.filter(id=season_id).first() if season_id else seasons.first()
         
         # Préparation des blocs (Même logique que ta vue classement_prediction)
         if selected_competition.name.lower() == "champions cup":
@@ -1439,7 +1442,8 @@ def admin_saisie_resultats(request):
         res_obj.rankings_json = rank_data
         res_obj.save()
         messages.success(request, "Résultats officiels enregistrés !")
-        return redirect(f"{request.path}?competition={selected_competition.id}")
+        s_param = f"&season={season.id}" if season else ""
+        return redirect(f"{request.path}?competition={selected_competition.id}{s_param}")
 
     # Préremplissage du formulaire (GET) avec les déjà enregistrés
     result_obj = CompetitionResult.objects.filter(season=season).first() if season else None
@@ -1454,6 +1458,7 @@ def admin_saisie_resultats(request):
         "selected_competition": selected_competition,
         "blocks": blocks,
         "season": season,
+        "seasons": seasons,
         "result_obj": result_obj,
         "prefill_try": prefill_try,
         "prefill_point": prefill_point,

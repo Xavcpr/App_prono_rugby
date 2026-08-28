@@ -29,6 +29,19 @@
                                 {% if selected_competition.id == comp.id %}selected{% endif %}>{{ comp.name }}</option>
                     {% endfor %}
                 </select>
+                {% if seasons %}
+                    <label>
+                        <strong>Saison :</strong>
+                    </label>
+                    <select name="season"
+                            class="form-select w-auto"
+                            onchange="this.form.submit()">
+                        {% for s in seasons %}
+                            <option value="{{ s.id }}"
+                                    {% if season.id == s.id %}selected{% endif %}>{{ s.year }}</option>
+                        {% endfor %}
+                    </select>
+                {% endif %}
                 <a href="{% url 'recap_classement' %}"
                    class="btn btn-outline-secondary btn-sm"
                    style="margin-left: auto">← Retour Récap</a>
