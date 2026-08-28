@@ -62,6 +62,12 @@
               </div>
               {% if user.is_staff %}
                 <div class="col-6">
+                  <a class="nav-link small text-success fw-bold" href="{% url 'admin_saisie_resultats' %}">⚙️ Saisir Résultats</a>
+                </div>
+                <div class="col-6">
+                  <a class="nav-link small text-success fw-bold" href="{% url 'recap_classement' %}">👁️ Récap Classement</a>
+                </div>
+                <div class="col-6">
                   <a class="nav-link small text-secondary fw-bold" href="{% url 'admin:index' %}">🔑 Admin</a>
                 </div>
               {% endif %}
