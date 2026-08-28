@@ -76,7 +76,7 @@ class TestRemarquableBonsPronos:
     def test_solo_count(self, user, round2):
         _play(user, round2, ["home"] * 2)
         stats = compute_statistics(None, season=round2.season)
-        solo = {r["username"]: r["value"] for r in stats.solo_bons_table}
+        solo = {r["username"]: r["value"] for r in stats.bons_pronos[1]}
         assert solo[user.username] == 2
 
     def test_five_players_800_5(self, user, round2):
@@ -90,7 +90,7 @@ class TestRemarquableBonsPronos:
                 bonus_home_pred=False, bonus_away_pred=False, points=0,
             )
         stats = compute_statistics(None, season=round2.season)
-        cinq = {r["username"]: r["value"] for r in stats.cinq_bons_table}
+        cinq = {r["username"]: r["value"] for r in stats.bons_pronos[5]}
         assert cinq[user.username] == 1
         assert all(cinq[p.user.username] == 1 for p in Player.objects.exclude(user=user))
 
@@ -105,8 +105,31 @@ class TestRemarquableBonsPronos:
             bonus_home_pred=False, bonus_away_pred=False, points=0,
         )
         stats = compute_statistics(None, season=round2.season)
-        cinq = {r["username"]: r["value"] for r in stats.cinq_bons_table}
-        assert cinq == {}
+        assert 5 not in stats.bons_pronos
+        assert stats.bons_pronos.get(2, []) != []
+
+    def test_1_and_5_are_both_counted_for_one_user(self, user, round2):
+        _play(user, round2, ["home"] * 2)
+        match = round2.matches.first()
+        # 4 autres joueurs sur le 1er match uniquement -> ce match a 5 bons, l'autre 1
+        second = round2.matches.last()
+        for i in range(4):
+            u = User.objects.create_user(username=f"m{i}-{user.username}", password="x")
+            p = Player.objects.create(user=u, name=f"M{i}")
+            Prediction.objects.create(
+                player=p, match=match, home_score_pred=20, away_score_pred=10,
+                bonus_home_pred=False, bonus_away_pred=False, points=0,
+            )
+        stats = compute_statistics(None, season=round2.season)
+        solo = {r["username"]: r["value"] for r in stats.bons_pronos.get(1, [])}
+        cinq = {r["username"]: r["value"] for r in stats.bons_pronos.get(5, [])}
+        assert solo[user.username] == 1
+        assert cinq[user.username] == 1
+
+    def test_n_players_reflects_participants(self, user, round2):
+        _play(user, round2, ["home"] * 7)
+        stats = compute_statistics(None, season=round2.season)
+        assert stats.n_players == 1
 
 
 def _stats_url(round_obj, **extra):
@@ -126,10 +149,12 @@ class TestStatsPage:
         resp = client.get(_stats_url(round2), secure=True)
         assert resp.status_code == 200
         html = resp.content.decode()
-        assert "Bon prono tout seul (800/1)" in html
-        assert "Bons pronos remarquables" in html
+        assert "Bons pronos" in html
+        assert "800/1" in html
         assert "Bonus journées" in html
+        assert "Points Podium" in html
         assert "Référence" in html
+        assert 'value="1" selected' in html or '<option value="1" selected' in html
 
     def test_page_bonus_mode_5(self, client, user, round2):
         _play(user, round2, ["home"])
@@ -145,6 +170,25 @@ class TestStatsPage:
         resp = client.get(_stats_url(round2, bonus="5"), secure=True)
         assert resp.status_code == 200
         html = resp.content.decode()
-        assert '<option value="5" selected' in html or 'value="5" selected' in html
-        assert "<strong>5</strong> uniques bons pronostiqueurs" in html
+        assert '<option value="5" selected' in html
+        assert "<strong>5</strong> bons pronostiqueurs" in html
         assert user.username in html
+
+    def test_page_selector_ranges_to_player_count(self, client, user, round2):
+        _play(user, round2, ["home"] * 7)
+        for i in range(3):
+            u = User.objects.create_user(username=f"n{i}-{user.username}", password="x")
+            Player.objects.create(user=u, name=f"N{i}")
+        for p in Player.objects.exclude(user=user):
+            for m in round2.matches.all():
+                Prediction.objects.create(
+                    player=p, match=m, home_score_pred=20, away_score_pred=10,
+                    bonus_home_pred=False, bonus_away_pred=False, points=0,
+                )
+        client.force_login(user)
+        resp = client.get(_stats_url(round2), secure=True)
+        html = resp.content.decode()
+        # 4 participants au total -> le sélecteur va de 1 à 4
+        assert 'value="4"' in html
+        assert 'value="5"' not in html
+        assert 'selected' in html

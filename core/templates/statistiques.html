@@ -117,60 +117,6 @@
 
     <div class="card mb-4">
       <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-          <h5 class="mb-0">💯 Bons pronos remarquables</h5>
-          <form method="get" class="d-flex align-items-center gap-2">
-            {% if request.GET.competition %}<input type="hidden" name="competition" value="{{ request.GET.competition }}">{% endif %}
-            {% if request.GET.season %}<input type="hidden" name="season" value="{{ request.GET.season }}">{% endif %}
-            <label class="fw-bold mb-0 small text-uppercase">Vue :</label>
-            <select name="bonus"
-                    onchange="this.form.submit()"
-                    class="form-select-custom">
-              <option value="1" {% if bonus_mode == "1" %}selected{% endif %}>Bon prono tout seul (800/1)</option>
-              <option value="5" {% if bonus_mode == "5" %}selected{% endif %}>5 bons pronostiqueurs (800/5)</option>
-            </select>
-          </form>
-        </div>
-        {% if bonus_mode == "5" %}
-          <p class="text-muted small">
-            Nombre de fois où le joueur faisait partie des <strong>5</strong> uniques bons pronostiqueurs
-            d'un match (pot 800 divisé → 800/5).
-          </p>
-        {% else %}
-          <p class="text-muted small">
-            Nombre de matchs où le joueur était le <strong>seul</strong> à avoir le bon pronostic
-            (pot 800 entier → 800/1).
-          </p>
-        {% endif %}
-        <div class="table-container" style="max-height:250px;overflow-y:auto">
-          <table class="rugby-board">
-            <thead><tr><th class="rank-col">#</th><th>Joueur</th><th>Fois</th></tr></thead>
-            <tbody>
-              {% if bonus_mode == "5" %}
-                {% for r in cinq_bons_table %}
-                  <tr>
-                    <td class="rank-col">{% if forloop.first %}{{ forloop.counter }}{% else %}{% with prev=cinq_bons_table|slice:forloop.counter0|last %}{% if r.value == prev.value %}-{% else %}{{ forloop.counter }}{% endif %}{% endwith %}{% endif %}</td>
-                    <td class="text-start ps-3">{{ r.username }}{% if r.username == user.username %} <span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}</td>
-                    <td class="fw-bold" style="color:#8e44ad">{{ r.value }}</td>
-                  </tr>
-                {% empty %}<tr><td colspan="3" class="text-muted">Aucun match avec 5 bons pronostiqueurs</td></tr>{% endfor %}
-              {% else %}
-                {% for r in solo_bons_table %}
-                  <tr>
-                    <td class="rank-col">{% if forloop.first %}{{ forloop.counter }}{% else %}{% with prev=solo_bons_table|slice:forloop.counter0|last %}{% if r.value == prev.value %}-{% else %}{{ forloop.counter }}{% endif %}{% endwith %}{% endif %}</td>
-                    <td class="text-start ps-3">{{ r.username }}{% if r.username == user.username %} <span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}</td>
-                    <td class="fw-bold" style="color:#8e44ad">{{ r.value }}</td>
-                  </tr>
-                {% empty %}<tr><td colspan="3" class="text-muted">Aucun bon prono en solo</td></tr>{% endfor %}
-              {% endif %}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <div class="card mb-4">
-      <div class="card-body">
         <h5>Classement détaillé</h5>
         <div class="table-container">
           <table class="rugby-board">
@@ -446,6 +392,48 @@
       <div class="col-md-4">
         <div class="card h-100">
           <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-1">
+              <h5 class="mb-0">💯 Bons pronos</h5>
+              <form method="get" class="d-flex align-items-center gap-1">
+                {% if request.GET.competition %}<input type="hidden" name="competition" value="{{ request.GET.competition }}">{% endif %}
+                {% if request.GET.season %}<input type="hidden" name="season" value="{{ request.GET.season }}">{% endif %}
+                <select name="bonus"
+                        onchange="this.form.submit()"
+                        class="form-select-custom">
+                  {% for n in bonus_modes %}
+                    <option value="{{ n }}" {% if bonus_mode == n %}selected{% endif %}>{{ n }} prono{{ n|pluralize }}</option>
+                  {% endfor %}
+                </select>
+              </form>
+            </div>
+            <p class="text-muted small">
+              {% if bonus_mode == 1 %}
+                Matchs où le joueur était le <strong>seul</strong> bon pronostiqueur (pot entier → 800/1).
+              {% else %}
+                Matchs où le joueur comptait parmi les <strong>{{ bonus_mode }}</strong> bons pronostiqueurs
+                (pot divisé → 800/{{ bonus_mode }}).
+              {% endif %}
+            </p>
+            <div class="table-container" style="max-height:250px;overflow-y:auto">
+              <table class="rugby-board">
+                <thead><tr><th class="rank-col">#</th><th>Joueur</th><th>Fois</th></tr></thead>
+                <tbody>
+                  {% for r in bons_pronos_table %}
+                    <tr>
+                      <td class="rank-col">{% if forloop.first %}{{ forloop.counter }}{% else %}{% with prev=bons_pronos_table|slice:forloop.counter0|last %}{% if r.value == prev.value %}-{% else %}{{ forloop.counter }}{% endif %}{% endwith %}{% endif %}</td>
+                      <td class="text-start ps-3">{{ r.username }}{% if r.username == user.username %} <span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}</td>
+                      <td class="fw-bold" style="color:#8e44ad">{{ r.value }}</td>
+                    </tr>
+                  {% empty %}<tr><td colspan="3" class="text-muted">Aucun match avec ce nombre de bons pronostiqueurs</td></tr>{% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-body">
             <h5>🎁 Bonus journées</h5>
             <p class="text-muted small">
               Points gagnés via les paliers de bons pronos d'une journée
@@ -468,15 +456,11 @@
           </div>
         </div>
       </div>
-    </div>
-
-    {% with first_podium=podium_ranking|first %}
-    {% if first_podium and first_podium.podium_pts > 0 %}
-    <div class="row g-3 mb-4">
       <div class="col-md-4">
         <div class="card h-100">
           <div class="card-body">
             <h5>🏆 Points Podium (P)</h5>
+            <p class="text-muted small">Points bonus de classement final (1er, 2ᵉ, 3ᵉ).</p>
             <div class="table-container" style="max-height:220px;overflow-y:auto">
               <table class="rugby-board">
                 <thead><tr><th class="rank-col">#</th><th>Joueur</th><th>P</th></tr></thead>
@@ -497,8 +481,7 @@
         </div>
       </div>
     </div>
-    {% endif %}
-    {% endwith %}
+
     <div class="row">
       <div class="col-md-12 mb-4">
         <div class="card">
@@ -517,6 +500,8 @@
             <p class="text-muted small">
               Tracé <strong>joueur − meilleur</strong> : la ligne du leader reste à 0 (en haut),
               les autres passent en négatif.
+              « Journée précédente » et « 5 dernières journées » coupent l'affichage sur cette fenêtre
+              (cumul conservé, pas de différentiel).
             </p>
             <div style="height: 300px;">
               <canvas id="scoreChart"></canvas>
@@ -585,28 +570,21 @@
         return out;
       }
 
-      function transformSince(arr, mode) {
-        const res = [];
-        for (let i = 0; i < arr.length; i++) {
-          const v = arr[i] || 0;
-          if (mode === 'prev') {
-            res.push(i === 0 ? v : v - (arr[i - 1] || 0));
-          } else if (mode === 'last5') {
-            const base = i >= 5 ? (arr[i - 5] || 0) : 0;
-            res.push(v - base);
-          } else {
-            res.push(v);
-          }
-        }
-        return res;
+      function windowStart(mode) {
+        if (mode === 'prev') return Math.max(0, labels.length - 2);
+        if (mode === 'last5') return Math.max(0, labels.length - 6);
+        return 0;
       }
 
       function rebuildScoreChart(mode) {
+        const start = windowStart(mode);
+        const slicedLabels = labels.slice(start);
+        if (slicedLabels.length === 0) return;
         const total = {}, matchOnly = {};
         for (const k of players) {
           const s = scoreSeries[k] || [];
-          total[k] = transformSince(s.map((v, i) => v + (flairSeries[k]?.[i] || 0) + (podiumSeries[k]?.[i] || 0)), mode);
-          matchOnly[k] = transformSince(s, mode);
+          total[k] = s.slice(start).map((v, i) => v + (flairSeries[k]?.[start + i] || 0) + (podiumSeries[k]?.[start + i] || 0));
+          matchOnly[k] = s.slice(start);
         }
         const mainDs = makeDatasets(relToMax(total, indexwiseMax(total)));
         const matchOnlyDs = makeDatasets(relToMax(matchOnly, indexwiseMax(matchOnly))).map(d => ({
@@ -615,7 +593,7 @@
         }));
         const allDs = [...mainDs, ...matchOnlyDs].filter(d => d.data.length > 0);
         if (scoreChart) scoreChart.destroy();
-        scoreChart = new Chart(document.getElementById('scoreChart'), { type: "line", data: { labels, datasets: allDs }, options: opt });
+        scoreChart = new Chart(document.getElementById('scoreChart'), { type: "line", data: { labels: slicedLabels, datasets: allDs }, options: opt });
       }
 
       rebuildScoreChart(document.getElementById('evolMode').value);

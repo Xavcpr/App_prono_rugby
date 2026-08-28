@@ -71,8 +71,8 @@ class StatsResult:
     round_dates: List[str] = field(default_factory=list)
 
     bonus_journee_table: List[Dict] = field(default_factory=list)
-    solo_bons_table: List[Dict] = field(default_factory=list)
-    cinq_bons_table: List[Dict] = field(default_factory=list)
+    bons_pronos: Dict[int, List[Dict]] = field(default_factory=dict)
+    n_players: int = 0
 
 
 def compute_statistics(competition: Optional[Competition], season: Optional[Season] = None, season_ids: Optional[list] = None) -> StatsResult:
@@ -345,17 +345,17 @@ def compute_statistics(competition: Optional[Competition], season: Optional[Seas
                     break
             bonus_journee_by_player[uname] += int(day_bonus * multiplier)
 
-    # --- BONS PRONOS REMARQUABLES : seul (800/1) vs groupe de 5 (800/5) ---
-    solo_by_player = {k: 0 for k in player_keys}
-    cinq_by_player = {k: 0 for k in player_keys}
-    for m_id, unames in match_correct_players.items():
+    # --- BONS PRONOS REMARQUABLES : groupes de N bons pronostiqueurs (pot 800/N) ---
+    bons_by_group = {}
+    for unames in match_correct_players.values():
         unique = sorted(set(unames))
         n = len(unique)
-        if n == 1:
-            solo_by_player[unique[0]] += 1
-        elif n == 5:
-            for u in unique:
-                cinq_by_player[u] += 1
+        if not unique:
+            continue
+        d = bons_by_group.setdefault(n, {})
+        for u in unique:
+            d[u] = d.get(u, 0) + 1
+    bons_pronos = {n: format_nonzero_trophy(d) for n, d in bons_by_group.items()}
 
     return StatsResult(
         labels=labels,
@@ -387,6 +387,6 @@ def compute_statistics(competition: Optional[Competition], season: Optional[Seas
         bonus_def_table=format_bonus(bon_bonus_def_by_player, mauvais_bonus_def_by_player),
         round_dates=round_dates,
         bonus_journee_table=format_nonzero_trophy(bonus_journee_by_player),
-        solo_bons_table=format_nonzero_trophy(solo_by_player),
-        cinq_bons_table=format_nonzero_trophy(cinq_by_player),
+        bons_pronos=bons_pronos,
+        n_players=len(player_keys),
     )

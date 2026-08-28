@@ -1211,6 +1211,15 @@ def statistiques_view(request):
         stats.detailed_ranking,
         key=lambda x: x.get('podium_pts', 0), reverse=True
     )
+    try:
+        bonus_mode = int(request.GET.get("bonus", "1"))
+    except (TypeError, ValueError):
+        bonus_mode = 1
+    if bonus_mode < 1:
+        bonus_mode = 1
+    if stats.n_players and bonus_mode > stats.n_players:
+        bonus_mode = stats.n_players
+    bonus_modes = list(range(1, max(stats.n_players, 1) + 1))
     context = {
         "competitions": competitions,
         "competition": competition,
@@ -1237,9 +1246,9 @@ def statistiques_view(request):
         "match_ranking": match_ranking,
         "podium_ranking": podium_ranking,
         "bonus_journee_table": stats.bonus_journee_table,
-        "solo_bons_table": stats.solo_bons_table,
-        "cinq_bons_table": stats.cinq_bons_table,
-        "bonus_mode": "5" if request.GET.get("bonus", "1") == "5" else "1",
+        "bons_pronos_table": stats.bons_pronos.get(bonus_mode, []),
+        "bonus_modes": bonus_modes,
+        "bonus_mode": bonus_mode,
     }
 
     return render(request, "statistiques.html", context)
