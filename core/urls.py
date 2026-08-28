@@ -1,5 +1,5 @@
 from django.urls import path 
-from .views import home_view, hall_of_fame_view, bareme_view, charte_view, admin_saisie_resultats, declencher_calcul_points, recap_pronos_classement, debug_scores_view, statistics_view, statistiques_view, all_pronos_view, export_pronos_xlsx, compute_round_view, pronos_view, logout_view, round_results_board, settings_view, competition_ranking_view, classement_prediction, cron_send_reminders, health_view, import_scores_view, bonus_view
+from .views import home_view, hall_of_fame_view, bareme_view, charte_view, admin_saisie_resultats, declencher_calcul_points, recap_pronos_classement, debug_scores_view, statistics_view, statistiques_view, all_pronos_view, export_pronos_xlsx, compute_round_view, pronos_view, logout_view, round_results_board, settings_view, competition_ranking_view, classement_prediction, cron_send_reminders, health_view, import_scores_view, bonus_view, profil_view, trombinoscope_view
 
 urlpatterns = [
     # Page d'accueil (peut rediriger vers les pronos ou une page d'info)
@@ -12,6 +12,11 @@ urlpatterns = [
 
     # Réglages
     path('settings/', settings_view, name='settings'),
+
+    # Profil joueur (cohésion de groupe)
+    path('profil/', profil_view, name='profil'),
+    # Trombinoscope (tous les joueurs)
+    path('trombinoscope/', trombinoscope_view, name='trombinoscope'),
 
     # Classement par compétition (vue générale)
     path("classement_par_competition/", competition_ranking_view, name="classement_par_competition"),

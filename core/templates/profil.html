@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+  <style>
+    .profil-header { margin: 20px 0; background: #2c3e50; color: white; padding: 20px; border-radius: 8px; }
+    .profil-card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .avatar-big {
+      width: 90px; height: 90px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 2rem; font-weight: bold; margin: 0 auto;
+    }
+  </style>
+  <div class="container py-4">
+    <div class="profil-header text-center">
+      <div class="avatar-big" style="background: {{ player.avatar_color }}">{{ player.initials }}</div>
+      <h1 class="mt-3 mb-0">{{ player.name }}</h1>
+      <p class="opacity-75 mb-0">Mon profil</p>
+    </div>
+
+    <div class="profil-card mt-4">
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label fw-bold">📅 Date de naissance</label>
+          <input type="date"
+                 name="birth_date"
+                 class="form-control"
+                 value="{{ player.birth_date|date:'Y-m-d'|default:'' }}">
+          <div class="form-text">
+            {% if player.age %}Aura {{ player.age }} ans (affiché dans le trombinoscope).{% else %}Facultatif.{% endif %}
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">👍 J'aime</label>
+          <textarea name="aime"
+                    class="form-control"
+                    rows="3"
+                    placeholder="Ce qui me plaît (rugby, nourriture, musique, délires de groupe...)"
+                    maxlength="500">{{ player.aime }}</textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">👎 Je n'aime pas</label>
+          <textarea name="aime_pas"
+                    class="form-control"
+                    rows="3"
+                    placeholder="Ce que je n'aime pas (le café froid, les pertes de connexion..."
+                    maxlength="500">{{ player.aime_pas }}</textarea>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary flex-grow-1">💾 Enregistrer mon profil</button>
+          <a href="{% url 'trombinoscope' %}" class="btn btn-outline-secondary">👥 Voir le trombinoscope</a>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

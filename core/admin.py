@@ -178,8 +178,12 @@ admin.site.register(Team)
 
 class PlayerAdmin(admin.ModelAdmin):
     filter_horizontal = ('seasons',)
-    list_display = ('name', 'user', 'season_list')
+    list_display = ('name', 'user', 'birth_date', 'age_display', 'season_list')
     search_fields = ('name',)
+
+    def age_display(self, obj):
+        return obj.age if obj.age is not None else "-"
+    age_display.short_description = "Âge"
 
     def season_list(self, obj):
         return ", ".join(s.year for s in obj.seasons.all().order_by('-year')[:3])

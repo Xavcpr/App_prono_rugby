@@ -200,6 +200,48 @@ def settings_view(request):
 
     return render(request, 'settings.html', {'form': form})
 
+
+# ------------------
+# PROFIL (cohésion de groupe)
+# ------------------
+@login_required
+def profil_view(request):
+    try:
+        player = request.user.player
+    except Player.DoesNotExist:
+        messages.error(request, "Votre compte n'est pas encore lié à un joueur.")
+        return redirect("logout")
+
+    if request.method == "POST":
+        birth = request.POST.get("birth_date", "").strip()
+        player.aime = request.POST.get("aime", "").strip()
+        player.aime_pas = request.POST.get("aime_pas", "").strip()
+        if birth:
+            try:
+                player.birth_date = datetime.strptime(birth, "%Y-%m-%d").date()
+            except ValueError:
+                player.birth_date = None
+        else:
+            player.birth_date = None
+        player.save()
+        messages.success(request, "Profil mis à jour !")
+        return redirect("profil")
+
+    return render(request, "profil.html", {"player": player})
+
+
+@login_required
+def trombinoscope_view(request):
+    all_seasons = Season.objects.order_by("-year")
+    season_id = request.GET.get("season")
+    selected_season = Season.objects.filter(id=season_id).first() if season_id else _latest_season(all_seasons)
+    players = _players_for_season(selected_season).select_related("user").order_by("name")
+    return render(request, "trombinoscope.html", {
+        "players": players,
+        "seasons": all_seasons,
+        "selected_season": selected_season,
+    })
+
 # ------------------
 # COMPETITION RANKING VIEW
 # ------------------

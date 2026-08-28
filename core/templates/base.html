@@ -60,6 +60,12 @@
               <div class="col-6">
                 <a class="nav-link small" href="{% url 'settings' %}">⚙️ Réglages</a>
               </div>
+              <div class="col-6">
+                <a class="nav-link small" href="{% url 'profil' %}">🙋 Mon profil</a>
+              </div>
+              <div class="col-6">
+                <a class="nav-link small text-primary" href="{% url 'trombinoscope' %}">👥 Trombinoscope</a>
+              </div>
               {% if user.is_staff %}
                 <div class="col-6">
                   <a class="nav-link small text-success fw-bold" href="{% url 'admin_saisie_resultats' %}">⚙️ Saisir Résultats</a>

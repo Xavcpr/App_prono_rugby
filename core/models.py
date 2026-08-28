@@ -16,9 +16,33 @@ class Player(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=100)
     seasons = models.ManyToManyField('Season', blank=True)
+    # Profil "cohésion de groupe"
+    birth_date = models.DateField(null=True, blank=True, verbose_name="Date de naissance")
+    aime = models.TextField(blank=True, default="", verbose_name="J'aime")
+    aime_pas = models.TextField(blank=True, default="", verbose_name="Je n'aime pas")
 
     def __str__(self):
         return self.name
+
+    @property
+    def initials(self):
+        parts = [w[0].upper() for w in self.name.split() if w]
+        return "".join(parts[:2])
+
+    @property
+    def avatar_color(self):
+        colors = ["#e74c3c", "#3498db", "#2ecc71", "#f39c12",
+                  "#9b59b6", "#1abc9c", "#e67e22", "#34495e"]
+        return colors[sum(ord(c) for c in self.name) % len(colors)]
+
+    @property
+    def age(self):
+        if not self.birth_date:
+            return None
+        today = timezone.localdate()
+        return today.year - self.birth_date.year - (
+            (today.month, today.day) < (self.birth_date.month, self.birth_date.day)
+        )
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None
