@@ -73,7 +73,12 @@
             <div class="results-summary">
                 <strong>🏆 Résultats Officiels enregistrés :</strong>
                 {% if real_winner %}Vainqueur : {{ real_winner.name }}{% endif %}
-                {% if real_results.real_best_try_scorer %}| Marqueur : {{ real_results.real_best_try_scorer }}{% endif %}
+                {% if try_top3 %}
+                    | Marqueur : {% for rank, names in try_top3.items %}{% if names %}R{{ rank }}: {{ names|join:", " }} |{% endif %}{% endfor %}
+                {% endif %}
+                {% if point_top3 %}
+                    Réalisateur : {% for rank, names in point_top3.items %}{% if names %}R{{ rank }}: {{ names|join:", " }} |{% endif %}{% endfor %}
+                {% endif %}
                 <span class="small float-end">Les couleurs indiquent la proximité avec le résultat réel.</span>
             </div>
         {% endif %}
@@ -155,31 +160,42 @@
                 <tr style="background: #34495e; color: white">
                     <th class="team-cell">Joueur</th>
                     <th>Vainqueur 🏆</th>
-                    {% if "Top 14" in selected_competition.name %}
-                        <th>Essais 🏉</th>
-                        <th>Points 🎯</th>
-                    {% endif %}
+                    <th>Essais 🏉</th>
+                    <th>Points 🎯</th>
                 </tr>
             </thead>
             <tbody>
                 {% for bp in bonus_preds %}
+                    {% with m=bonus_matches|get_item:bp.id %}
                     <tr>
                         <td class="team-cell">{{ bp.player.name }}</td>
-                        <td {% if real_winner and bp.winner == real_winner %}class="table-success" style="background:#d4edda"{% endif %}>
+                        <td {% if real_winner and bp.winner == real_winner %}style="background:#d4edda"{% endif %}>
                             <strong>{{ bp.winner.name|default:"-" }}</strong>
                         </td>
-                        {% if "Top 14" in selected_competition.name %}
-                            <td {% if real_results.real_best_try_scorer and bp.best_try_scorer|lower == real_results.real_best_try_scorer|lower %}style="background:#d4edda"{% endif %}>
-                                {{ bp.best_try_scorer|default:"-" }}
-                            </td>
-                            <td {% if real_results.real_best_point_scorer and bp.best_point_scorer|lower == real_results.real_best_point_scorer|lower %}style="background:#d4edda"{% endif %}>
-                                {{ bp.best_point_scorer|default:"-" }}
-                            </td>
-                        {% endif %}
+                        <td {% if m and m.try %}style="background:#d4edda"{% endif %}>
+                            {{ bp.best_try_scorer|default:"-" }}
+                        </td>
+                        <td {% if m and m.point %}style="background:#d4edda"{% endif %}>
+                            {{ bp.best_point_scorer|default:"-" }}
+                        </td>
                     </tr>
+                    {% endwith %}
                 {% endfor %}
             </tbody>
         </table>
+        {% if try_top3 or point_top3 %}
+            <div class="alert alert-info small">
+                <strong>🏅 Réels :</strong>
+                Marqueur —
+                {% for rank, names in try_top3.items %}
+                    {% if names %}{{ rank }}: {{ names|join:", " }} |{% endif %}
+                {% endfor %}
+                Réalisateur —
+                {% for rank, names in point_top3.items %}
+                    {% if names %}{{ rank }}: {{ names|join:", " }} |{% endif %}
+                {% endfor %}
+            </div>
+        {% endif %}
     {% else %}
         <div style="text-align: center;
                     padding: 50px;

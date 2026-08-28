@@ -364,6 +364,9 @@ class CompetitionResult(models.Model):
     real_winner = models.ForeignKey(Team, on_delete=models.SET_NULL, null=True, related_name="real_winner")
     real_best_try_scorer = models.CharField(max_length=100, blank=True)
     real_best_point_scorer = models.CharField(max_length=100, blank=True)
+    # Meilleurs marqueurs/réalisateurs : top 3, ex-aequo possibles -> {"1": [nom,...], "2": [...], "3": [...]}
+    real_best_try_scorers = models.JSONField(default=dict, blank=True)
+    real_best_point_scorers = models.JSONField(default=dict, blank=True)
     
     # Résultats Classement (JSON pour aller vite : { "pool1": {team_id: position}, "all": {team_id: position} })
     rankings_json = models.JSONField(default=dict) 

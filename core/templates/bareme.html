@@ -103,6 +103,47 @@
             </div>
         </div>
     </div>
+    <div class="card shadow-sm mb-5 border-success">
+        <div class="card-header bg-success text-white fw-bold">🏅 Bonus Meilleur Marqueur & Meilleur Réalisateur (par compétition)</div>
+        <div class="card-body p-0 text-center">
+            {% if is_ancien %}
+                <table class="table table-bordered mb-0">
+                    <tr class="table-light">
+                        <th>Compétition</th>
+                        <th>Bonus (si bon pronostic)</th>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">Top 14</td>
+                        <td class="fw-bold text-success">+ {{ t14.bonus }} pts</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">Champions Cup / 6 Nations</td>
+                        <td class="fw-bold text-secondary">0 pt (non concernées)</td>
+                    </tr>
+                </table>
+            {% else %}
+                <table class="table table-bordered mb-0">
+                    <tr class="table-light">
+                        <th>Compétition</th>
+                        <th>🥇 1er</th>
+                        <th>🥈 2e</th>
+                        <th>🥉 3e</th>
+                    </tr>
+                    {% for comp, ranks in scorer_ranks.items %}
+                        <tr>
+                            <td class="fw-bold">{{ comp }}</td>
+                            {% for rank, pts in ranks.items %}
+                                <td class="fw-bold {% if pts == 0 %}text-secondary{% else %}text-success{% endif %}">+ {{ pts }} pts</td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </table>
+                <div class="card-footer small text-muted">
+                    <i class="fas fa-info-circle"></i> Les ex-aequo sont possibles : chaque nom prédit qui apparaît dans le top 3 rapporte les points de son rang réel (marqueur ET réalisateur indépendamment).
+                </div>
+            {% endif %}
+        </div>
+    </div>
     <div class="row g-4 mb-5">
         <div class="col-md-6">
             <div class="card h-100 border-warning shadow-sm">

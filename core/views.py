@@ -390,7 +390,8 @@ def _classement_prediction(request):
                             player=request.user.player,
                             team_id=t_id,
                             position=pos,
-                            block_key=block["key"]
+                            block_key=block["key"],
+                            season=season
                         )
                         recorded_teams.add(t_id)
         
@@ -766,7 +767,7 @@ def round_results_board(request, round_id):
     current_scale = scoring.BONUS_SCALES.get(comp_name, {})
     
     # Multiplicateur de compÃ©tition (ex: 6 Nations)
-    comp_multiplier = 2 if ("6 Nations" in comp_name or "Six Nations" in comp_name) else 1
+    comp_multiplier = 2 if scoring._competition_key(comp_name) == "6 Nations" else 1
     
     # Multiplicateur de phase (ex: POOL=1, R16=1.25, QF=1.5...)
     phase_multiplier = scoring.PHASE_MULTIPLIERS.get(round_obj.phase, 1.0)
@@ -1263,6 +1264,9 @@ def recap_pronos_classement(request):
     matrix = {} 
     teams_by_block = {}
     bonus_preds = []
+    try_top3 = {}
+    point_top3 = {}
+    bonus_matches = {}
 
     if competition_id:
         selected_competition = get_object_or_404(Competition, id=competition_id)
@@ -1302,6 +1306,17 @@ def recap_pronos_classement(request):
 
         bonus_preds = CompetitionBonusPrediction.objects.filter(competition=selected_competition, season=season).select_related('player', 'winner')
 
+        # PrÃ©paration des top3 rÃ©els (marqueur/rÃ©alisateur) + flags de rÃ©ussite par joueur
+        try_top3 = scoring._real_top3(result_obj, "real_best_try_scorers", "real_best_try_scorer") if result_obj else {}
+        point_top3 = scoring._real_top3(result_obj, "real_best_point_scorers", "real_best_point_scorer") if result_obj else {}
+        bonus_matches = {}
+        for bp in bonus_preds:
+            t = any(bp.best_try_scorer.strip().lower() == (n or "").strip().lower()
+                    for names in try_top3.values() for n in names) if bp.best_try_scorer else False
+            p = any(bp.best_point_scorer.strip().lower() == (n or "").strip().lower()
+                    for names in point_top3.values() for n in names) if bp.best_point_scorer else False
+            bonus_matches[bp.id] = {"try": t, "point": p}
+
     return render(request, "pronos/recap_classement.html", {
         "competitions": competitions,
         "selected_competition": selected_competition,
@@ -1312,6 +1327,9 @@ def recap_pronos_classement(request):
         "real_rankings": real_rankings,
         "real_winner": real_winner,
         "real_results": result_obj,
+        "try_top3": try_top3,
+        "point_top3": point_top3,
+        "bonus_matches": bonus_matches,
         "season": season,
         "seasons": seasons,
     })
@@ -1322,7 +1340,8 @@ def compute_competition_points(season):
     if not result:
         return "Aucun rÃ©sultat saisi."
 
-    rules = RUGBY_SCORING.get(season.competition.name, RUGBY_SCORING["Top 14"])
+    s_cfg = scoring._get_scoring_config(season)
+    rules = s_cfg["RUGBY_SCORING"].get(scoring._competition_key(season.competition.name), s_cfg["RUGBY_SCORING"]["Top 14"])
     players = _players_for_season(season)
     
     for player in players:
@@ -1354,13 +1373,8 @@ def compute_competition_points(season):
         if bonus_pred and result.real_winner:
             if bonus_pred.winner == result.real_winner:
                 pts_bonus_finaux += rules["winner"]
-            
-            if result.real_best_try_scorer:
-                if bonus_pred.best_try_scorer.lower().strip() == result.real_best_try_scorer.lower().strip():
-                    pts_bonus_finaux += rules["bonus"]
-            if result.real_best_point_scorer:
-                if bonus_pred.best_point_scorer.lower().strip() == result.real_best_point_scorer.lower().strip():
-                    pts_bonus_finaux += rules["bonus"]
+        
+        pts_bonus_finaux += scoring.bonus_marqueur_realisateur_points(season, bonus_pred, result)
 
         # 3. SAUVEGARDE : On utilise la saison pour identifier la bonne ligne
         if player.user:
@@ -1404,9 +1418,12 @@ def admin_saisie_resultats(request):
     if request.method == "POST":
         res_obj, _ = CompetitionResult.objects.get_or_create(season=season)
         
-        # 1. Sauvegarde des bonus rÃ©els
-        res_obj.real_best_try_scorer = request.POST.get("real_best_try_scorer", "").strip()
-        res_obj.real_best_point_scorer = request.POST.get("real_best_point_scorer", "").strip()
+        # 1. Sauvegarde des bonus rÃ©els (top 3, ex-aequo gÃ©rÃ©s via virgules)
+        res_obj.real_best_try_scorers = scoring._parse_ranked_names(request.POST, "real_best_try_scorer")
+        res_obj.real_best_point_scorers = scoring._parse_ranked_names(request.POST, "real_best_point_scorer")
+        # Backward compat : les anciens champs simples gardent le 1er nom du rang 1
+        res_obj.real_best_try_scorer = (res_obj.real_best_try_scorers.get("1") or [""])[0]
+        res_obj.real_best_point_scorer = (res_obj.real_best_point_scorers.get("1") or [""])[0]
         winner_id = request.POST.get("real_winner")
         res_obj.real_winner_id = int(winner_id) if winner_id else None
 
@@ -1424,11 +1441,22 @@ def admin_saisie_resultats(request):
         messages.success(request, "RÃ©sultats officiels enregistrÃ©s !")
         return redirect(f"{request.path}?competition={selected_competition.id}")
 
+    # PrÃ©remplissage du formulaire (GET) avec les dÃ©jÃ  enregistrÃ©s
+    result_obj = CompetitionResult.objects.filter(season=season).first() if season else None
+    prefill_try = {}
+    prefill_point = {}
+    if result_obj:
+        prefill_try = {r: ", ".join(scoring._real_top3(result_obj, "real_best_try_scorers", "real_best_try_scorer").get(r, [])) for r in ("1", "2", "3")}
+        prefill_point = {r: ", ".join(scoring._real_top3(result_obj, "real_best_point_scorers", "real_best_point_scorer").get(r, [])) for r in ("1", "2", "3")}
+
     return render(request, "pronos/admin_saisie_resultats.html", {
         "competitions": competitions,
         "selected_competition": selected_competition,
         "blocks": blocks,
         "season": season,
+        "result_obj": result_obj,
+        "prefill_try": prefill_try,
+        "prefill_point": prefill_point,
     })
     
     
@@ -1549,13 +1577,18 @@ def statistics_view(request):
             if bonus_pred and res:
                 if bonus_pred.winner == res.real_winner and res.real_winner is not None:
                     has_winner = True
-                
-                if bonus_pred.best_try_scorer and res.real_best_try_scorer:
-                    if bonus_pred.best_try_scorer.strip().lower() == res.real_best_try_scorer.strip().lower():
+
+                # Marqueur / Réalisateur : gain si le prono matche l'un des 3 rangs réels (ex-aequo inclus)
+                if bonus_pred.best_try_scorer:
+                    top3 = scoring._real_top3(res, "real_best_try_scorers", "real_best_try_scorer")
+                    if any(bonus_pred.best_try_scorer.strip().lower() == (n or "").strip().lower()
+                           for names in top3.values() for n in names):
                         has_scorer = True
 
-                if bonus_pred.best_point_scorer and res.real_best_point_scorer:
-                    if bonus_pred.best_point_scorer.strip().lower() == res.real_best_point_scorer.strip().lower():
+                if bonus_pred.best_point_scorer:
+                    top3p = scoring._real_top3(res, "real_best_point_scorers", "real_best_point_scorer")
+                    if any(bonus_pred.best_point_scorer.strip().lower() == (n or "").strip().lower()
+                           for names in top3p.values() for n in names):
                         has_realisateur = True
 
             user_data = {
@@ -1677,6 +1710,7 @@ def bareme_view(request):
         't14': cfg["RUGBY_SCORING"].get("Top 14"),
         'cc': cfg["RUGBY_SCORING"].get("Champions Cup"),
         '6nations': cfg["RUGBY_SCORING"].get("6 Nations"),
+        'scorer_ranks': cfg.get("SCORER_RANKS", scoring._OLD_BAREME_CONFIG.get("SCORER_RANKS", {})),
         'is_ancien': is_ancien,
     })
     

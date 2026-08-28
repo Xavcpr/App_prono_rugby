@@ -48,26 +48,23 @@
                             <select name="real_winner" class="form-select border-primary">
                                 <option value="">-- Équipe --</option>
                                 {% for team in selected_competition.teams.all|dictsort:"name" %}
-                                    <option value="{{ team.id }}">{{ team.name }}</option>
+                                    <option value="{{ team.id }}"
+                                            {% if result_obj and result_obj.real_winner_id == team.id %}selected{% endif %}>{{ team.name }}</option>
                                 {% endfor %}
                             </select>
                         </div>
-                        {% if "Top 14" in selected_competition.name %}
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label small fw-bold">MEILLEUR MARQUEUR (NOM EXACT)</label>
-                                <input type="text"
-                                       name="real_best_try_scorer"
-                                       class="form-control"
-                                       placeholder="Ex: Penaud">
-                            </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label small fw-bold">MEILLEUR SCOREUR (NOM EXACT)</label>
-                                <input type="text"
-                                       name="real_best_point_scorer"
-                                       class="form-control"
-                                       placeholder="Ex: Ramos">
-                            </div>
-                        {% endif %}
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label small fw-bold">MEILLEUR MARQUEUR D'ESSAIS (nom exact, ex-aequo séparés par des virgules)</label>
+                            <input type="text" name="real_best_try_scorer_1" class="form-control mb-1" placeholder="1er (ex: Dréan, Penaud)" value="{{ prefill_try.1|default:'' }}">
+                            <input type="text" name="real_best_try_scorer_2" class="form-control mb-1" placeholder="2e" value="{{ prefill_try.2|default:'' }}">
+                            <input type="text" name="real_best_try_scorer_3" class="form-control" placeholder="3e" value="{{ prefill_try.3|default:'' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label small fw-bold">MEILLEUR RÉALISATEUR (PTS, nom exact, ex-aequo séparés par des virgules)</label>
+                            <input type="text" name="real_best_point_scorer_1" class="form-control mb-1" placeholder="1er (ex: Ramos, Jaminet)" value="{{ prefill_point.1|default:'' }}">
+                            <input type="text" name="real_best_point_scorer_2" class="form-control mb-1" placeholder="2e" value="{{ prefill_point.2|default:'' }}">
+                            <input type="text" name="real_best_point_scorer_3" class="form-control" placeholder="3e" value="{{ prefill_point.3|default:'' }}">
+                        </div>
                     </div>
                 </div>
                 <h4 class="section-title">📊 CLASSEMENT FINAL OFFICIEL</h4>

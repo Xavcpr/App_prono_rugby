@@ -30,6 +30,11 @@ _DEFAULT_SCORING_CONFIG = {
         "Champions Cup": {"bonus": 0, "winner": 200, "exact_rank": 50, "gap_1": 20, "gap_2": 0, "all_class": 100, "1st": 150, "2nd": 75, "3rd": 25},
         "6 Nations": {"bonus": 0, "winner": 100, "exact_rank": 50, "gap_1": 0, "gap_2": 0, "all_class": 100, "1st": 50, "2nd": 25, "3rd": 10},
     },
+    "SCORER_RANKS": {
+        "Top 14": {"1": 300, "2": 150, "3": 50},
+        "Champions Cup": {"1": 200, "2": 75, "3": 25},
+        "6 Nations": {"1": 50, "2": 25, "3": 0},
+    },
     "MASTER_PALIERS": {12: 50, 13: 150, 14: 200, 15: 250},
 }
 
@@ -39,6 +44,13 @@ PHASE_MULTIPLIERS = _DEFAULT_SCORING_CONFIG["PHASE_MULTIPLIERS"]
 BONUS_SCALES = _DEFAULT_SCORING_CONFIG["BONUS_SCALES"]
 RUGBY_SCORING = _DEFAULT_SCORING_CONFIG["RUGBY_SCORING"]
 MASTER_PALIERS = _DEFAULT_SCORING_CONFIG["MASTER_PALIERS"]
+# Echelle dégressive par défaut (saisons 2026/2027+) et ancienne échelle
+SCORER_RANKS = _DEFAULT_SCORING_CONFIG["SCORER_RANKS"]
+_OLD_SCORER_RANKS = {
+    "Top 14": {"1": 200, "2": 0, "3": 0},
+    "Champions Cup": {"1": 0, "2": 0, "3": 0},
+    "6 Nations": {"1": 0, "2": 0, "3": 0},
+}
 
 # Ancien barème (saisons 2025-2026 et antérieures) : seule l'affichage de la page barème
 # est concerné, les anciennes saisons gardent leur config gelée en base.
@@ -75,6 +87,92 @@ def _store_scoring_config(season):
         season.scoring_config = _DEFAULT_SCORING_CONFIG
         season.save(update_fields=["scoring_config"])
 # --- OUTILS DE CALCUL ---
+
+def _parse_ranked_names(post_data, base_name):
+    """Parse les inputs base_name_1..3 en {'1': [noms], '2': [noms], '3': [noms]}.
+    Ex-aequo = plusieurs noms séparés par des virgules dans le même champ."""
+    data = {}
+    for rank in ("1", "2", "3"):
+        raw = post_data.get(f"{base_name}_{rank}", "").strip()
+        names = [n.strip() for n in raw.split(",") if n.strip()]
+        data[rank] = names
+    return data
+
+
+def _competition_key(competition_name):
+    """Clé canonique d'une compétition pour les tables de barème (insensible à la casse)."""
+    n = competition_name.lower()
+    if "6 nations" in n or "six nations" in n: return "6 Nations"
+    if "top 14" in n or "top14" in n: return "Top 14"
+    return "Champions Cup"
+
+
+def _real_top3(result, json_field, old_field):
+    """Retourne {'1': [noms], '2': [noms], '3': [noms]} pour une catégorie.
+    Ex-aequo = plusieurs noms dans la même liste. Fallback sur l'ancien champ simple."""
+    data = getattr(result, json_field, None) or {}
+    if isinstance(data, dict) and any(data.values()):
+        normalized = {}
+        for rank in ("1", "2", "3"):
+            v = data.get(rank)
+            normalized[rank] = [v] if isinstance(v, str) and v.strip() else (list(v) if v else [])
+        return normalized
+    old_val = (getattr(result, old_field, "") or "").strip()
+    return {"1": [old_val] if old_val else [], "2": [], "3": []}
+
+
+def _is_new_bareme_season(season):
+    """Vrai si la saison appartient au cycle 2026/2027 (nouveau barème)."""
+    if season is None:
+        return False
+    from core.management.commands.backfill_player_seasons import get_season_key
+    from core.models import Season as _Season
+    try:
+        year_key = int(get_season_key(season.year))
+    except (TypeError, ValueError):
+        return False
+    years = [int(get_season_key(s.year))
+             for s in _Season.objects.all()
+             if get_season_key(s.year).isdigit()]
+    return bool(years) and year_key == max(years)
+
+
+def scorer_rank_points(season, rank):
+    """Points du barème 'top marqueur/réalisateur' pour un rang donné (1, 2 ou 3).
+    Les saisons du nouveau cycle utilisent l'échelle dégressive ; les saisons passées
+    (gelées sous l'ancien barème) conservent le bonus plat Top 14=200, sinon 0."""
+    if season is not None and season.scoring_config:
+        table = season.scoring_config.get("SCORER_RANKS")
+    else:
+        table = None
+    if not table:
+        table = SCORER_RANKS if _is_new_bareme_season(season) else _OLD_SCORER_RANKS
+    key = _competition_key(season.competition.name)
+    return int(table.get(key, {}).get(str(rank), 0) or 0)
+
+
+def bonus_marqueur_realisateur_points(season, bonus_pred, result):
+    """Points bonus meilleur marqueur + meilleur réalisateur (dégressif, ex-aequo gérés).
+    Le joueur ne gagne que le meilleur rang atteint pour chaque catégorie."""
+    if bonus_pred is None or result is None:
+        return 0
+    total = 0
+    categories = (
+        ("real_best_try_scorer", "real_best_try_scorers", "best_try_scorer"),
+        ("real_best_point_scorer", "real_best_point_scorers", "best_point_scorer"),
+    )
+    for old_field, json_field, pred_field in categories:
+        pred_name = (getattr(bonus_pred, pred_field, "") or "").strip()
+        if not pred_name:
+            continue
+        pred = pred_name.lower()
+        top3 = _real_top3(result, json_field, old_field)
+        for rank in ("1", "2", "3"):
+            names = top3.get(rank, [])
+            if any(pred == (n or "").strip().lower() for n in names):
+                total += scorer_rank_points(season, rank)
+                break
+    return total
 
 def get_winner_side(score_home, score_away):
     if score_home > score_away: return "HOME"
@@ -208,7 +306,7 @@ def process_round_scores(round_obj):
             # MULTIPLICATEUR (Appliqué sur tout : Matchs + Bonus de palier)
             multiplier = cfg["PHASE_MULTIPLIERS"].get(round_obj.phase, 1.0)
             
-            if "6 Nations" in comp_name:
+            if _competition_key(comp_name) == "6 Nations":
                 multiplier *= 2.0
 
             final_daily_score = (total_points_matchs + day_bonus) * multiplier
@@ -284,7 +382,7 @@ def compute_season_ranking_points(season_obj, compute_podium=False):
 
     # --- ÉTAPE 2 : CALCUL DU FLAIR (Rangs + Gaps + Vainqueur + Master) ---
     comp_name = season_obj.competition.name
-    clean_key = "6 Nations" if "6 Nations" in comp_name else ("Top 14" if "Top 14" in comp_name else "Champions Cup")
+    clean_key = _competition_key(comp_name)
     s_cfg = _get_scoring_config(season_obj)
     cfg = s_cfg["RUGBY_SCORING"].get(clean_key, {})
     paliers = s_cfg.get("MASTER_PALIERS", {12: 50, 13: 150, 14: 200, 15: 250})
@@ -384,7 +482,7 @@ def compute_competition_points(season):
         return "Aucun r�sultat saisi."
 
     s_cfg = _get_scoring_config(season)
-    rules = s_cfg["RUGBY_SCORING"].get(season.competition.name, s_cfg["RUGBY_SCORING"]["Top 14"])
+    rules = s_cfg["RUGBY_SCORING"].get(_competition_key(season.competition.name), s_cfg["RUGBY_SCORING"]["Top 14"])
     players = Player.objects.all()
 
     for player in players:
@@ -408,19 +506,14 @@ def compute_competition_points(season):
         bonus_pred = CompetitionBonusPrediction.objects.filter(
             player=player,
             competition=season.competition,
-            season=season
+season=season
         ).first()
 
         if bonus_pred and result.real_winner:
             if bonus_pred.winner == result.real_winner:
                 pts_bonus_finaux += rules["winner"]
 
-            if result.real_best_try_scorer:
-                if bonus_pred.best_try_scorer.lower().strip() == result.real_best_try_scorer.lower().strip():
-                    pts_bonus_finaux += rules["bonus"]
-            if result.real_best_point_scorer:
-                if bonus_pred.best_point_scorer.lower().strip() == result.real_best_point_scorer.lower().strip():
-                    pts_bonus_finaux += rules["bonus"]
+        pts_bonus_finaux += bonus_marqueur_realisateur_points(season, bonus_pred, result)
 
         if player.user:
             s_score, _ = SeasonScore.objects.get_or_create(

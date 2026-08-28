@@ -166,11 +166,25 @@
             </div>
           </div>
         {% else %}
-          <h4 class="section-title">✨ Bonus Vainqueur</h4>
+          <h4 class="section-title">✨ Bonus Marqueur, Réalisateur & Vainqueur</h4>
           <div class="bonus-card" style="border-left-color: #3498db;">
             <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label font-weight-bold text-muted small">VAINQUEUR FINAL DE LA COMPÉTITION 🏆</label>
+              <div class="col-md-4 mb-3">
+                <label class="form-label font-weight-bold text-muted small">MEILLEUR MARQUEUR D'ESSAIS</label>
+                <input type="text"
+                       name="best_try_scorer"
+                       class="form-control"
+                       value="{{ bonus.best_try_scorer|default:'' }}">
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label font-weight-bold text-muted small">MEILLEUR SCOREUR (PTS)</label>
+                <input type="text"
+                       name="best_point_scorer"
+                       class="form-control"
+                       value="{{ bonus.best_point_scorer|default:'' }}">
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label font-weight-bold text-muted small">VAINQUEUR FINAL 🏆</label>
                 <select name="winner" class="form-select">
                   <option value="">-- Choisir --</option>
                   {% for team in winner_teams %}
