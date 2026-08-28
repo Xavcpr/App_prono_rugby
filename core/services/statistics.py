@@ -5,6 +5,7 @@ from typing import Dict, List, Optional
 from django.db.models import Sum
 
 from core.models import Competition, Round, Match, Player, Prediction, DailyScore, Season
+from core.services.scoring import _get_scoring_config, _competition_key
 
 
 def _outcome(h: int, a: int) -> str:
@@ -68,6 +69,10 @@ class StatsResult:
     bonus_off_table: List[Dict] = field(default_factory=list)
     bonus_def_table: List[Dict] = field(default_factory=list)
     round_dates: List[str] = field(default_factory=list)
+
+    bonus_journee_table: List[Dict] = field(default_factory=list)
+    solo_bons_table: List[Dict] = field(default_factory=list)
+    cinq_bons_table: List[Dict] = field(default_factory=list)
 
 
 def compute_statistics(competition: Optional[Competition], season: Optional[Season] = None, season_ids: Optional[list] = None) -> StatsResult:
@@ -209,6 +214,9 @@ def compute_statistics(competition: Optional[Competition], season: Optional[Seas
     bon_bonus_def_by_player = {k: 0 for k in player_keys}
     mauvais_bonus_def_by_player = {k: 0 for k in player_keys}
 
+    correct_per_round = {}
+    match_correct_players = {}
+
     kpi = {
         "tout_pile": 0, "demi_tout_pile": 0, "demi_dom": 0, "demi_ext": 0,
         "bon_bonus_off": 0, "mauvais_bonus_off": 0,
@@ -264,6 +272,12 @@ def compute_statistics(competition: Optional[Competition], season: Optional[Seas
         else:
             bois_by_player[key] += 1
 
+        # Comptage "bon prono" au sens du code de scoring (0-0 = no show exclu)
+        if ph + pa != 0 and _outcome(ph, pa) == _outcome(mh, ma):
+            correct_per_round.setdefault(m.round_id, {}).setdefault(key, 0)
+            correct_per_round[m.round_id][key] += 1
+            match_correct_players.setdefault(m.id, []).append(key)
+
         if ph == mh and pa == ma:
             kpi["tout_pile"] += 1
             tout_pile_by_player[key] += 1
@@ -308,6 +322,41 @@ def compute_statistics(competition: Optional[Competition], season: Optional[Seas
         combined.sort(key=lambda x: x["points"], reverse=True)
         return combined
 
+    def format_nonzero_trophy(data_dict):
+        return format_trophy({k: v for k, v in data_dict.items() if v > 0})
+
+    # --- BONUS JOURNÉES (palier de bons pronos, ex: Top 14 {7:150, 6:60, 5:20}) ---
+    bonus_journee_by_player = {k: 0 for k in player_keys}
+    round_by_id = {r.id: r for r in rounds}
+    for rid, counts in correct_per_round.items():
+        rnd = round_by_id.get(rid)
+        if rnd is None:
+            continue
+        cfg = _get_scoring_config(rnd.season)
+        scale = cfg["BONUS_SCALES"].get(rnd.season.competition.name, {})
+        multiplier = cfg["PHASE_MULTIPLIERS"].get(rnd.phase, 1.0)
+        if _competition_key(rnd.season.competition.name) == "6 Nations":
+            multiplier *= 2.0
+        for uname, count in counts.items():
+            day_bonus = 0
+            for thresh in sorted(scale.keys(), reverse=True):
+                if count >= thresh:
+                    day_bonus = scale[thresh]
+                    break
+            bonus_journee_by_player[uname] += int(day_bonus * multiplier)
+
+    # --- BONS PRONOS REMARQUABLES : seul (800/1) vs groupe de 5 (800/5) ---
+    solo_by_player = {k: 0 for k in player_keys}
+    cinq_by_player = {k: 0 for k in player_keys}
+    for m_id, unames in match_correct_players.items():
+        unique = sorted(set(unames))
+        n = len(unique)
+        if n == 1:
+            solo_by_player[unique[0]] += 1
+        elif n == 5:
+            for u in unique:
+                cinq_by_player[u] += 1
+
     return StatsResult(
         labels=labels,
         score_series=score_series,
@@ -337,4 +386,7 @@ def compute_statistics(competition: Optional[Competition], season: Optional[Seas
         bonus_off_table=format_bonus(bon_bonus_off_by_player, mauvais_bonus_off_by_player),
         bonus_def_table=format_bonus(bon_bonus_def_by_player, mauvais_bonus_def_by_player),
         round_dates=round_dates,
+        bonus_journee_table=format_nonzero_trophy(bonus_journee_by_player),
+        solo_bons_table=format_nonzero_trophy(solo_by_player),
+        cinq_bons_table=format_nonzero_trophy(cinq_by_player),
     )

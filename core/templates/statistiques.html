@@ -117,6 +117,60 @@
 
     <div class="card mb-4">
       <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+          <h5 class="mb-0">💯 Bons pronos remarquables</h5>
+          <form method="get" class="d-flex align-items-center gap-2">
+            {% if request.GET.competition %}<input type="hidden" name="competition" value="{{ request.GET.competition }}">{% endif %}
+            {% if request.GET.season %}<input type="hidden" name="season" value="{{ request.GET.season }}">{% endif %}
+            <label class="fw-bold mb-0 small text-uppercase">Vue :</label>
+            <select name="bonus"
+                    onchange="this.form.submit()"
+                    class="form-select-custom">
+              <option value="1" {% if bonus_mode == "1" %}selected{% endif %}>Bon prono tout seul (800/1)</option>
+              <option value="5" {% if bonus_mode == "5" %}selected{% endif %}>5 bons pronostiqueurs (800/5)</option>
+            </select>
+          </form>
+        </div>
+        {% if bonus_mode == "5" %}
+          <p class="text-muted small">
+            Nombre de fois où le joueur faisait partie des <strong>5</strong> uniques bons pronostiqueurs
+            d'un match (pot 800 divisé → 800/5).
+          </p>
+        {% else %}
+          <p class="text-muted small">
+            Nombre de matchs où le joueur était le <strong>seul</strong> à avoir le bon pronostic
+            (pot 800 entier → 800/1).
+          </p>
+        {% endif %}
+        <div class="table-container" style="max-height:250px;overflow-y:auto">
+          <table class="rugby-board">
+            <thead><tr><th class="rank-col">#</th><th>Joueur</th><th>Fois</th></tr></thead>
+            <tbody>
+              {% if bonus_mode == "5" %}
+                {% for r in cinq_bons_table %}
+                  <tr>
+                    <td class="rank-col">{% if forloop.first %}{{ forloop.counter }}{% else %}{% with prev=cinq_bons_table|slice:forloop.counter0|last %}{% if r.value == prev.value %}-{% else %}{{ forloop.counter }}{% endif %}{% endwith %}{% endif %}</td>
+                    <td class="text-start ps-3">{{ r.username }}{% if r.username == user.username %} <span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}</td>
+                    <td class="fw-bold" style="color:#8e44ad">{{ r.value }}</td>
+                  </tr>
+                {% empty %}<tr><td colspan="3" class="text-muted">Aucun match avec 5 bons pronostiqueurs</td></tr>{% endfor %}
+              {% else %}
+                {% for r in solo_bons_table %}
+                  <tr>
+                    <td class="rank-col">{% if forloop.first %}{{ forloop.counter }}{% else %}{% with prev=solo_bons_table|slice:forloop.counter0|last %}{% if r.value == prev.value %}-{% else %}{{ forloop.counter }}{% endif %}{% endwith %}{% endif %}</td>
+                    <td class="text-start ps-3">{{ r.username }}{% if r.username == user.username %} <span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}</td>
+                    <td class="fw-bold" style="color:#8e44ad">{{ r.value }}</td>
+                  </tr>
+                {% empty %}<tr><td colspan="3" class="text-muted">Aucun bon prono en solo</td></tr>{% endfor %}
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-body">
         <h5>Classement détaillé</h5>
         <div class="table-container">
           <table class="rugby-board">
@@ -388,6 +442,34 @@
       </div>
     </div>
 
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5>🎁 Bonus journées</h5>
+            <p class="text-muted small">
+              Points gagnés via les paliers de bons pronos d'une journée
+              (par ex. Top 14 : 5/7 → +20, 6/7 → +60, 7/7 → +150).
+            </p>
+            <div class="table-container" style="max-height:220px;overflow-y:auto">
+              <table class="rugby-board">
+                <thead><tr><th class="rank-col">#</th><th>Joueur</th><th>Pts</th></tr></thead>
+                <tbody>
+                  {% for r in bonus_journee_table %}
+                    <tr>
+                      <td class="rank-col">{% if forloop.first %}{{ forloop.counter }}{% else %}{% with prev=bonus_journee_table|slice:forloop.counter0|last %}{% if r.value == prev.value %}-{% else %}{{ forloop.counter }}{% endif %}{% endwith %}{% endif %}</td>
+                      <td class="text-start ps-3">{{ r.username }}{% if r.username == user.username %} <span class="badge bg-warning text-dark ms-1">Moi</span>{% endif %}</td>
+                      <td class="fw-bold" style="color:#e67e22">{{ r.value }}</td>
+                    </tr>
+                  {% empty %}<tr><td colspan="3" class="text-muted">Aucun bonus de journée</td></tr>{% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     {% with first_podium=podium_ranking|first %}
     {% if first_podium and first_podium.podium_pts > 0 %}
     <div class="row g-3 mb-4">
@@ -421,7 +503,21 @@
       <div class="col-md-12 mb-4">
         <div class="card">
           <div class="card-body">
-            <h5>Évolution des scores</h5>
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+              <h5 class="mb-0">Évolution des scores</h5>
+              <div class="d-flex align-items-center gap-2">
+                <label class="fw-bold small text-uppercase mb-0">Référence :</label>
+                <select id="evolMode" class="form-select-custom">
+                  <option value="year">Début de l'année</option>
+                  <option value="prev">Journée précédente</option>
+                  <option value="last5">5 dernières journées</option>
+                </select>
+              </div>
+            </div>
+            <p class="text-muted small">
+              Tracé <strong>joueur − meilleur</strong> : la ligne du leader reste à 0 (en haut),
+              les autres passent en négatif.
+            </p>
             <div style="height: 300px;">
               <canvas id="scoreChart"></canvas>
             </div>
@@ -469,17 +565,61 @@
 
     if (document.getElementById('scoreChart')) {
       const players = Object.keys(scoreSeries);
-      const totalSeries = {};
-      for (const k of players) {
-        totalSeries[k] = scoreSeries[k].map((v, i) => v + (flairSeries[k]?.[i] || 0) + (podiumSeries[k]?.[i] || 0));
+      let scoreChart = null;
+
+      function indexwiseMax(seriesObj) {
+        const first = Object.values(seriesObj)[0] || [];
+        const len = first.length;
+        const maxes = new Array(len).fill(-Infinity);
+        for (const arr of Object.values(seriesObj)) {
+          arr.forEach((v, i) => { if (v > maxes[i]) maxes[i] = v; });
+        }
+        return maxes;
       }
-      const mainDs = makeDatasets(totalSeries);
-      const matchOnlyDs = makeDatasets(scoreSeries).map(d => ({
-        ...d, borderDash: [4, 4], pointRadius: 0, borderWidth: 1,
-        label: d.label + ' (M)'
-      }));
-      const allDs = [...mainDs, ...matchOnlyDs].filter(d => d.data.length > 0);
-      new Chart(document.getElementById('scoreChart'), { type: "line", data: { labels, datasets: allDs }, options: opt });
+
+      function relToMax(seriesObj, maxes) {
+        const out = {};
+        for (const k of Object.keys(seriesObj)) {
+          out[k] = seriesObj[k].map((v, i) => Math.round((v - maxes[i]) * 100) / 100);
+        }
+        return out;
+      }
+
+      function transformSince(arr, mode) {
+        const res = [];
+        for (let i = 0; i < arr.length; i++) {
+          const v = arr[i] || 0;
+          if (mode === 'prev') {
+            res.push(i === 0 ? v : v - (arr[i - 1] || 0));
+          } else if (mode === 'last5') {
+            const base = i >= 5 ? (arr[i - 5] || 0) : 0;
+            res.push(v - base);
+          } else {
+            res.push(v);
+          }
+        }
+        return res;
+      }
+
+      function rebuildScoreChart(mode) {
+        const total = {}, matchOnly = {};
+        for (const k of players) {
+          const s = scoreSeries[k] || [];
+          total[k] = transformSince(s.map((v, i) => v + (flairSeries[k]?.[i] || 0) + (podiumSeries[k]?.[i] || 0)), mode);
+          matchOnly[k] = transformSince(s, mode);
+        }
+        const mainDs = makeDatasets(relToMax(total, indexwiseMax(total)));
+        const matchOnlyDs = makeDatasets(relToMax(matchOnly, indexwiseMax(matchOnly))).map(d => ({
+          ...d, borderDash: [4, 4], pointRadius: 0, borderWidth: 1,
+          label: d.label + ' (M)'
+        }));
+        const allDs = [...mainDs, ...matchOnlyDs].filter(d => d.data.length > 0);
+        if (scoreChart) scoreChart.destroy();
+        scoreChart = new Chart(document.getElementById('scoreChart'), { type: "line", data: { labels, datasets: allDs }, options: opt });
+      }
+
+      rebuildScoreChart(document.getElementById('evolMode').value);
+      document.getElementById('evolMode').addEventListener('change', (e) => rebuildScoreChart(e.target.value));
     }
     if (document.getElementById('rankChart')) {
       new Chart(document.getElementById('rankChart'), { 

@@ -1236,6 +1236,10 @@ def statistiques_view(request):
         "bonus_def_table": stats.bonus_def_table,
         "match_ranking": match_ranking,
         "podium_ranking": podium_ranking,
+        "bonus_journee_table": stats.bonus_journee_table,
+        "solo_bons_table": stats.solo_bons_table,
+        "cinq_bons_table": stats.cinq_bons_table,
+        "bonus_mode": "5" if request.GET.get("bonus", "1") == "5" else "1",
     }
 
     return render(request, "statistiques.html", context)
