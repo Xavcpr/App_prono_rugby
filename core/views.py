@@ -216,6 +216,7 @@ def profil_view(request):
         birth = request.POST.get("birth_date", "").strip()
         player.aime = request.POST.get("aime", "").strip()
         player.aime_pas = request.POST.get("aime_pas", "").strip()
+        player.alert_email = request.POST.get("alert_email", "").strip()
         if birth:
             try:
                 player.birth_date = datetime.strptime(birth, "%Y-%m-%d").date()

@@ -178,7 +178,7 @@ admin.site.register(Team)
 
 class PlayerAdmin(admin.ModelAdmin):
     filter_horizontal = ('seasons',)
-    list_display = ('name', 'user', 'photo_thumb', 'birth_date', 'age_display', 'season_list')
+    list_display = ('name', 'user', 'photo_thumb', 'alert_email', 'birth_date', 'age_display', 'season_list')
     search_fields = ('name',)
 
     def photo_thumb(self, obj):

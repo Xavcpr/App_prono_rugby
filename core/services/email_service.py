@@ -1,7 +1,6 @@
 import os
 from django.core.mail import send_mail
 from django.conf import settings
-from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
 
@@ -42,13 +41,14 @@ def send_round_reminders():
             continue
 
         label = f"H-{hour_str}"
-        players = Player.objects.filter(
-            user__isnull=False, user__email__gt=""
-        ).select_related("user")
+        players = Player.objects.filter(user__isnull=False).select_related("user")
 
         missing_players = []
         sent_count = 0
         for player in players:
+            recipient = (player.alert_email or player.user.email).strip()
+            if not recipient:
+                continue
             has_pred = Prediction.objects.filter(
                 player=player, match__round=rnd
             ).exists()
@@ -64,7 +64,7 @@ def send_round_reminders():
                 f"Va sur : https://xavfabiani.pythonanywhere.com/pronos/\n\n"
                 f"À très vite !"
             )
-            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [player.user.email])
+            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [recipient])
             sent_count += 1
 
         # À H-6, envoyer un récap au GO
@@ -94,6 +94,8 @@ def send_round_reminders():
 
 
 def notify_new_round(round_obj):
+    from core.models import Player
+
     subject = (
         f"[Pronos] Nouvelle journée : "
         f"{round_obj.season.competition.name} J{round_obj.number}"
@@ -105,9 +107,11 @@ def notify_new_round(round_obj):
         f"Va sur : https://xavfabiani.pythonanywhere.com/pronos/\n\n"
         f"À très vite !"
     )
-    users = (
-        User.objects.filter(player__isnull=False, email__gt="")
-        .values_list("email", flat=True)
-    )
-    if users:
-        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, list(users))
+    recipients = []
+    players = Player.objects.filter(user__isnull=False).select_related("user")
+    for p in players:
+        email = (p.alert_email or p.user.email).strip()
+        if email and email not in recipients:
+            recipients.append(email)
+    if recipients:
+        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, recipients)

@@ -18,9 +18,10 @@ class Player(models.Model):
     seasons = models.ManyToManyField('Season', blank=True)
     # Profil "cohésion de groupe"
     birth_date = models.DateField(null=True, blank=True, verbose_name="Date de naissance")
-    aime = models.TextField(blank=True, default="", verbose_name="J'aime")
-    aime_pas = models.TextField(blank=True, default="", verbose_name="Je n'aime pas")
+    aime = models.TextField(blank=True, default="", verbose_name="Club / équipes ou joueurs préférés")
+    aime_pas = models.TextField(blank=True, default="", verbose_name="Clubs, équipes ou joueurs détestés")
     photo = models.ImageField(upload_to="photos/%Y/", blank=True, null=True, verbose_name="Photo de profil")
+    alert_email = models.EmailField(blank=True, default="", verbose_name="Email pour les alertes (H-24, H-6)")
 
     def __str__(self):
         return self.name

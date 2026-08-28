@@ -1,8 +1,9 @@
 import pytest
 import base64
-from datetime import date
+from datetime import date, timedelta
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.utils import timezone
 
 PNG_1PX = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
@@ -37,7 +38,7 @@ class TestProfilPage:
         client.force_login(player.user)
         resp = client.get(reverse("profil"), secure=True)
         assert resp.status_code == 200
-        assert "J'aime" in resp.content.decode()
+        assert "Clubs, équipes ou joueurs préférés" in resp.content.decode()
 
     def test_post_saves(self, client, player):
         client.force_login(player.user)
@@ -96,6 +97,97 @@ class TestProfilPage:
         player.refresh_from_db()
         resp = client.get(player.photo.url, secure=True)
         assert resp.status_code == 200
+
+
+@pytest.mark.django_db
+class TestAlertEmail:
+    def test_post_saves_alert_email(self, client, player):
+        client.force_login(player.user)
+        client.post(
+            reverse("profil"),
+            {"birth_date": "", "aime": "", "aime_pas": "", "alert_email": "alerts@example.com"},
+            secure=True,
+        )
+        player.refresh_from_db()
+        assert player.alert_email == "alerts@example.com"
+
+    def test_not_shown_in_trombinoscope(self, client, player, season):
+        player.alert_email = "secrete@example.com"
+        player.seasons.add(season)
+        player.save()
+        client.force_login(player.user)
+        resp = client.get(reverse("trombinoscope"), secure=True)
+        html = resp.content.decode()
+        assert "secrete@example.com" not in html
+        assert "alert_email" not in html
+
+    def _make_reminder_round(self, season):
+        from core.models import Round
+        return Round.objects.create(
+            season=season,
+            number=5,
+            date=timezone.now().date() + timedelta(days=1),
+            phase="POOL",
+        )
+
+    def test_send_round_reminders_uses_alert_email(self, monkeypatch, season, player, user):
+        from core.services import email_service
+        rnd = self._make_reminder_round(season)
+        sent_to = []
+        monkeypatch.setattr(
+            email_service,
+            "send_mail",
+            lambda subject, message, frm, to: sent_to.append(to[0]),
+        )
+        user.email = "user@test.com"
+        user.save()
+        player.alert_email = "alert@test.com"
+        player.save()
+        email_service.send_round_reminders()
+        assert sent_to == ["alert@test.com"]
+
+    def test_send_round_reminders_falls_back_to_user_email(self, monkeypatch, season, player, user):
+        from core.services import email_service
+        self._make_reminder_round(season)
+        sent_to = []
+        monkeypatch.setattr(
+            email_service,
+            "send_mail",
+            lambda subject, message, frm, to: sent_to.append(to[0]),
+        )
+        user.email = "user@test.com"
+        user.save()
+        email_service.send_round_reminders()
+        assert sent_to == ["user@test.com"]
+
+    def test_send_round_reminders_skips_player_without_any_email(self, monkeypatch, season, player, user):
+        from core.services import email_service
+        self._make_reminder_round(season)
+        sent_to = []
+        monkeypatch.setattr(
+            email_service,
+            "send_mail",
+            lambda subject, message, frm, to: sent_to.append(to[0]),
+        )
+        email_service.send_round_reminders()
+        assert sent_to == []
+
+    def test_notify_new_round_uses_alert_email(self, monkeypatch, season, player, user):
+        from core.services import email_service
+        sent_to = []
+        monkeypatch.setattr(
+            email_service,
+            "send_mail",
+            lambda subject, message, frm, to: sent_to.extend(to),
+        )
+        user.email = "user@test.com"
+        user.save()
+        player.alert_email = "alert@test.com"
+        player.save()
+        rnd = self._make_reminder_round(season)
+        email_service.notify_new_round(rnd)
+        assert "alert@test.com" in sent_to
+        assert "user@test.com" not in sent_to
 
 
 @pytest.mark.django_db

@@ -48,20 +48,32 @@
           </div>
         </div>
         <div class="mb-3">
-          <label class="form-label fw-bold">👍 J'aime</label>
+          <label class="form-label fw-bold">🏉 Clubs, équipes ou joueurs préférés</label>
           <textarea name="aime"
                     class="form-control"
                     rows="3"
-                    placeholder="Ce qui me plaît (rugby, nourriture, musique, délires de groupe...)"
+                    placeholder="Stade Toulousain, Antoine Dupont, le XV de France, les essais de 80 mètres..."
                     maxlength="500">{{ player.aime }}</textarea>
         </div>
         <div class="mb-3">
-          <label class="form-label fw-bold">👎 Je n'aime pas</label>
+          <label class="form-label fw-bold">🙅 Ce que je déteste en rugby</label>
           <textarea name="aime_pas"
                     class="form-control"
                     rows="3"
-                    placeholder="Ce que je n'aime pas (le café froid, les pertes de connexion..."
+                    placeholder="Le Racing 92, la pluie, les matches sans essai, les transformations manquées..."
                     maxlength="500">{{ player.aime_pas }}</textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">📧 Email pour les alertes</label>
+          <input type="email"
+                 name="alert_email"
+                 class="form-control"
+                 value="{{ player.alert_email }}"
+                 placeholder="ex: monemail@gmail.com">
+          <div class="form-text">
+            C'est sur cette adresse que tu reçois les alertes H-24 et H-6 des matches.
+            Elle n'est <strong>jamais affichée publiquement</strong> : uniquement dans /admin/.
+          </div>
         </div>
         <div class="d-flex gap-2">
           <button type="submit" class="btn btn-primary flex-grow-1">💾 Enregistrer mon profil</button>
