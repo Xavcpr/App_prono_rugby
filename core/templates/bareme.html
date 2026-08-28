@@ -15,7 +15,8 @@
                 <a class="btn btn-sm btn-success" href="{% url 'bareme' %}">🏉 Voir le barème 2026-2027</a>
             {% else %}
                 <span class="badge bg-success fs-6">🏉 Barème actuel (saison 2026-2027)</span>
-                <a class="btn btn-sm btn-outline-secondary" href="{% url 'bareme' %}?ancien=1">📜 Ancien barème</a>
+                <a class="btn btn-sm btn-outline-secondary"
+                   href="{% url 'bareme' %}?ancien=1">📜 Ancien barème</a>
             {% endif %}
         </div>
         <h2 class="text-center mb-4 text-uppercase fw-bold">🏉 Barème Officiel & Calcul des Points</h2>
@@ -68,9 +69,9 @@
                     B_J -- "Top14" --> B_T["5 ou plus ?"]
                     B_J -- "Champions Cup" --> B_C["9 ou plus ?"]
                     B_J -- "6 nations" --> B_N["x 2 !"]:::goldNode
+                    B_T -- "non" --> B_F["Score journée"]
                     B_T -- "oui" --> B_B["voir tableau BJ"]:::greenNode
                     B_C -- "oui" --> B_B
-                    B_T -- "non" --> B_F["Score journée"]
                     B_C -- "non" --> B_F
                     B_B & B_N--> B_F
                     end
