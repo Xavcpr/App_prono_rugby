@@ -20,6 +20,7 @@ class Player(models.Model):
     birth_date = models.DateField(null=True, blank=True, verbose_name="Date de naissance")
     aime = models.TextField(blank=True, default="", verbose_name="J'aime")
     aime_pas = models.TextField(blank=True, default="", verbose_name="Je n'aime pas")
+    photo = models.ImageField(upload_to="photos/%Y/", blank=True, null=True, verbose_name="Photo de profil")
 
     def __str__(self):
         return self.name

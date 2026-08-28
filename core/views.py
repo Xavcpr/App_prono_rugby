@@ -223,6 +223,12 @@ def profil_view(request):
                 player.birth_date = None
         else:
             player.birth_date = None
+        if "photo_clear" in request.POST and player.photo:
+            player.photo.delete(save=False)
+            player.photo = None
+        uploaded = request.FILES.get("photo")
+        if uploaded:
+            player.photo = uploaded
         player.save()
         messages.success(request, "Profil mis à jour !")
         return redirect("profil")

@@ -1,6 +1,12 @@
 import pytest
+import base64
 from datetime import date
 from django.urls import reverse
+from django.core.files.uploadedfile import SimpleUploadedFile
+
+PNG_1PX = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+)
 
 
 @pytest.mark.django_db
@@ -57,6 +63,39 @@ class TestProfilPage:
         client.post(reverse("profil"), {"birth_date": "", "aime": "", "aime_pas": ""}, secure=True)
         player.refresh_from_db()
         assert player.birth_date is None
+
+    def test_upload_photo(self, client, player):
+        client.force_login(player.user)
+        photo = SimpleUploadedFile("photo.png", PNG_1PX, content_type="image/png")
+        resp = client.post(
+            reverse("profil"),
+            {"birth_date": "", "aime": "", "aime_pas": "", "photo": photo},
+            secure=True,
+        )
+        assert resp.status_code == 302
+        player.refresh_from_db()
+        assert player.photo
+        assert player.photo.name.endswith(".png")
+
+    def test_upload_then_clear_photo(self, client, player):
+        client.force_login(player.user)
+        photo = SimpleUploadedFile("photo.png", PNG_1PX, content_type="image/png")
+        client.post(reverse("profil"), {"birth_date": "", "aime": "", "aime_pas": "", "photo": photo}, secure=True)
+        client.post(
+            reverse("profil"),
+            {"birth_date": "", "aime": "", "aime_pas": "", "photo_clear": "on"},
+            secure=True,
+        )
+        player.refresh_from_db()
+        assert not player.photo
+
+    def test_photo_served(self, client, player):
+        client.force_login(player.user)
+        photo = SimpleUploadedFile("photo.png", PNG_1PX, content_type="image/png")
+        client.post(reverse("profil"), {"birth_date": "", "aime": "", "aime_pas": "", "photo": photo}, secure=True)
+        player.refresh_from_db()
+        resp = client.get(player.photo.url, secure=True)
+        assert resp.status_code == 200
 
 
 @pytest.mark.django_db

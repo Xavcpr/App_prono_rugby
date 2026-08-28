@@ -178,8 +178,15 @@ admin.site.register(Team)
 
 class PlayerAdmin(admin.ModelAdmin):
     filter_horizontal = ('seasons',)
-    list_display = ('name', 'user', 'birth_date', 'age_display', 'season_list')
+    list_display = ('name', 'user', 'photo_thumb', 'birth_date', 'age_display', 'season_list')
     search_fields = ('name',)
+
+    def photo_thumb(self, obj):
+        if obj.photo:
+            return f'<img src="{obj.photo.url}" style="width:40px;height:40px;border-radius:50%;object-fit:cover">'
+        return "-"
+    photo_thumb.short_description = "Photo"
+    photo_thumb.allow_tags = True
 
     def age_display(self, obj):
         return obj.age if obj.age is not None else "-"

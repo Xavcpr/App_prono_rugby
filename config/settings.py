@@ -133,6 +133,10 @@ STATIC_URL = 'static/'
 
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# Fichiers uploadés (photos de profil)
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / "mediafiles"
+
 # Email
 EMAIL_BACKEND = os.environ.get('DJANGO_EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
