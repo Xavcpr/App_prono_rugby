@@ -22,6 +22,7 @@ from django.conf import settings
 from django.views.static import serve
 
 from core import views
+from core import pwa_views
 
 urlpatterns = [
     path('admin/saisie-resultats/', views.admin_saisie_resultats, name='admin_saisie_resultats'),
@@ -29,6 +30,11 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("core.urls")),
     path("accounts/", include("django.contrib.auth.urls")),
+    # PWA (application installable sur téléphone)
+    path("manifest.webmanifest", pwa_views.pwa_manifest, name="pwa_manifest"),
+    path("sw.js", pwa_views.service_worker, name="service_worker"),
     # Fichiers uploadés (photos de profil)
     re_path(r"^media/(?P<path>.*)$", serve, {"document_root": settings.MEDIA_ROOT}),
+    # Fichiers statiques (icônes PWA, etc.)
+    re_path(r"^static/(?P<path>.*)$", serve, {"document_root": settings.STATIC_ROOT}),
 ]
