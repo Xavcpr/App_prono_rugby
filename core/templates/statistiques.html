@@ -498,8 +498,8 @@
               </div>
             </div>
             <p class="text-muted small">
-              Tracé <strong>joueur − meilleur</strong> : la ligne du leader reste à 0 (en haut),
-              les autres passent en négatif.
+              Cumul de tous les points (<strong>M + F + P</strong>) par joueur, en <strong>joueur − meilleur</strong> :
+              la ligne du leader reste à 0 (en haut), les autres passent en négatif.
               « Journée précédente » et « 5 dernières journées » coupent l'affichage sur cette fenêtre
               (cumul conservé, pas de différentiel).
             </p>
@@ -512,7 +512,17 @@
       <div class="col-md-12 mb-4">
         <div class="card">
           <div class="card-body">
-            <h5>Évolution du classement</h5>
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+              <h5 class="mb-0">Évolution du classement</h5>
+              <div class="d-flex align-items-center gap-2">
+                <label class="fw-bold small text-uppercase mb-0">Référence :</label>
+                <select id="rankMode" class="form-select-custom">
+                  <option value="year">Début de l'année</option>
+                  <option value="prev">Journée précédente</option>
+                  <option value="last5">5 dernières journées</option>
+                </select>
+              </div>
+            </div>
             <div style="height: 250px;">
               <canvas id="rankChart"></canvas>
             </div>
@@ -548,6 +558,12 @@
 
     const opt = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } };
 
+    function windowStart(mode) {
+      if (mode === 'prev') return Math.max(0, labels.length - 2);
+      if (mode === 'last5') return Math.max(0, labels.length - 6);
+      return 0;
+    }
+
     if (document.getElementById('scoreChart')) {
       const players = Object.keys(scoreSeries);
       let scoreChart = null;
@@ -570,40 +586,39 @@
         return out;
       }
 
-      function windowStart(mode) {
-        if (mode === 'prev') return Math.max(0, labels.length - 2);
-        if (mode === 'last5') return Math.max(0, labels.length - 6);
-        return 0;
-      }
-
       function rebuildScoreChart(mode) {
         const start = windowStart(mode);
         const slicedLabels = labels.slice(start);
         if (slicedLabels.length === 0) return;
-        const total = {}, matchOnly = {};
+        const total = {};
         for (const k of players) {
           const s = scoreSeries[k] || [];
           total[k] = s.slice(start).map((v, i) => v + (flairSeries[k]?.[start + i] || 0) + (podiumSeries[k]?.[start + i] || 0));
-          matchOnly[k] = s.slice(start);
         }
-        const mainDs = makeDatasets(relToMax(total, indexwiseMax(total)));
-        const matchOnlyDs = makeDatasets(relToMax(matchOnly, indexwiseMax(matchOnly))).map(d => ({
-          ...d, borderDash: [4, 4], pointRadius: 0, borderWidth: 1,
-          label: d.label + ' (M)'
-        }));
-        const allDs = [...mainDs, ...matchOnlyDs].filter(d => d.data.length > 0);
+        const ds = makeDatasets(relToMax(total, indexwiseMax(total)));
         if (scoreChart) scoreChart.destroy();
-        scoreChart = new Chart(document.getElementById('scoreChart'), { type: "line", data: { labels: slicedLabels, datasets: allDs }, options: opt });
+        scoreChart = new Chart(document.getElementById('scoreChart'), { type: "line", data: { labels: slicedLabels, datasets: ds }, options: opt });
       }
 
       rebuildScoreChart(document.getElementById('evolMode').value);
       document.getElementById('evolMode').addEventListener('change', (e) => rebuildScoreChart(e.target.value));
     }
     if (document.getElementById('rankChart')) {
-      new Chart(document.getElementById('rankChart'), { 
-        type: "line", data: { labels, datasets: makeDatasets(rankSeries) }, 
-        options: { ...opt, scales: { y: { reverse: true, ticks: { stepSize: 1 } } } } 
-      });
+      let rankChart = null;
+      function rebuildRankChart(mode) {
+        const start = windowStart(mode);
+        const slicedLabels = labels.slice(start);
+        if (slicedLabels.length === 0) return;
+        const sliced = {};
+        for (const k of Object.keys(rankSeries)) sliced[k] = (rankSeries[k] || []).slice(start);
+        if (rankChart) rankChart.destroy();
+        rankChart = new Chart(document.getElementById('rankChart'), {
+          type: "line", data: { labels: slicedLabels, datasets: makeDatasets(sliced) },
+          options: { ...opt, scales: { y: { reverse: true, ticks: { stepSize: 1 } } } }
+        });
+      }
+      rebuildRankChart(document.getElementById('rankMode').value);
+      document.getElementById('rankMode').addEventListener('change', (e) => rebuildRankChart(e.target.value));
     }
   </script>
 {% endblock %}
