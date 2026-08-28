@@ -1664,14 +1664,20 @@ def import_scores_view(request, token):
 
 
 def bareme_view(request):
+    is_ancien = request.GET.get("ancien") == "1"
+    if is_ancien:
+        cfg = scoring._OLD_BAREME_CONFIG
+    else:
+        cfg = scoring._DEFAULT_SCORING_CONFIG
     return render(request, 'bareme.html', {
-        'SCORING_CONFIG': SCORING_CONFIG,
-        'PHASE_MULTIPLIERS': PHASE_MULTIPLIERS,
-        'BONUS_SCALES': BONUS_SCALES,
-        'RUGBY_SCORING': RUGBY_SCORING,
-        't14': RUGBY_SCORING.get("Top 14"),
-        'cc': RUGBY_SCORING.get("Champions Cup"),
-        '6nations': RUGBY_SCORING.get("6 Nations"),
+        'SCORING_CONFIG': cfg["SCORING_CONFIG"],
+        'PHASE_MULTIPLIERS': cfg["PHASE_MULTIPLIERS"],
+        'BONUS_SCALES': cfg["BONUS_SCALES"],
+        'RUGBY_SCORING': cfg["RUGBY_SCORING"],
+        't14': cfg["RUGBY_SCORING"].get("Top 14"),
+        'cc': cfg["RUGBY_SCORING"].get("Champions Cup"),
+        '6nations': cfg["RUGBY_SCORING"].get("6 Nations"),
+        'is_ancien': is_ancien,
     })
     
 def _compute_hof_entry(data, name, season_year, rank, total_players, current_year, is_active):

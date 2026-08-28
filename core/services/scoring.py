@@ -40,6 +40,27 @@ BONUS_SCALES = _DEFAULT_SCORING_CONFIG["BONUS_SCALES"]
 RUGBY_SCORING = _DEFAULT_SCORING_CONFIG["RUGBY_SCORING"]
 MASTER_PALIERS = _DEFAULT_SCORING_CONFIG["MASTER_PALIERS"]
 
+# Ancien barème (saisons 2025-2026 et antérieures) : seule l'affichage de la page barème
+# est concerné, les anciennes saisons gardent leur config gelée en base.
+_OLD_BAREME_CONFIG = {
+    "SCORING_CONFIG": {
+        "MATCH_POOL_BASE": 680,
+        "PERFECT_SCORE_BONUS": 680,
+        "HALF_PERFECT_BONUS": 40,
+        "AWAY_WIN_BONUS": 15,
+        "DRAW_BONUS": 100,
+        "OFFENSIVE_BONUS_VALUE": 15,
+        "DEFENSIVE_BONUS_VALUE": 15,
+        "BONUS_MALUS": -3,
+        "DIFF_TABLE": {0: 15, 1: 12, 2: 10, 3: 8, 4: 6, 5: 4, 6: 2, 7: 1},
+        "SUM_TABLE": {0: 8, 1: 6, 2: 5, 3: 4, 4: 3, 5: 2, 6: 1},
+    },
+    "PHASE_MULTIPLIERS": PHASE_MULTIPLIERS,
+    "BONUS_SCALES": BONUS_SCALES,
+    "RUGBY_SCORING": RUGBY_SCORING,
+    "MASTER_PALIERS": MASTER_PALIERS,
+}
+
 
 def _get_scoring_config(season):
     """Renvoie la config gelée d'une saison, ou la config par défaut si absente."""

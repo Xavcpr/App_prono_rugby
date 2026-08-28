@@ -9,6 +9,15 @@
   });
     </script>
     <div class="container-fluid mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            {% if is_ancien %}
+                <span class="badge bg-secondary fs-6">📜 Ancien barème (saisons ≤ 2025-2026)</span>
+                <a class="btn btn-sm btn-success" href="{% url 'bareme' %}">🏉 Voir le barème 2026-2027</a>
+            {% else %}
+                <span class="badge bg-success fs-6">🏉 Barème actuel (saison 2026-2027)</span>
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'bareme' %}?ancien=1">📜 Ancien barème</a>
+            {% endif %}
+        </div>
         <h2 class="text-center mb-4 text-uppercase fw-bold">🏉 Barème Officiel & Calcul des Points</h2>
         <div class="card shadow-sm mb-5">
             <div class="card-header bg-dark text-white fw-bold">Cheminement du calcul (par match)</div>
