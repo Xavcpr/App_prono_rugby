@@ -8,7 +8,7 @@ from core.models import (
     Competition, Season, Round, Match, Player,
     Prediction, DailyScore
 )
-from core.services.scoring import SCORING_CONFIG, PHASE_MULTIPLIERS, BONUS_SCALES
+from core.services.scoring import _get_scoring_config, PHASE_MULTIPLIERS, BONUS_SCALES
 
 try:
     import openpyxl
@@ -94,6 +94,7 @@ class Command(BaseCommand):
         ws = wb.create_sheet(title=name[:31])
         comp = season.competition
         phase = rnd.phase or "POOL"
+        cfg = _get_scoring_config(season)["SCORING_CONFIG"]
         mult = PHASE_MULTIPLIERS.get(phase, 1.0)
         scale = BONUS_SCALES.get(comp.name, {})
 
@@ -144,8 +145,8 @@ class Command(BaseCommand):
                                   ((m.home_score > m.away_score and pr.home_score_pred > pr.away_score_pred) or
                                    (m.away_score > m.home_score and pr.away_score_pred > pr.home_score_pred) or
                                    (m.home_score == m.away_score and pr.home_score_pred == pr.away_score_pred)))
-                base = SCORING_CONFIG["MATCH_POOL_BASE"]
-                perfect = SCORING_CONFIG["PERFECT_SCORE_BONUS"]
+                base = cfg["MATCH_POOL_BASE"]
+                perfect = cfg["PERFECT_SCORE_BONUS"]
                 match_val_map[m.id] = int((base * mult + perfect) / max(winners_cnt, 1))
             else:
                 match_val_map[m.id] = 0

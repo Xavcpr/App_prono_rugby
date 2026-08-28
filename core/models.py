@@ -38,7 +38,7 @@ class Competition(models.Model):
     name = models.CharField(max_length=100)
     matches_per_round = models.PositiveIntegerField(default=0)
     bonus_defense_threshold = models.IntegerField(default=7)
-    match_weight = models.IntegerField(default=680)
+    match_weight = models.IntegerField(default=800)
 
     def __str__(self):
         return self.name
@@ -147,7 +147,7 @@ class Match(models.Model):
     )
     home_score = models.IntegerField(null=True, blank=True)
     away_score = models.IntegerField(null=True, blank=True)
-    weight = models.IntegerField(default=680)
+    weight = models.IntegerField(default=800)
     phase = models.CharField(max_length=10, choices=MatchPhase.choices, default=MatchPhase.POOL)
     bonus_offense_home = models.BooleanField(default=False)
     bonus_offense_away = models.BooleanField(default=False)

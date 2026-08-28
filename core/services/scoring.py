@@ -7,13 +7,13 @@ import core.services.scoring as scoring
 # --- CONFIGURATION DU BARÈME (DEFAUT) ---
 _DEFAULT_SCORING_CONFIG = {
     "SCORING_CONFIG": {
-        "MATCH_POOL_BASE": 680,
-        "PERFECT_SCORE_BONUS": 680,
+        "MATCH_POOL_BASE": 800,
+        "PERFECT_SCORE_BONUS": 800,
         "HALF_PERFECT_BONUS": 40,
         "AWAY_WIN_BONUS": 15,
         "DRAW_BONUS": 100,
         "OFFENSIVE_BONUS_VALUE": 15,
-        "DEFENSIVE_BONUS_VALUE": 15,
+        "DEFENSIVE_BONUS_VALUE": 20,
         "BONUS_MALUS": -3,
         "DIFF_TABLE": {0: 15, 1: 12, 2: 10, 3: 8, 4: 6, 5: 4, 6: 2, 7: 1},
         "SUM_TABLE": {0: 8, 1: 6, 2: 5, 3: 4, 4: 3, 5: 2, 6: 1},
