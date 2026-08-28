@@ -74,6 +74,33 @@ def _latest_season(seasons_qs):
     return next((s for s, k in valid if int(k) == max_key), seasons_qs.first())
 
 
+PRONO_START_YEAR = 2026  # 1re saison de pronos (cycle 2026/2027). Les saisons plus anciennes sont masquées.
+
+
+def _prono_years():
+    """Années de pronos (format 'NNNN/NNNN', cycle annuel) depuis PRONO_START_YEAR, uniques,
+    la plus récente en premier. Ex : ['2026/2027'] cette année, ['2027/2028', '2026/2027'] l'an prochain."""
+    from .management.commands.backfill_player_seasons import get_season_key
+    years = set()
+    for s in Season.objects.all():
+        if '/' not in s.year:
+            continue
+        key = get_season_key(s.year)
+        if key.isdigit() and int(key) >= PRONO_START_YEAR:
+            years.add((int(key), s.year))
+    return [label for _, label in sorted(years, reverse=True)]
+
+
+def _players_for_year(year_label):
+    """Joueurs associés à une année de pronos, ou les joueurs sans aucune saison (nouveaux)."""
+    total = Count('seasons')
+    in_year = Count('seasons', filter=Q(seasons__year=year_label))
+    return (Player.objects
+            .annotate(total_seasons=total, in_year=in_year)
+            .filter(Q(total_seasons=0) | Q(in_year__gt=0))
+            .distinct())
+
+
 # ------------------
 # PRONOS VIEW
 # ------------------
@@ -239,14 +266,15 @@ def profil_view(request):
 
 @login_required
 def trombinoscope_view(request):
-    all_seasons = Season.objects.order_by("-year")
-    season_id = request.GET.get("season")
-    selected_season = Season.objects.filter(id=season_id).first() if season_id else _latest_season(all_seasons)
-    players = _players_for_season(selected_season).select_related("user").order_by("name")
+    years = _prono_years()
+    selected_year = request.GET.get("season") or (years[0] if years else None)
+    if selected_year not in years:
+        selected_year = years[0] if years else None
+    players = _players_for_year(selected_year).select_related("user").order_by("name")
     return render(request, "trombinoscope.html", {
         "players": players,
-        "seasons": all_seasons,
-        "selected_season": selected_season,
+        "prono_years": years,
+        "selected_year": selected_year,
     })
 
 # ------------------

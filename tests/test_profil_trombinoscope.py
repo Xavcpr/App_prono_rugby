@@ -192,17 +192,23 @@ class TestAlertEmail:
 
 @pytest.mark.django_db
 class TestTrombinoscope:
+    def _prono_season(self, competition, year="2026/2027"):
+        from core.models import Season
+        return Season.objects.create(competition=competition, year=year)
+
     def test_redirect_if_not_logged(self, client):
         resp = client.get(reverse("trombinoscope"), secure=True)
         assert resp.status_code == 302
 
-    def test_lists_players(self, client, player, season):
-        player.birth_date = date(1990, 1, 1)
-        player.aime = "Le rugby"
-        player.aime_pas = "Les poux"
-        player.seasons.add(season)
-        player.save()
-        client.force_login(player.user)
+    def test_lists_players(self, client, competition):
+        from core.models import Player
+        from django.contrib.auth.models import User
+        u = User.objects.create_user(username="trombi-user", password="x")
+        player = Player.objects.create(user=u, name="Trombi",
+                                       birth_date=date(1990, 1, 1),
+                                       aime="Le rugby", aime_pas="Les poux")
+        player.seasons.add(self._prono_season(competition))
+        client.force_login(u)
         resp = client.get(reverse("trombinoscope"), secure=True)
         assert resp.status_code == 200
         html = resp.content.decode()
@@ -210,3 +216,31 @@ class TestTrombinoscope:
         assert player.name in html
         assert "Le rugby" in html
         assert "Les poux" in html
+
+    def test_only_prono_years_shown(self, client, player, competition):
+        cur = self._prono_season(competition)
+        self._prono_season(competition, year="2024/2025")
+        self._prono_season(competition, year="2005-2006")
+        player.seasons.add(cur)
+        player.save()
+        client.force_login(player.user)
+        resp = client.get(reverse("trombinoscope"), secure=True)
+        html = resp.content.decode()
+        assert "2026/2027" in html
+        assert "2024/2025" not in html
+        assert "2005-2006" not in html
+        assert html.count("<option") == 1
+        assert player.name in html
+
+    def test_old_season_player_hidden(self, client, player, competition):
+        player.seasons.add(self._prono_season(competition, year="2024/2025"))
+        player.save()
+        client.force_login(player.user)
+        resp = client.get(reverse("trombinoscope"), secure=True)
+        assert player.name not in resp.content.decode()
+
+    def test_player_without_season_always_shown(self, client, player, competition):
+        self._prono_season(competition)
+        client.force_login(player.user)
+        resp = client.get(reverse("trombinoscope"), secure=True)
+        assert player.name in resp.content.decode()
