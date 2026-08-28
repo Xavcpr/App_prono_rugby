@@ -239,6 +239,18 @@ class TestTrombinoscope:
         resp = client.get(reverse("trombinoscope"), secure=True)
         assert player.name not in resp.content.decode()
 
+    def test_2025_2026_option_present(self, client, player, competition):
+        self._prono_season(competition)
+        self._prono_season(competition, year="2025/2026")
+        self._prono_season(competition, year="2024/2025")
+        client.force_login(player.user)
+        resp = client.get(reverse("trombinoscope"), secure=True)
+        html = resp.content.decode()
+        assert "2026/2027" in html
+        assert "2025/2026" in html
+        assert "2024/2025" not in html
+        assert html.count("<option") == 2
+
     def test_player_without_season_always_shown(self, client, player, competition):
         self._prono_season(competition)
         client.force_login(player.user)

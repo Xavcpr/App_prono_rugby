@@ -74,12 +74,12 @@ def _latest_season(seasons_qs):
     return next((s for s, k in valid if int(k) == max_key), seasons_qs.first())
 
 
-PRONO_START_YEAR = 2026  # 1re saison de pronos (cycle 2026/2027). Les saisons plus anciennes sont masquées.
+PRONO_START_YEAR = 2025  # Premières saisons de pronos (2025/2026 puis cycle annuel 2026/2027, 2027/2028...). Les saisons antérieures (archives) sont masquées.
 
 
 def _prono_years():
     """Années de pronos (format 'NNNN/NNNN', cycle annuel) depuis PRONO_START_YEAR, uniques,
-    la plus récente en premier. Ex : ['2026/2027'] cette année, ['2027/2028', '2026/2027'] l'an prochain."""
+    la plus récente en premier. Ex : ['2026/2027', '2025/2026']."""
     from .management.commands.backfill_player_seasons import get_season_key
     years = set()
     for s in Season.objects.all():
