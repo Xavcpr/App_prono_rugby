@@ -54,7 +54,9 @@
     <div class="chart-container">
         <h5 class="mb-4 text-muted fw-bold text-uppercase"
             style="font-size: 0.8rem">Distribution des points marqués</h5>
-        <canvas id="scoreChart" height="100"></canvas>
+        <div style="height: 360px;">
+            <canvas id="scoreChart"></canvas>
+        </div>
     </div>
     <div class="heatmap-container">
         <div class="heatmap-wrapper">
@@ -110,11 +112,11 @@ document.addEventListener("DOMContentLoaded", function() {
     // 2. Initialisation du graphique
     const ctx = document.getElementById('scoreChart').getContext('2d');
 
-    // On récupère les données envoyées par la vue — l'axe est limité aux
-    // scores réellement observés pour rester lisible même avec peu de matchs.
-    const labels = [{% for i in range_chart %}"{{ i }}",{% endfor %}];
-    const dataHome = [{% for i in range_chart %}{{ row_totals|get_dict_item:i|default:0 }},{% endfor %}];
-    const dataAway = [{% for i in range_chart %}{{ col_totals|get_dict_item:i|default:0 }},{% endfor %}];
+    // On récupère les données envoyées par la vue — seules les valeurs de
+    // score réellement observées sont affichées (triées), pas d'axe continu.
+    const labels = [{% for i in chart_scores %}"{{ i }}",{% endfor %}];
+    const dataHome = [{% for i in chart_scores %}{{ row_totals|get_dict_item:i|default:0 }},{% endfor %}];
+    const dataAway = [{% for i in chart_scores %}{{ col_totals|get_dict_item:i|default:0 }},{% endfor %}];
 
     new Chart(ctx, {
         type: 'bar',

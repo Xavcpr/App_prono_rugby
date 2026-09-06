@@ -1603,12 +1603,12 @@ def statistics_view(request):
         if min_h is None or h < min_h: min_h = h
         if min_a is None or a < min_a: min_a = a
 
-    # Pour le graphique, on se limite aux bornes réellement observées (plus lisible).
-    # On garde un petit padding pour tôt les points visibles.
-    lo_h, hi_h = (min_h if min_h is not None else 0), (max_h + 1)
-    lo_a, hi_a = (min_a if min_a is not None else 0), (max_a + 1)
-    chart_lo = min(lo_h, lo_a)
-    chart_hi = max(hi_h, hi_a)
+    # Pour le graphique, on n'affiche que les valeurs de score réellement
+    # observées (triées). Évite un axe continu avec beaucoup de trous inutiles
+    # qui donnait une impression de graphique « infini » avec peu de journées.
+    chart_scores = sorted(set(row_totals.keys()) | set(col_totals.keys()))
+    if not chart_scores:
+        chart_scores = [0]
     # --- 2. CLASSEMENT DÃ‰TAILLÃ‰ & PODIUM ---
     detailed_ranking = []
     flair_ranking = []
@@ -1731,7 +1731,7 @@ def statistics_view(request):
         'col_totals': col_totals,
         'range_h': range(0, max_h + 1),
         'range_a': range(0, max_a + 1),
-        'range_chart': range(chart_lo, chart_hi),
+        'chart_scores': chart_scores,
         'max_occurence': max_occurence,
         
         'competitions': Competition.objects.all(),
