@@ -72,6 +72,22 @@ class TestBonusJourneeStats:
 
 
 @pytest.mark.django_db
+class TestFrozenJsonConfig:
+    """La config gelée en JSONField revient avec des clés str (ex: '7'),
+    le calcul des bonus de paliers doit rester fonctionnel."""
+
+    def test_bonus_journee_with_frozen_config(self, user, round2):
+        import json
+        from core.services.scoring import _DEFAULT_SCORING_CONFIG
+        round2.season.scoring_config = json.loads(json.dumps(_DEFAULT_SCORING_CONFIG))
+        round2.season.save(update_fields=["scoring_config"])
+        _play(user, round2, ["home"] * 7)
+        stats = compute_statistics(None, season=round2.season)
+        table = {r["username"]: r["value"] for r in stats.bonus_journee_table}
+        assert table[user.username] == 150
+
+
+@pytest.mark.django_db
 class TestRemarquableBonsPronos:
     def test_solo_count(self, user, round2):
         _play(user, round2, ["home"] * 2)

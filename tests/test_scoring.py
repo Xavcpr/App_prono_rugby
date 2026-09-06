@@ -66,6 +66,27 @@ class TestProcessRoundScores:
         process_round_scores(round_obj)
         assert DailyScore.objects.filter(user=prediction.player.user, round=round_obj).exists()
 
+    def test_frozen_json_config_no_typeerror(self, prediction, match_with_scores, round_obj):
+        """Config gelée en JSONField (clés str) : ni process_round_scores ni les
+        bonus de palier ne doivent lever de TypeError."""
+        import json
+        from core.services.scoring import (
+            _DEFAULT_SCORING_CONFIG, _get_scoring_config, process_round_scores,
+        )
+        from core.models import DailyScore
+        round_obj.season.scoring_config = json.loads(json.dumps(_DEFAULT_SCORING_CONFIG))
+        round_obj.season.save(update_fields=["scoring_config"])
+        cfg = _get_scoring_config(round_obj.season)
+        # Les clés numériques sont re-typées en int : la config gelée est équivalente
+        # à la config par défaut en mémoire.
+        assert cfg["SCORING_CONFIG"] == _DEFAULT_SCORING_CONFIG["SCORING_CONFIG"]
+        assert cfg["BONUS_SCALES"] == _DEFAULT_SCORING_CONFIG["BONUS_SCALES"]
+        assert cfg["MASTER_PALIERS"] == _DEFAULT_SCORING_CONFIG["MASTER_PALIERS"]
+        assert all(isinstance(k, int) for scale in cfg["BONUS_SCALES"].values() for k in scale)
+        assert all(isinstance(k, int) for k in cfg["MASTER_PALIERS"])
+        process_round_scores(round_obj)
+        assert DailyScore.objects.filter(user=prediction.player.user, round=round_obj).exists()
+
     def test_compute_season_ranking_points_no_result(self, season):
         """T3: compute_season_ranking_points retourne un message d'erreur si pas de CompetitionResult"""
         from core.services.scoring import compute_season_ranking_points

@@ -74,10 +74,37 @@ _OLD_BAREME_CONFIG = {
 }
 
 
+def _coerce_scoring_config(cfg):
+    """Normalise une config gelée sortie d'un JSONField : les clés numériques
+    (seuils de BONUS_SCALES, clés de MASTER_PALIERS, DIFF_TABLE, SUM_TABLE)
+    reviennent en str, on les retype en int. Les clés de compétition restent des str."""
+    if not cfg:
+        return _DEFAULT_SCORING_CONFIG
+    cfg = dict(cfg)
+    scales = cfg.get("BONUS_SCALES")
+    if scales:
+        cfg["BONUS_SCALES"] = {
+            comp: {int(k): v for k, v in scale.items()}
+            for comp, scale in scales.items()
+        }
+    paliers = cfg.get("MASTER_PALIERS")
+    if paliers:
+        cfg["MASTER_PALIERS"] = {int(k): v for k, v in paliers.items()}
+    scoring_cfg = cfg.get("SCORING_CONFIG")
+    if scoring_cfg:
+        scoring_cfg = dict(scoring_cfg)
+        for table in ("DIFF_TABLE", "SUM_TABLE"):
+            data = scoring_cfg.get(table)
+            if data:
+                scoring_cfg[table] = {int(k): v for k, v in data.items()}
+        cfg["SCORING_CONFIG"] = scoring_cfg
+    return cfg
+
+
 def _get_scoring_config(season):
     """Renvoie la config gelée d'une saison, ou la config par défaut si absente."""
     if season and season.scoring_config:
-        return season.scoring_config
+        return _coerce_scoring_config(season.scoring_config)
     return _DEFAULT_SCORING_CONFIG
 
 
