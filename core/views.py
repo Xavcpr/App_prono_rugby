@@ -1589,6 +1589,7 @@ def statistics_view(request):
 
     matrix, row_totals, col_totals = {}, {}, {}
     max_occurence, max_h, max_a = 0, 0, 0
+    min_h, min_a = None, None
 
     for s in stats:
         h, a, t = s['home_score'], s['away_score'], s['total']
@@ -1599,6 +1600,15 @@ def statistics_view(request):
         if t > max_occurence: max_occurence = t
         if h > max_h: max_h = h
         if a > max_a: max_a = a
+        if min_h is None or h < min_h: min_h = h
+        if min_a is None or a < min_a: min_a = a
+
+    # Pour le graphique, on se limite aux bornes réellement observées (plus lisible).
+    # On garde un petit padding pour tôt les points visibles.
+    lo_h, hi_h = (min_h if min_h is not None else 0), (max_h + 1)
+    lo_a, hi_a = (min_a if min_a is not None else 0), (max_a + 1)
+    chart_lo = min(lo_h, lo_a)
+    chart_hi = max(hi_h, hi_a)
     # --- 2. CLASSEMENT DÃ‰TAILLÃ‰ & PODIUM ---
     detailed_ranking = []
     flair_ranking = []
@@ -1721,6 +1731,7 @@ def statistics_view(request):
         'col_totals': col_totals,
         'range_h': range(0, max_h + 1),
         'range_a': range(0, max_a + 1),
+        'range_chart': range(chart_lo, chart_hi),
         'max_occurence': max_occurence,
         
         'competitions': Competition.objects.all(),

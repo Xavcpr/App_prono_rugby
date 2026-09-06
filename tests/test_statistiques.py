@@ -1,4 +1,7 @@
 import pytest
+from datetime import timedelta
+
+from django.utils import timezone
 
 from core.models import Round, Match, Team, Player, Prediction, User
 from core.services.statistics import compute_statistics
@@ -146,6 +149,28 @@ class TestRemarquableBonsPronos:
         _play(user, round2, ["home"] * 7)
         stats = compute_statistics(None, season=round2.season)
         assert stats.n_players == 1
+
+
+@pytest.mark.django_db
+class TestOnlyPassedRounds:
+    def test_future_rounds_are_excluded_from_chart(self, user, round2, season, teams):
+        """Une journée dont tous les matchs sont dans le futur ne doit pas
+        apparaître dans l'évolution (labels), seules les journées passées comptent."""
+        _play(user, round2, ["home"])  # round2 = passé (kickoff 2025-09-01)
+
+        future_round = Round.objects.create(season=season, number=3, date="2026-12-01", phase="POOL")
+        Match.objects.create(
+            round=future_round,
+            home_team=teams[0],
+            away_team=teams[1],
+            kickoff_at=timezone.now() + timedelta(days=30),
+            weight=800,
+            phase="POOL",
+        )
+
+        stats = compute_statistics(None, season=season)
+        assert "J2" in stats.labels
+        assert "J3" not in stats.labels
 
 
 def _stats_url(round_obj, **extra):

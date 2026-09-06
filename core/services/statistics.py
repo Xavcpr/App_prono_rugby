@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 from django.db.models import Sum
+from django.utils import timezone
 
 from core.models import Competition, Round, Match, Player, Prediction, DailyScore, Season
 from core.services.scoring import _get_scoring_config, _competition_key
@@ -84,6 +85,10 @@ def compute_statistics(competition: Optional[Competition], season: Optional[Seas
         rounds_qs = rounds_qs.filter(season=season)
     elif competition is not None:
         rounds_qs = rounds_qs.filter(season__competition=competition)
+
+    # Seules les journées déjà passées (au moins un match lancé) sont affichées :
+    # les journées futures n'ont ni score ni pronostic et allongeraient inutilement l'axe.
+    rounds_qs = rounds_qs.filter(matches__kickoff_at__lte=timezone.now()).distinct()
 
     rounds_qs = rounds_qs.order_by("date", "id")
     rounds = list(rounds_qs)

@@ -109,37 +109,37 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // 2. Initialisation du graphique
     const ctx = document.getElementById('scoreChart').getContext('2d');
-    
-    // On récupère les données envoyées par la vue
-    const labels = [{% for i in range_h %}"{{ i }}",{% endfor %}];
-    const dataHome = [{% for i in range_h %}{{ row_totals|get_dict_item:i|default:0 }},{% endfor %}];
-    const dataAway = [{% for i in range_h %}{{ col_totals|get_dict_item:i|default:0 }},{% endfor %}];
+
+    // On récupère les données envoyées par la vue — l'axe est limité aux
+    // scores réellement observés pour rester lisible même avec peu de matchs.
+    const labels = [{% for i in range_chart %}"{{ i }}",{% endfor %}];
+    const dataHome = [{% for i in range_chart %}{{ row_totals|get_dict_item:i|default:0 }},{% endfor %}];
+    const dataAway = [{% for i in range_chart %}{{ col_totals|get_dict_item:i|default:0 }},{% endfor %}];
 
     new Chart(ctx, {
-        type: 'line',
+        type: 'bar',
         data: {
             labels: labels,
             datasets: [
                 {
                     label: 'Score Domicile',
                     data: dataHome,
+                    backgroundColor: 'rgba(52, 152, 219, 0.75)',
                     borderColor: '#3498db',
-                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
-                    fill: true,
-                    tension: 0.4
+                    borderWidth: 1
                 },
                 {
                     label: 'Score Extérieur',
                     data: dataAway,
+                    backgroundColor: 'rgba(231, 76, 60, 0.75)',
                     borderColor: '#e74c3c',
-                    backgroundColor: 'rgba(231, 76, 60, 0.1)',
-                    fill: true,
-                    tension: 0.4
+                    borderWidth: 1
                 }
             ]
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             plugins: { legend: { position: 'top' } },
             scales: {
                 y: { beginAtZero: true, title: { display: true, text: 'Nombre de matchs' } },
