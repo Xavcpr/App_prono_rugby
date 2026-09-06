@@ -39,6 +39,7 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 - Cron externe : cron-job.org.
 - Secret key : fallback via `get_random_secret_key()`.
 - `reminder_hours_sent` : JSONField avec data migration.
+- **Versionnage : chaque modification déployée doit incrémenter `__version__` dans `core/version.py`** (PEP 440, MAJEUR.MINEUR.PATCH, ex. 1.0.0 → 1.0.1 → 1.1.0 → 2.0.0). Vérifiable via le footer (toutes pages) et `/version/`.
 
 ## Next Steps
 1. ~~Configurer cron-job.org pour appeler `/health/`~~ ✅
@@ -51,9 +52,10 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 
 ## Critical Context
 - Projet : `App_prono_rugby` sur PA, dépôt git dans `backend/`.
-- Site : `xavfabiani.pythonanywhere.com` — `main` (commit `e4cf87f`).
+- Site : `xavfabiani.pythonanywhere.com` — `main` (commit `2d7066b`).
+- Version courante : `1.0.0` (`core/version.py`).
 - `.env` sur PA : `CRON_TOKEN=xx`, `EMAIL_HOST_USER=pronorugby83@gmail.com`, `REMINDER_HOURS=24,6`.
-- Tests : `python -m pytest tests/ -v` → 17/17 OK.
+- Tests : `python -m pytest tests/ -q` → 94 OK.
 - CI : GitHub Actions (`.github/workflows/tests.yml`) — pytest sur push/PR branch `main`.
 - Migrations 0013, 0014 appliquées.
 
@@ -75,3 +77,5 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 - `core/management/commands/backfill_player_seasons.py` : backfill M2M Player.seasons
 - `core/templates/statistiques.html` : graphique avec M+F+P + M (tirets)
 - `core/admin.py` : `PlayerAdmin` avec `filter_horizontal` sur `seasons`
+- `core/version.py` : `__version__` (PEP 440) — à incrémenter à chaque modif déployée
+- `core/context_processors.py` : `APP_VERSION` injecté dans toutes les templates
