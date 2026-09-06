@@ -1760,14 +1760,19 @@ def import_scores_view(request, token):
         return HttpResponse("Invalid token", status=403)
     from core.models import Season
     from django.core.mail import send_mail
-    seasons = Season.objects.filter(competition__name__in=["Top 14", "Champions Cup", "6 Nations"], year__gte=2025)
+    start_year, current_year = 2025, timezone.now().year + 5
+    seasons = Season.objects.filter(
+        competition__name__in=["Top 14", "Champions Cup", "6 Nations"],
+        year__gte=start_year,
+        year__lte=current_year,
+    )
     if not seasons.exists():
         return HttpResponse("No seasons found", status=404)
     all_results = []
     total_created = 0
     total_updated = 0
     for season in seasons:
-        result = import_scores(season, dry_run=False, quick=True)
+        result = import_scores(season, dry_run=False, quick=True, aborted_rounds=1)
         all_results.append(result)
         total_created += result.get('created', 0)
         total_updated += result.get('updated', 0)

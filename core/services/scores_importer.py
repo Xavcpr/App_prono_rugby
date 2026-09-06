@@ -76,19 +76,46 @@ def _sportsdb_season(season):
     return season.year.replace("/", "-")
 
 
-def _fetch_events(sportsdb_season, league_id, quick=False):
-    url = f"{_api_base()}/eventsseason.php?id={league_id}&s={sportsdb_season}"
-    data = _request(url)
-    if data:
-        events = data.get("events") or []
-        if events:
-            logger.info("Season endpoint returned %d events", len(events))
-            return events
+def _fetch_events(sportsdb_season, league_id, quick=False, extra_rounds=None):
+    """Récupère les événements TheSportsDB pour une saison.
+
+    Utilise l'endpoint 'eventsseason' si disponible (rapide), puis complète
+    éventuellement avec les journées fournies dans ``extra_rounds`` (endpoint
+    'eventsround', plus fiable mais 1 requête par journée).
+    """
+    events = []
+    seen = set()
+    data = _request(f"{_api_base()}/eventsseason.php?id={league_id}&s={sportsdb_season}")
+    if data and data.get("events"):
+        events = data["events"]
+        for ev in events:
+            seen.add((ev.get("intRound"), ev.get("intHomeTeam"), ev.get("intAwayTeam")))
+        logger.info("Season endpoint returned %d events", len(events))
+
+    if extra_rounds:
+        for r in extra_rounds:
+            url = f"{_api_base()}/eventsround.php?id={league_id}&r={r}&s={sportsdb_season}"
+            data = _request(url)
+            if not data:
+                continue
+            batch = data.get("events") or []
+            if not batch:
+                continue
+            added = 0
+            for ev in batch:
+                key = (ev.get("intRound"), ev.get("intHomeTeam"), ev.get("intAwayTeam"))
+                if key not in seen:
+                    events.append(ev)
+                    seen.add(key)
+                    added += 1
+            logger.info("Round %d: %d events (+%d nouveaux)", r, len(batch), added)
+
+    if events:
+        return events
 
     if quick:
         return []
 
-    events = []
     for r in range(1, MAX_ROUNDS + 1):
         url = f"{_api_base()}/eventsround.php?id={league_id}&r={r}&s={sportsdb_season}"
         data = _request(url)
@@ -97,7 +124,11 @@ def _fetch_events(sportsdb_season, league_id, quick=False):
         batch = data.get("events") or []
         if not batch:
             continue
-        events.extend(batch)
+        for ev in batch:
+            key = (ev.get("intRound"), ev.get("intHomeTeam"), ev.get("intAwayTeam"))
+            if key not in seen:
+                events.append(ev)
+                seen.add(key)
         logger.info("Round %d: %d events", r, len(batch))
         time.sleep(0.5)
     return events
@@ -162,13 +193,19 @@ def _resolve_teams(home_sportsdb, away_sportsdb, db_teams_by_name, auto_create=F
 
 
 @transaction.atomic
-def import_scores(season: Season, dry_run: bool = False, quick: bool = False, create_matches: bool = True, auto_create_teams: bool = False):
+def import_scores(season: Season, dry_run: bool = False, quick: bool = False, create_matches: bool = True, auto_create_teams: bool = False, aborted_rounds: int = 0):
     league_id = COMPETITIONS.get(season.competition.name, {}).get("league_id")
     if not league_id:
         return {"status": "error", "message": f"Unknown competition: {season.competition.name}"}
 
     sportsdb_season = _sportsdb_season(season)
-    events = _fetch_events(sportsdb_season, league_id, quick=quick)
+    if aborted_rounds > 0:
+        latest = (Round.objects.filter(season=season).order_by("-number")
+                  .values_list("number", flat=True).first()) or 0
+        extra_rounds = list(range(max(latest - aborted_rounds + 1, 1), latest + 1))
+    else:
+        extra_rounds = None
+    events = _fetch_events(sportsdb_season, league_id, quick=quick, extra_rounds=extra_rounds)
 
     if not events:
         return {"status": "error", "message": "No events fetched from API"}

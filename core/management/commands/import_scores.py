@@ -59,7 +59,7 @@ class Command(BaseCommand):
 
         for season in seasons_qs:
             self.stdout.write(f"--- {season.competition.name} {season.year} ---")
-            result = import_scores(season, dry_run=dry_run, quick=quick, create_matches=not no_create, auto_create_teams=auto_create_teams)
+            result = import_scores(season, dry_run=dry_run, quick=quick, create_matches=not no_create, auto_create_teams=auto_create_teams, aborted_rounds=1)
 
             if result["status"] == "error":
                 self.stderr.write(self.style.ERROR(result["message"]))
