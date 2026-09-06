@@ -1,5 +1,5 @@
 from django.urls import path 
-from .views import home_view, hall_of_fame_view, bareme_view, charte_view, admin_saisie_resultats, declencher_calcul_points, recap_pronos_classement, debug_scores_view, statistics_view, statistiques_view, all_pronos_view, export_pronos_xlsx, compute_round_view, pronos_view, logout_view, round_results_board, settings_view, competition_ranking_view, classement_prediction, cron_send_reminders, health_view, import_scores_view, bonus_view, profil_view, trombinoscope_view
+from .views import home_view, hall_of_fame_view, bareme_view, charte_view, admin_saisie_resultats, declencher_calcul_points, recap_pronos_classement, debug_scores_view, statistics_view, statistiques_view, all_pronos_view, export_pronos_xlsx, compute_round_view, pronos_view, logout_view, round_results_board, settings_view, competition_ranking_view, classement_prediction, cron_send_reminders, health_view, import_scores_view, version_view, bonus_view, profil_view, trombinoscope_view
 
 urlpatterns = [
     # Page d'accueil (peut rediriger vers les pronos ou une page d'info)
@@ -56,6 +56,8 @@ urlpatterns = [
     path('cron/send-reminders/<str:token>/', cron_send_reminders, name='cron_send_reminders'),
     # Health check pour cron-job.org
     path('health/', health_view, name='health'),
+    # Version deployee (JSON)
+    path('version/', version_view, name='version'),
     # Import auto des scores depuis TheSportsDB (cron, protege par token)
     path('cron/import-scores/<str:token>/', import_scores_view, name='import_scores'),
 ]

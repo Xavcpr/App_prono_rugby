@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from core.context_processors import global_params
 from core.models import Competition, Round, Season, Match
+from core.version import __version__
 
 
 def make_match(round_obj, teams, days):
@@ -58,4 +59,8 @@ def test_fallback_first_round_of_latest_season(competition):
 @pytest.mark.django_db
 def test_no_data_returns_empty(competition):
     ctx = global_params(object())
-    assert ctx == {}
+    assert ctx == {
+        "GLOBAL_LAST_ROUND_ID": None,
+        "CURRENT_SEASON": None,
+        "APP_VERSION": __version__,
+    }

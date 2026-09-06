@@ -20,3 +20,10 @@ class TestViewsAuth:
         url = reverse("compute_points", args=[round_obj.id])
         response = client.get(url, secure=True)
         assert response.status_code in (302, 403)
+
+    def test_version_endpoint(self, client):
+        from core.version import __version__
+        url = reverse("version")
+        response = client.get(url, secure=True)
+        assert response.status_code == 200
+        assert response.json() == {"version": __version__}

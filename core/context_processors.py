@@ -1,4 +1,5 @@
 from .models import Match, Round, Season
+from .version import __version__
 from django.utils import timezone
 
 def global_params(request):
@@ -13,9 +14,8 @@ def global_params(request):
     if not last_round and latest_season:
         last_round = Round.objects.filter(season=latest_season).order_by('number').first()
 
-    if latest_season:
-        return {
-            'GLOBAL_LAST_ROUND_ID': last_round.id if last_round else None,
-            'CURRENT_SEASON': latest_season
-        }
-    return {}
+    return {
+        'GLOBAL_LAST_ROUND_ID': last_round.id if last_round else None,
+        'CURRENT_SEASON': latest_season,
+        'APP_VERSION': __version__,
+    }

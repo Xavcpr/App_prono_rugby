@@ -1757,6 +1757,13 @@ from core.services.email_service import send_round_reminders
 from core.services.scores_importer import import_scores
 
 
+def version_view(request):
+    """Retourne le numéro de version de l'application déployée (JSON)."""
+    from django.http import JsonResponse
+    from core.version import __version__
+    return JsonResponse({"version": __version__})
+
+
 def cron_send_reminders(request, token):
     expected = settings.CRON_TOKEN
     if token != expected:
