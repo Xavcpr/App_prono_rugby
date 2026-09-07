@@ -36,3 +36,15 @@ Thumbs.db
 # Environment variables
 .env
 mediafiles/
+
+# Artefacts de dev (one-off)
+scripts/*.json
+scripts/*.csv
+scripts/*.xlsx
+scripts/*.ipynb
+core/notebooks/
+*.ipynb
+core/views_svg_20260128
+core/class_svg_260128.htm
+core/AG2026.txt
+reste_à_faire.txt

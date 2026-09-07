@@ -1,7 +1,10 @@
 from django.db import transaction
 from core.models import CompetitionResult, CompetitionTeamPrediction, CompetitionBonusPrediction, SeasonScore, Prediction, DailyScore, Player 
 from django.db.models import Sum, F
+import logging
 import core.services.scoring as scoring
+
+logger = logging.getLogger(__name__)
 
 
 # --- CONFIGURATION DU BARÈME (DEFAUT) ---
@@ -363,7 +366,7 @@ def compute_season_ranking_points(season_obj, compute_podium=False):
     
     has_winner = bool(res.real_winner)
     if not has_winner:
-        print("⚠️ Pas de vainqueur renseigné — le bonus vainqueur ne sera pas attribué, mais les points Matchs + Flair + Podium seront calculés.")
+        logger.warning("Pas de vainqueur renseigné — le bonus vainqueur ne sera pas attribué, mais les points Matchs + Flair + Podium seront calculés.")
 
     # Gestion intelligente du JSON : on s'adapte si c'est découpé en "pool1", "pool2" ou "all"
     json_data = res.rankings_json or {}
@@ -384,11 +387,11 @@ def compute_season_ranking_points(season_obj, compute_podium=False):
     expected_teams = season_obj.teams.all() 
     missing_teams = [t.name for t in expected_teams if str(t.id) not in real_rankings and t.name not in real_rankings]
     if missing_teams:
-        print(f"⚠️ Note : {len(missing_teams)} équipes absentes du JSON de classement (ignorées pour le Flair).")
+        logger.warning("Note : %d équipes absentes du JSON de classement (ignorées pour le Flair).", len(missing_teams))
 
 
     # --- ÉTAPE 1 : SYNCHRONISATION DES POINTS DE MATCHS & RESET TOTAL ---
-    print(f"Synchronisation pour {season_obj}...")
+    logger.info("Synchronisation pour %s...", season_obj)
     players = Player.objects.filter(user__isnull=False)
     for p in players:
         total_matchs = DailyScore.objects.filter(
@@ -537,53 +540,3 @@ def recompute_played_rounds(season_obj):
         ss.save()
 
     return len(played_rounds)
-
-
-def compute_competition_points(season):
-    from core.models import CompetitionResult, CompetitionTeamPrediction, CompetitionBonusPrediction, SeasonScore, Player
-    result = CompetitionResult.objects.filter(season=season).first()
-    if not result:
-        return "Aucun r�sultat saisi."
-
-    s_cfg = _get_scoring_config(season)
-    rules = s_cfg["RUGBY_SCORING"].get(_competition_key(season.competition.name), s_cfg["RUGBY_SCORING"]["Top 14"])
-    players = Player.objects.all()
-
-    for player in players:
-        pts_classement = 0
-        pts_bonus_finaux = 0
-
-        user_preds = CompetitionTeamPrediction.objects.filter(
-            player=player,
-            competition=season.competition,
-            season=season
-        )
-        for p in user_preds:
-            real_block = result.rankings_json.get(p.block_key, {})
-            real_pos = real_block.get(str(p.team.id))
-            if real_pos:
-                diff = abs(p.position - int(real_pos))
-                if diff == 0: pts_classement += rules["exact_rank"]
-                elif diff == 1: pts_classement += rules["gap_1"]
-                elif diff == 2: pts_classement += rules["gap_2"]
-
-        bonus_pred = CompetitionBonusPrediction.objects.filter(
-            player=player,
-            competition=season.competition,
-season=season
-        ).first()
-
-        if bonus_pred and result.real_winner:
-            if bonus_pred.winner == result.real_winner:
-                pts_bonus_finaux += rules["winner"]
-
-        pts_bonus_finaux += bonus_marqueur_realisateur_points(season, bonus_pred, result)
-
-        if player.user:
-            s_score, _ = SeasonScore.objects.get_or_create(
-                user=player.user,
-                competition=season.competition,
-                season=season
-            )
-            s_score.ranking_points = pts_classement + pts_bonus_finaux
-            s_score.save()
