@@ -1035,13 +1035,36 @@ def bonus_view(request, round_id):
     matches = Match.objects.filter(round=round_obj).select_related("home_team", "away_team").order_by("kickoff_at")
 
     if request.method == "POST":
+        score_pairs_ok = True
         for match in matches:
             home_key = f"bo_home_{match.id}"
             away_key = f"bo_away_{match.id}"
             match.bonus_offense_home = home_key in request.POST
             match.bonus_offense_away = away_key in request.POST
+
+            # Saisie optionnelle des scores
+            hs = request.POST.get(f"score_home_{match.id}", "").strip()
+            aw = request.POST.get(f"score_away_{match.id}", "").strip()
+            if hs or aw:
+                if not (hs and aw):
+                    score_pairs_ok = False
+                else:
+                    try:
+                        match.home_score = int(hs)
+                        match.away_score = int(aw)
+                    except (ValueError, TypeError):
+                        score_pairs_ok = False
             match.save()
-        messages.success(request, "Bonus enregistrés")
+
+        if score_pairs_ok:
+            try:
+                process_round_scores(round_obj)
+                messages.success(request, "Bonus et scores enregistrés — journée recalculée.")
+            except Exception:
+                logger.warning("process_round_scores failed for round %s", round_obj, exc_info=True)
+                messages.success(request, "Bonus et scores enregistrés (journée à recalculer via le bouton Recalculer).")
+        else:
+            messages.warning(request, "Score incomplet sur au moins un match (domicile ET extérieur requis) — journée non recalculée, matches incomplets inchangés.")
         return HttpResponseRedirect(request.path)
     return render(request, "bonus.html", {
         "round": round_obj,
@@ -1753,8 +1776,12 @@ def statistics_view(request):
 
 from django.http import HttpResponse
 from django.conf import settings
+import logging
 from core.services.email_service import send_round_reminders
 from core.services.scores_importer import import_scores
+from core.services.scoring import recompute_played_rounds
+
+logger = logging.getLogger(__name__)
 
 
 def version_view(request):
@@ -1794,6 +1821,13 @@ def import_scores_view(request, token):
         all_results.append(result)
         total_created += result.get('created', 0)
         total_updated += result.get('updated', 0)
+        # Dès qu'un score/horaire change, on rejoue le scoring des journées
+        # déjà jouées pour que le récap saison soit à jour sans action manuelle.
+        if result.get('created', 0) > 0 or result.get('updated', 0) > 0:
+            try:
+                recompute_played_rounds(season)
+            except Exception:
+                logger.warning("Recompute after import failed for %s", season, exc_info=True)
     if total_created > 0 or total_updated > 0:
         msg_lines = ["Nouveautés importées depuis TheSportsDB :"]
         for r in all_results:

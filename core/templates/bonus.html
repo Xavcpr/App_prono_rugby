@@ -27,6 +27,14 @@
     height: 20px;
     cursor: pointer;
   }
+  .score-input {
+    width: 60px;
+    text-align: center;
+    font-weight: bold;
+    border: 1px solid #bdc3c7;
+    border-radius: 4px;
+    padding: 6px;
+  }
   .btn-save {
     background: #27ae60;
     color: white;
@@ -49,10 +57,15 @@
 
 <div class="bonus-header" style="border-left: 10px solid {% if '6 Nations' in round.season.competition.name %}#e74c3c{% else %}#3498db{% endif %}">
   <h1 style="margin: 0">{{ round.season.competition.name }}</h1>
-  <h3 style="margin: 5px 0 0 0; opacity: 0.9">Bonus Offensifs — {{ round }}</h3>
+  <h3 style="margin: 5px 0 0 0; opacity: 0.9">Scores &amp; Bonus Offensifs — {{ round }}</h3>
 </div>
 
 <a href="{% url 'round_board' round.id %}" class="back-link">&larr; Retour aux résultats</a>
+
+<p class="text-muted small">
+  Saisis un <strong>score</strong> (domicile + extérieur) pour le mettre à jour et recalculer la journée.
+  Laisse vide pour conserver le score existant.
+</p>
 
 <form method="post">
   {% csrf_token %}
@@ -72,11 +85,13 @@
             {{ match.home_team.name }} vs {{ match.away_team.name }}
           </td>
           <td>
-            {% if match.home_score is not None %}
-              <strong>{{ match.home_score }} - {{ match.away_score }}</strong>
-            {% else %}
-              <em>Pas encore joué</em>
-            {% endif %}
+            <input type="number" min="0" name="score_home_{{ match.id }}" class="score-input"
+                   value="{% if match.home_score is not None %}{{ match.home_score }}{% endif %}"
+                   placeholder="_">
+            <span style="font-weight: bold;"> - </span>
+            <input type="number" min="0" name="score_away_{{ match.id }}" class="score-input"
+                   value="{% if match.away_score is not None %}{{ match.away_score }}{% endif %}"
+                   placeholder="_">
           </td>
           <td>
             <input type="checkbox" name="bo_home_{{ match.id }}"
@@ -94,6 +109,6 @@
       {% endfor %}
     </tbody>
   </table>
-  <button type="submit" class="btn-save">💾 Enregistrer les bonus</button>
+  <button type="submit" class="btn-save">💾 Enregistrer scores &amp; bonus (recalcul)</button>
 </form>
 {% endblock %}

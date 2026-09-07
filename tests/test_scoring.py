@@ -92,3 +92,31 @@ class TestProcessRoundScores:
         from core.services.scoring import compute_season_ranking_points
         msg = compute_season_ranking_points(season)
         assert "Aucun résultat" in msg
+
+
+@pytest.mark.django_db
+class TestRecomputePlayedRounds:
+    def test_recomputes_only_played_rounds(self, prediction, match_with_scores, round_obj, season):
+        """Recompute apres import : seule la journee jouee est recalculée,
+        SeasonScore.match_points est resynchronise, pas de CompetitionResult requis."""
+        from core.models import Round, DailyScore, SeasonScore
+        from core.services.scoring import process_round_scores, recompute_played_rounds
+
+        Round.objects.create(season=season, number=2, date="2025-09-08", phase="POOL")
+        process_round_scores(round_obj)
+        ds = DailyScore.objects.get(user=prediction.player.user, round=round_obj)
+        assert ds.points > 0
+
+        n = recompute_played_rounds(season)
+        assert n == 1
+
+        ss = SeasonScore.objects.get(
+            user=prediction.player.user,
+            competition=season.competition,
+            season=season,
+        )
+        assert ss.match_points == ds.points
+
+    def test_no_played_round_returns_zero(self, round_obj, season):
+        from core.services.scoring import recompute_played_rounds
+        assert recompute_played_rounds(season) == 0

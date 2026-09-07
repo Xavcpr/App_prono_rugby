@@ -502,6 +502,43 @@ def compute_season_ranking_points(season_obj, compute_podium=False):
                     score_obj.save()
 
     return "Calcul terminé (Matchs + Flair)" if not compute_podium else "Calcul terminé (Matchs + Flair + Podium)"
+
+
+def recompute_played_rounds(season_obj):
+    """Rejoue le scoring des journées déjà jouées (sc=present) et resynchronise
+    SeasonScore.match_points depuis les DailyScore.
+
+    Sûr en cours de saison : ne touche PAS au Flair (ranking_points/podium)
+    qui ne dépendent que des résultats officiels finals (CompetitionResult).
+    Retourne le nombre de journées recalculées.
+    """
+    from core.models import Match, Round
+
+    played_round_ids = Match.objects.filter(
+        round__season=season_obj,
+        home_score__isnull=False,
+        away_score__isnull=False,
+    ).values_list("round_id", flat=True).distinct()
+    played_rounds = list(Round.objects.filter(id__in=played_round_ids).order_by("number"))
+
+    for r in played_rounds:
+        process_round_scores(r)
+
+    players = Player.objects.filter(user__isnull=False)
+    for p in players:
+        total_matchs = DailyScore.objects.filter(
+            user=p.user,
+            round__season=season_obj,
+        ).aggregate(total=Sum("points"))["total"] or 0
+        ss, _ = SeasonScore.objects.get_or_create(
+            user=p.user, season=season_obj, competition=season_obj.competition
+        )
+        ss.match_points = total_matchs
+        ss.save()
+
+    return len(played_rounds)
+
+
 def compute_competition_points(season):
     from core.models import CompetitionResult, CompetitionTeamPrediction, CompetitionBonusPrediction, SeasonScore, Player
     result = CompetitionResult.objects.filter(season=season).first()
