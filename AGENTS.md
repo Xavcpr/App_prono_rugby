@@ -48,7 +48,7 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 2. ~~Récupération auto des scores~~ ✅
 3. ~~Obtenir une clé API TheSportsDB gratuite~~ (la clé `3` suffit pour commencer).
 4. ~~Ajouter `SPORTSDB_API_KEY` dans le `.env` sur PythonAnywhere~~ (valeur par défaut `3`).
-5. Creer un cron-job.org pour l'import auto : URL `/cron/import-scores/CRON_TOKEN/`, toutes les 60 min.
+5. ~~Créer le cron-job.org pour l'import auto~~ ✅ (URL `/cron/import-scores/CRON_TOKEN/`, toutes les 60 min, fonctionne — scores MAJ de nuit. Depuis la v1.1.1, le cron recalcule aussi les journées jouées.)
 6. Tester les mails H-24/H-6 en semaine réelle.
 7. Inscriptions.
 
