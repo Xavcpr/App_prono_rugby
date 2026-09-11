@@ -39,9 +39,9 @@
                     V0 & V3 & V4 & V5 --> S_Check
                     subgraph Precision["Précision des Scores"]
                     S_Check{"Scores Exacts ?"}
-                    S_Check -- "Dom. seul" --> S_H["+{{ SCORING_CONFIG.HALF_PERFECT_BONUS }} pts (demi)"]:::greenNode
-                    S_Check -- "Ext. seul" --> S_A["+{{ SCORING_CONFIG.HALF_PERFECT_BONUS }} pts (demi)"]:::greenNode
-                    S_Check -- "Tout-Pile (Dom + Ext)" --> S_P["+{{ SCORING_CONFIG.PERFECT_SCORE_BONUS }} pts (remplace les demis)"]:::goldNode
+                    S_Check -- "Dom. seul" --> S_H["+{{ SCORING_CONFIG.HALF_PERFECT_BONUS }} pts (demi tout-pile)"]:::greenNode
+                    S_Check -- "Ext. seul" --> S_A["+{{ SCORING_CONFIG.HALF_PERFECT_BONUS }} pts (demi tout-pile)"]:::greenNode
+                    S_Check -- "Tout-Pile (Dom + Ext)" --> S_P["+{{ SCORING_CONFIG.PERFECT_SCORE_BONUS }} pts (tout-pile)"]:::goldNode
                     S_H & S_A & S_P -- "Écarts" --> E_Table["Tables Diff/Somme"]:::blueNode
                     end
                     E_Table --> O_Check
