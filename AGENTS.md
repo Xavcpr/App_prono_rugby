@@ -28,6 +28,7 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 - **Phase 11 — Joueurs par saison** : ajout M2M `Player.seasons` (migration 0015) ; filtre des vues (`home_view`, `pronos_view`, `debug_scores`, `recap_pronos`, `compute_competition_points`) ; admin avec `filter_horizontal` ; commandes `backfill_player_seasons` (backfill) et `create_6nations_2027` (attribution auto).
 - **Phase 12 — Versionnage + graphiques + import** : `core/version.py` (PEP 440, v1.1.1), endpoint `/version/`, footer ; stats limitées aux journées passées + fenêtre par défaut « 5 dernières » ; `/stats-scores/` en barres sur scores observés ; cron import → auto-recalcul des journées jouées (`recompute_played_rounds`) ; saisie des scores sur la page Bonus.
 - **Phase 13 — Ménage audit** : `db_backup.sqlite3` + artefacts dev untrackés (json/csv/xlsx/notebooks/htm/`views_svg`) ; doublon `compute_competition_points` supprimé (une seule version, filtrée par saison, dans `views.py`) ; `djangorestframework` retiré de requirements ; `print()` → `logger` dans scoring.py.
+- **Phase 14 — Règle tout-pile** : un tout-pile n'ajoute plus les demi-tout-pile (800 pts au lieu de 800+2×40) ; aligné entre `calculate_match_points` (services/scoring.py), le round board (views.py) et les stats (statistics.py déjà en `elif`) ; mermaid de `bareme.html` mis à jour ; 2 tests dédiés (101 au total).
 
 ### In Progress
 - *(none)*
@@ -54,10 +55,10 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 
 ## Critical Context
 - Projet : `App_prono_rugby` sur PA, dépôt git dans `backend/`.
-- Site : `xavfabiani.pythonanywhere.com` — `main` (commit `1653f59`).
-- Version courante : `1.1.1` (`core/version.py`).
+- Site : `xavfabiani.pythonanywhere.com` — `main` (commit `1a23355`).
+- Version courante : `1.2.0` (`core/version.py`).
 - `.env` sur PA : `CRON_TOKEN=xx`, `EMAIL_HOST_USER=pronorugby83@gmail.com`, `REMINDER_HOURS=24,6`.
-- Tests : `python -m pytest tests/ -q` → 99 OK.
+- Tests : `python -m pytest tests/ -q` → 101 OK.
 - CI : GitHub Actions (`.github/workflows/tests.yml`) — pytest sur push/PR branch `main`.
 - Migrations 0013, 0014 appliquées.
 

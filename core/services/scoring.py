@@ -237,9 +237,11 @@ def calculate_match_points(prediction, match, winners_count, scoring_config=None
     away_err = abs(prediction.away_score_pred - match.away_score)
     
     if pred_winner_side != "NO SHOW":
-        if home_err == 0: pts += cfg["HALF_PERFECT_BONUS"]
-        if away_err == 0: pts += cfg["HALF_PERFECT_BONUS"]
-        if home_err == 0 and away_err == 0: pts += cfg["PERFECT_SCORE_BONUS"]
+        if home_err == 0 and away_err == 0:
+            pts += cfg["PERFECT_SCORE_BONUS"]
+        else:
+            if home_err == 0: pts += cfg["HALF_PERFECT_BONUS"]
+            if away_err == 0: pts += cfg["HALF_PERFECT_BONUS"]
 
     # 3. BONUS OFFENSIF (Uniquement en POOL)
     if is_pool_phase:

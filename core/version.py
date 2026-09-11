@@ -6,4 +6,4 @@ Bump via la prochaine release :
 
 À afficher par exemple : "1.0.0"
 """
-__version__ = "1.1.1"
+__version__ = "1.2.0"

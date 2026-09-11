@@ -1,5 +1,5 @@
 import pytest
-from core.services.scoring import get_winner_side, calculate_match_points
+from core.services.scoring import _DEFAULT_SCORING_CONFIG, get_winner_side, calculate_match_points
 
 
 class TestGetWinnerSide:
@@ -26,6 +26,22 @@ class TestCalculateMatchPoints:
         pts = calculate_match_points(prediction, match_with_scores, winners_count=3)
         assert pts > 0
         assert isinstance(pts, int)
+
+    def test_perfect_excludes_half(self, prediction, match_with_scores):
+        cfg = _DEFAULT_SCORING_CONFIG["SCORING_CONFIG"]
+        pts = calculate_match_points(prediction, match_with_scores, winners_count=1)
+        expected = match_with_scores.weight + cfg["PERFECT_SCORE_BONUS"]
+        expected += cfg["DIFF_TABLE"][0] + cfg["SUM_TABLE"][0]
+        stacked = expected + 2 * cfg["HALF_PERFECT_BONUS"]
+        assert pts == expected
+        assert pts < stacked
+
+    def test_single_side_exact_gets_one_half(self, prediction, match_with_scores):
+        prediction.away_score_pred = 5
+        prediction.save()
+        cfg = _DEFAULT_SCORING_CONFIG["SCORING_CONFIG"]
+        pts = calculate_match_points(prediction, match_with_scores, winners_count=1)
+        assert pts == match_with_scores.weight + cfg["HALF_PERFECT_BONUS"]
 
     def test_wrong_prediction(self, prediction, match_with_scores):
         prediction.home_score_pred = 0

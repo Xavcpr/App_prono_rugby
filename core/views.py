@@ -950,9 +950,11 @@ def round_results_board(request, round_id):
             away_diff = abs(pr.away_score_pred - m.away_score)
             
             if pred_winner_side != "NO SHOW":
-                if home_diff == 0: stats['dtp'] += scoring.SCORING_CONFIG['HALF_PERFECT_BONUS']
-                if away_diff == 0: stats['dtp'] += scoring.SCORING_CONFIG['HALF_PERFECT_BONUS']
-                if home_diff == 0 and away_diff == 0: stats['tp'] += scoring.SCORING_CONFIG['PERFECT_SCORE_BONUS']
+                if home_diff == 0 and away_diff == 0:
+                    stats['tp'] += scoring.SCORING_CONFIG['PERFECT_SCORE_BONUS']
+                else:
+                    if home_diff == 0: stats['dtp'] += scoring.SCORING_CONFIG['HALF_PERFECT_BONUS']
+                    if away_diff == 0: stats['dtp'] += scoring.SCORING_CONFIG['HALF_PERFECT_BONUS']
 
                 diff_err = abs((pr.home_score_pred - pr.away_score_pred) - (m.home_score - m.away_score))
                 sum_err = abs((pr.home_score_pred + pr.away_score_pred) - (m.home_score + m.away_score))
