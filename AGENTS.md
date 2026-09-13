@@ -29,6 +29,7 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 - **Phase 12 — Versionnage + graphiques + import** : `core/version.py` (PEP 440, v1.1.1), endpoint `/version/`, footer ; stats limitées aux journées passées + fenêtre par défaut « 5 dernières » ; `/stats-scores/` en barres sur scores observés ; cron import → auto-recalcul des journées jouées (`recompute_played_rounds`) ; saisie des scores sur la page Bonus.
 - **Phase 13 — Ménage audit** : `db_backup.sqlite3` + artefacts dev untrackés (json/csv/xlsx/notebooks/htm/`views_svg`) ; doublon `compute_competition_points` supprimé (une seule version, filtrée par saison, dans `views.py`) ; `djangorestframework` retiré de requirements ; `print()` → `logger` dans scoring.py.
 - **Phase 14 — Règle tout-pile** : un tout-pile n'ajoute plus les demi-tout-pile (800 pts au lieu de 800+2×40) ; aligné entre `calculate_match_points` (services/scoring.py), le round board (views.py) et les stats (statistics.py déjà en `elif`) ; mermaid de `bareme.html` mis à jour ; 2 tests dédiés (101 au total).
+- **Phase 15 — UX bonus + rappels** : bouton « Voir les scores & pronos de cette journée » sur la page Bonus ; rappels H-24/H-6 ancrés sur le premier kickoff du round (le H-6 ne se déclenchait jamais avec l'ancrage jour) — repli jour pour les rounds sans match ; test du récap H-6 (102 au total).
 
 ### In Progress
 - *(none)*
@@ -56,9 +57,9 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 ## Critical Context
 - Projet : `App_prono_rugby` sur PA, dépôt git dans `backend/`.
 - Site : `xavfabiani.pythonanywhere.com` — `main` (commit `070bf4b`).
-- Version courante : `1.2.0` (`core/version.py`).
+- Version courante : `1.3.0` (`core/version.py`).
 - `.env` sur PA : `CRON_TOKEN=xx`, `EMAIL_HOST_USER=pronorugby83@gmail.com`, `REMINDER_HOURS=24,6`.
-- Tests : `python -m pytest tests/ -q` → 101 OK.
+- Tests : `python -m pytest tests/ -q` → 102 OK.
 - CI : GitHub Actions (`.github/workflows/tests.yml`) — pytest sur push/PR branch `main`.
 - Migrations 0013, 0014 appliquées.
 

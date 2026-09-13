@@ -172,6 +172,37 @@ class TestAlertEmail:
         email_service.send_round_reminders()
         assert sent_to == []
 
+    def test_h6_recap_sent_when_first_kickoff_in_six_hours(self, monkeypatch, season, player, user, settings):
+        from core.models import Round, Match, Team
+        from core.services import email_service
+
+        rnd = Round.objects.create(
+            season=season, number=6, date=timezone.now().date(), phase="POOL"
+        )
+        t1 = Team.objects.create(name="A")
+        t2 = Team.objects.create(name="B")
+        Match.objects.create(
+            round=rnd,
+            home_team=t1,
+            away_team=t2,
+            kickoff_at=timezone.now() + timedelta(hours=6),
+            phase="POOL",
+        )
+        sent_to = []
+        monkeypatch.setattr(
+            email_service,
+            "send_mail",
+            lambda subject, message, frm, to: sent_to.append(to[0]),
+        )
+        settings.EMAIL_HOST_USER = "go@example.com"
+        user.email = "user@test.com"
+        user.save()
+        player.alert_email = ""
+        player.save()
+        email_service.send_round_reminders()
+        assert "user@test.com" in sent_to
+        assert "go@example.com" in sent_to
+
     def test_notify_new_round_uses_alert_email(self, monkeypatch, season, player, user):
         from core.services import email_service
         sent_to = []

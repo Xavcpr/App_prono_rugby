@@ -1,8 +1,9 @@
 import os
+from datetime import datetime, timedelta
+
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
-from datetime import timedelta
 
 
 def _format_date(d):
@@ -14,19 +15,41 @@ def _parse_hours():
     return sorted([int(h) for h in raw.split(",") if h.strip().isdigit()], reverse=True)
 
 
+def _round_anchor(rnd):
+    """Premier kickoff (TZ-aware) du round, ou None si aucun match n'a d'horaire."""
+    from core.models import Match
+
+    return (
+        Match.objects.filter(round=rnd, kickoff_at__isnull=False)
+        .order_by("kickoff_at")
+        .values_list("kickoff_at", flat=True)
+        .first()
+    )
+
+
 def send_round_reminders():
-    today = timezone.now().date()
+    now = timezone.now()
+    today = now.date()
     trigger_hours = _parse_hours()
     from core.models import Round, Prediction, Player
 
     max_hours = max(trigger_hours)
+    # Fenêtre de sélection large (grille d'un jour) ; le calcul fin se fait sur
+    # le premier kickoff du round (H-24/H-6 réels), avec repli sur
+    # l'ancrage jour pour les rounds sans match planifié.
     upcoming_rounds = Round.objects.filter(
-        date__gte=today,
-        date__lte=today + timedelta(hours=max_hours + 2),
+        date__gte=today - timedelta(days=1),
+        date__lte=today + timedelta(days=max_hours // 24 + 1),
     ).select_related("season__competition")
 
     for rnd in upcoming_rounds:
-        hours_until = (rnd.date - today).total_seconds() / 3600
+        anchor = _round_anchor(rnd)
+        if anchor is not None:
+            hours_until = (anchor - now).total_seconds() / 3600
+        else:
+            hours_until = (rnd.date - today).total_seconds() / 3600
+        if hours_until < 0 or hours_until > max_hours + 2:
+            continue
         matched_hour = None
         for h in trigger_hours:
             if abs(hours_until - h) <= 2:

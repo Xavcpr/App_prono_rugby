@@ -58,6 +58,11 @@
 <div class="bonus-header" style="border-left: 10px solid {% if '6 Nations' in round.season.competition.name %}#e74c3c{% else %}#3498db{% endif %}">
   <h1 style="margin: 0">{{ round.season.competition.name }}</h1>
   <h3 style="margin: 5px 0 0 0; opacity: 0.9">Scores &amp; Bonus Offensifs — {{ round }}</h3>
+  <div class="mt-3">
+    <a href="{% url 'round_board' round.id %}" class="btn btn-sm btn-light fw-bold">
+      🏉 Voir les scores &amp; pronos de cette journée
+    </a>
+  </div>
 </div>
 
 <a href="{% url 'round_board' round.id %}" class="back-link">&larr; Retour aux résultats</a>
