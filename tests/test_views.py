@@ -70,3 +70,42 @@ class TestBonusScoresEntry:
         m.refresh_from_db()
         assert m.bonus_offense_home is True
         assert m.bonus_offense_away is False
+
+    def test_staff_import_button_calls_api_and_recomputes(self, client, prediction, match_with_scores, round_obj, monkeypatch):
+        client = self._staff_client(client, prediction)
+        imported = []
+        recomputed = []
+        monkeypatch.setattr(
+            "core.views.import_scores",
+            lambda season, **kw: imported.append(season.id) or {"status": "ok", "created": 0, "updated": 2, "skipped": 0, "results": []},
+        )
+        monkeypatch.setattr(
+            "core.views.recompute_played_rounds",
+            lambda season: recomputed.append(season.id),
+        )
+        resp = client.post(
+            reverse("round_bonus", args=[round_obj.id]),
+            {"import_scores": "1"},
+            secure=True,
+            HTTP_HOST="localhost",
+        )
+        assert resp.status_code == 302
+        assert imported == [round_obj.season.id]
+        assert recomputed == [round_obj.season.id]
+
+    def test_non_staff_import_button_is_ignored(self, client, prediction, match_with_scores, round_obj, monkeypatch):
+        client.force_login(prediction.player.user)
+        imported = []
+        monkeypatch.setattr(
+            "core.views.import_scores",
+            lambda season, **kw: imported.append(season.id) or {"status": "ok", "created": 1, "updated": 0, "skipped": 0, "results": []},
+        )
+        resp = client.post(
+            reverse("round_bonus", args=[round_obj.id]),
+            {"import_scores": "1"},
+            secure=True,
+            HTTP_HOST="localhost",
+        )
+        assert resp.status_code == 302
+        assert imported == []
+        assert resp.content.decode() == ""

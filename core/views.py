@@ -1037,6 +1037,20 @@ def bonus_view(request, round_id):
     matches = Match.objects.filter(round=round_obj).select_related("home_team", "away_team").order_by("kickoff_at")
 
     if request.method == "POST":
+        if request.user.is_staff and request.POST.get("import_scores"):
+            result = import_scores(round_obj.season, dry_run=False, quick=True, aborted_rounds=1)
+            created = result.get("created", 0)
+            updated = result.get("updated", 0)
+            if created > 0 or updated > 0:
+                recompute_played_rounds(round_obj.season)
+                messages.success(
+                    request,
+                    f"TheSportsDB : {created} créé(s), {updated} mis à jour → journées recalculées.",
+                )
+            else:
+                messages.info(request, "TheSportsDB : aucun nouveau score à importer.")
+            return HttpResponseRedirect(request.path)
+
         score_pairs_ok = True
         for match in matches:
             home_key = f"bo_home_{match.id}"

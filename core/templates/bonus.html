@@ -67,6 +67,16 @@
 
 <a href="{% url 'round_board' round.id %}" class="back-link">&larr; Retour aux résultats</a>
 
+{% if request.user.is_staff %}
+<form method="post" class="mb-3">
+  {% csrf_token %}
+  <button type="submit" name="import_scores" value="1" class="btn btn-sm btn-outline-info fw-bold">
+    ⟳ Importer les scores depuis TheSportsDB (récup + recalcul)
+  </button>
+  <span class="text-muted small">Visible admin uniquement</span>
+</form>
+{% endif %}
+
 <p class="text-muted small">
   Saisis un <strong>score</strong> (domicile + extérieur) pour le mettre à jour et recalculer la journée.
   Laisse vide pour conserver le score existant.
