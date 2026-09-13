@@ -32,6 +32,7 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 - **Phase 15 — UX bonus + rappels** : bouton « Voir les scores & pronos de cette journée » sur la page Bonus ; rappels H-24/H-6 ancrés sur le premier kickoff du round (le H-6 ne se déclenchait jamais avec l'ancrage jour) — repli jour pour les rounds sans match ; test du récap H-6 (102 au total).
 - **Phase 16 — Import manuel admin** : action admin « ⟳ Importer les scores depuis TheSportsDB (maintenant) » sur `SeasonAdmin` (même mode que le cron : `quick=True`, dernière journée), avec auto-recalcul des journées jouées si changement ; 2 tests dédiés (104 au total).
 - **Phase 17 — Bouton import sur la page Bonus** : bouton staff « ⟳ Importer les scores depuis TheSportsDB » directement sur `/resultats/<round>/bonus/` (réservé `is_staff`, formulaire dédié) ; déclenche l'import de la saison du round + recalcul si changement ; 2 tests (106 au total).
+- **Phase 18 — Commande show_match_prono** : `manage.py show_match_prono <id|texte>` affiche tous les pronos (joueur + score prédit + BO/BD + points) d'un match ; `--list` liste les matches avec leurs IDs (filtres `--competition`, `--season`, `--round`) ; recherche par nom d'équipe ; gère les matchs historiques sans équipes (`?`) ; 3 tests (109 au total).
 
 ### In Progress
 - *(none)*
@@ -59,9 +60,9 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 ## Critical Context
 - Projet : `App_prono_rugby` sur PA, dépôt git dans `backend/`.
 - Site : `xavfabiani.pythonanywhere.com` — `main` (commit `7b500ac`).
-- Version courante : `1.3.2` (`core/version.py`).
+- Version courante : `1.3.3` (`core/version.py`).
 - `.env` sur PA : `CRON_TOKEN=xx`, `EMAIL_HOST_USER=pronorugby83@gmail.com`, `REMINDER_HOURS=24,6`.
-- Tests : `python -m pytest tests/ -q` → 106 OK.
+- Tests : `python -m pytest tests/ -q` → 109 OK.
 - CI : GitHub Actions (`.github/workflows/tests.yml`) — pytest sur push/PR branch `main`.
 - Migrations 0013, 0014 appliquées.
 
@@ -80,7 +81,7 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 - `core/services/statistics.py` : `StatsResult` avec `flair_series`, `podium_series`
 - `core/management/commands/import_scores.py`
 - `core/management/commands/create_6nations_2027.py` : création 6 Nations 2027 depuis TheSportsDB
-- `core/management/commands/backfill_player_seasons.py` : backfill M2M Player.seasons
+- `core/management/commands/show_match_prono.py` : affiche les pronos d'un match, liste les matches avec IDs, recherche par équipe
 - `core/templates/statistiques.html` : graphique avec M+F+P + M (tirets)
 - `core/admin.py` : `PlayerAdmin` avec `filter_horizontal` sur `seasons`
 - `core/version.py` : `__version__` (PEP 440) — à incrémenter à chaque modif déployée
