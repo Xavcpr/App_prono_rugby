@@ -1,7 +1,47 @@
 import pytest
 from django.core.management import call_command
+from django.urls import reverse
 
 from core.models import Season
+
+
+@pytest.mark.django_db
+class TestAdminImportAction:
+    def test_action_invoked_from_changelist(self, admin_client, season, monkeypatch):
+        target = season.pk
+        assert Season.objects.get(id=target)
+        called = []
+
+        def fake_import(season, **kw):
+            called.append(season.id)
+            return {"status": "ok", "created": 0, "updated": 2, "skipped": 0, "results": []}
+
+        monkeypatch.setattr("core.admin.import_scores", fake_import)
+        resp = admin_client.post(
+            reverse("admin:core_season_changelist"),
+            {"action": "import_scores_now", "_selected_action": str(target)},
+            secure=True,
+        )
+        assert called == [target]
+        assert resp.status_code == 302
+
+    def test_action_recomputes_when_changed(self, admin_client, season, monkeypatch):
+        recomputed = []
+        monkeypatch.setattr(
+            "core.admin.import_scores",
+            lambda season, **kw: {"status": "ok", "created": 1, "updated": 0, "skipped": 0, "results": []},
+        )
+        monkeypatch.setattr(
+            "core.admin.recompute_played_rounds",
+            lambda season: recomputed.append(season.id),
+        )
+        resp = admin_client.post(
+            reverse("admin:core_season_changelist"),
+            {"action": "import_scores_now", "_selected_action": str(season.pk)},
+            secure=True,
+        )
+        assert recomputed == [season.pk]
+        assert resp.status_code == 302
 
 
 @pytest.mark.django_db

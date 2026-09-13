@@ -3,7 +3,8 @@ from django.db.models import Sum, F
 from django import forms
 from datetime import datetime, time
 
-from .services.scoring import compute_season_ranking_points, process_round_scores
+from .services.scores_importer import import_scores
+from .services.scoring import compute_season_ranking_points, process_round_scores, recompute_played_rounds
 from .models import (
     CompetitionResult, CompetitionTeam, Season, Team, Player, Competition, Round, Match,
     Prediction, DailyScore, SeasonScore, CompetitionBonusPrediction, CompetitionTeamPrediction
@@ -52,11 +53,40 @@ class RoundAdmin(admin.ModelAdmin):
     list_filter = ("season__competition", "season", "phase")
     fields = ("competition", "season", "number", "phase", "name_override", "date")
 
+def run_thesportsdb_import(season):
+    """Importe les scores depuis TheSportsDB (même mode que le cron) et
+    recalcule les journées jouées si de nouveaux horaires/scores arrivent."""
+    result = import_scores(season, dry_run=False, quick=True, aborted_rounds=1)
+    if result.get("created", 0) > 0 or result.get("updated", 0) > 0:
+        recompute_played_rounds(season)
+    return result
+
+
+@admin.action(description="⟳ Importer les scores depuis TheSportsDB (maintenant)")
+def import_scores_now(modeladmin, request, queryset):
+    summaries = []
+    for season in queryset:
+        try:
+            result = run_thesportsdb_import(season)
+            changed = result.get("created", 0) > 0 or result.get("updated", 0) > 0
+            summaries.append(
+                f"{season}: {result.get('created', 0)} créés, "
+                f"{result.get('updated', 0)} mis à jour"
+                + (" → journées recalculées" if changed else "")
+            )
+        except Exception as exc:
+            summaries.append(f"{season}: ERREUR {exc}")
+    modeladmin.message_user(
+        request, " | ".join(summaries) if summaries else "Aucune saison sélectionnée.",
+        messages.SUCCESS,
+    )
+
 @admin.register(Season)
 class SeasonAdmin(admin.ModelAdmin):
     list_display = ("competition", "year")
     list_filter = ("competition",)
     filter_horizontal = ("teams",)
+    actions = [import_scores_now]
 
 @admin.register(Match)
 class MatchAdmin(admin.ModelAdmin):

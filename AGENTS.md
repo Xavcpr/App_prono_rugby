@@ -30,6 +30,7 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 - **Phase 13 — Ménage audit** : `db_backup.sqlite3` + artefacts dev untrackés (json/csv/xlsx/notebooks/htm/`views_svg`) ; doublon `compute_competition_points` supprimé (une seule version, filtrée par saison, dans `views.py`) ; `djangorestframework` retiré de requirements ; `print()` → `logger` dans scoring.py.
 - **Phase 14 — Règle tout-pile** : un tout-pile n'ajoute plus les demi-tout-pile (800 pts au lieu de 800+2×40) ; aligné entre `calculate_match_points` (services/scoring.py), le round board (views.py) et les stats (statistics.py déjà en `elif`) ; mermaid de `bareme.html` mis à jour ; 2 tests dédiés (101 au total).
 - **Phase 15 — UX bonus + rappels** : bouton « Voir les scores & pronos de cette journée » sur la page Bonus ; rappels H-24/H-6 ancrés sur le premier kickoff du round (le H-6 ne se déclenchait jamais avec l'ancrage jour) — repli jour pour les rounds sans match ; test du récap H-6 (102 au total).
+- **Phase 16 — Import manuel admin** : action admin « ⟳ Importer les scores depuis TheSportsDB (maintenant) » sur `SeasonAdmin` (même mode que le cron : `quick=True`, dernière journée), avec auto-recalcul des journées jouées si changement ; 2 tests dédiés (104 au total).
 
 ### In Progress
 - *(none)*
@@ -57,9 +58,9 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 ## Critical Context
 - Projet : `App_prono_rugby` sur PA, dépôt git dans `backend/`.
 - Site : `xavfabiani.pythonanywhere.com` — `main` (commit `61e3504`).
-- Version courante : `1.3.0` (`core/version.py`).
+- Version courante : `1.3.1` (`core/version.py`).
 - `.env` sur PA : `CRON_TOKEN=xx`, `EMAIL_HOST_USER=pronorugby83@gmail.com`, `REMINDER_HOURS=24,6`.
-- Tests : `python -m pytest tests/ -q` → 102 OK.
+- Tests : `python -m pytest tests/ -q` → 104 OK.
 - CI : GitHub Actions (`.github/workflows/tests.yml`) — pytest sur push/PR branch `main`.
 - Migrations 0013, 0014 appliquées.
 
