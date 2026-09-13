@@ -21,7 +21,8 @@ class Command(BaseCommand):
             choices=["name", "diff"],
             default="name",
             help="Tri des pronos : name (nom du joueur) ou diff (écart Domicile-Extérieur décroissant, "
-                 "du plus optimiste pour le domicile au plus pessimiste).",
+                 "du plus optimiste pour le domicile au plus pessimiste ; en cas d'égalité, "
+                 "le plus de points marqués à domicile d'abord).",
         )
 
     def handle(self, *args, **options):
@@ -108,7 +109,13 @@ class Command(BaseCommand):
             .select_related("player")
         )
         if sort_by == "diff":
-            preds.sort(key=lambda p: p.home_score_pred - p.away_score_pred, reverse=True)
+            preds.sort(
+                key=lambda p: (
+                    p.home_score_pred - p.away_score_pred,
+                    p.home_score_pred,
+                ),
+                reverse=True,
+            )
         else:
             preds.sort(key=lambda p: p.player.name)
         if not preds:

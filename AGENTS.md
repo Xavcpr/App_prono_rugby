@@ -33,7 +33,7 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 - **Phase 16 — Import manuel admin** : action admin « ⟳ Importer les scores depuis TheSportsDB (maintenant) » sur `SeasonAdmin` (même mode que le cron : `quick=True`, dernière journée), avec auto-recalcul des journées jouées si changement ; 2 tests dédiés (104 au total).
 - **Phase 17 — Bouton import sur la page Bonus** : bouton staff « ⟳ Importer les scores depuis TheSportsDB » directement sur `/resultats/<round>/bonus/` (réservé `is_staff`, formulaire dédié) ; déclenche l'import de la saison du round + recalcul si changement ; 2 tests (106 au total).
 - **Phase 18 — Commande show_match_prono** : `manage.py show_match_prono <id|texte>` affiche tous les pronos (joueur + score prédit + BO/BD + points) d'un match ; `--list` liste les matches avec leurs IDs (filtres `--competition`, `--season`, `--round`) ; recherche par nom d'équipe ; gère les matchs historiques sans équipes (`?`) ; 3 tests (109 au total).
-- **Phase 18b — Tri par écart** : `show_match_prono --sort diff` trie les pronos par écart Domicile-Extérieur décroissant (du plus optimiste pour l'équipe à domicile au plus pessimiste) et affiche l'écart `[+N]`/`[-N]` ; option `--sort`, signe ASCII (console Windows) ; 1 test (110 au total).
+- **Phase 18b — Tri par écart** : `show_match_prono --sort diff` trie les pronos par écart Domicile-Extérieur décroissant (du plus optimiste pour l'équipe à domicile au plus pessimiste) et affiche l'écart `[+N]`/`[-N]` ; option `--sort`, signe ASCII (console Windows) ; égalité d'écart → départage par points marqués à domicile (le plus grand d'abord) ; 2 tests (111 au total).
 
 ### In Progress
 - *(none)*
@@ -61,9 +61,9 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 ## Critical Context
 - Projet : `App_prono_rugby` sur PA, dépôt git dans `backend/`.
 - Site : `xavfabiani.pythonanywhere.com` — `main` (commit `587c5b6`).
-- Version courante : `1.3.4` (`core/version.py`).
+- Version courante : `1.3.5` (`core/version.py`).
 - `.env` sur PA : `CRON_TOKEN=xx`, `EMAIL_HOST_USER=pronorugby83@gmail.com`, `REMINDER_HOURS=24,6`.
-- Tests : `python -m pytest tests/ -q` → 110 OK.
+- Tests : `python -m pytest tests/ -q` → 111 OK.
 - CI : GitHub Actions (`.github/workflows/tests.yml`) — pytest sur push/PR branch `main`.
 - Migrations 0013, 0014 appliquées.
 

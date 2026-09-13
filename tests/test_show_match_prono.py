@@ -43,3 +43,21 @@ def test_show_match_prono_sort_diff_optimistic_home_first(prediction, match_with
     out = capsys.readouterr().out
     assert "28-14" in out
     assert out.index("[+25]") < out.index("[+14]")
+
+
+@pytest.mark.django_db
+def test_show_match_prono_sort_diff_tie_break_on_home_points(prediction, match_with_scores, player, capsys):
+    prediction.home_score_pred = 28
+    prediction.away_score_pred = 18
+    prediction.save()
+    Prediction.objects.create(
+        player=player,
+        match=match_with_scores,
+        home_score_pred=35,
+        away_score_pred=25,
+        points=0,
+    )
+    call_command("show_match_prono", str(match_with_scores.id), "--sort", "diff")
+    out = capsys.readouterr().out
+    assert "[+10]" in out
+    assert out.index("35-25") < out.index("28-18")
