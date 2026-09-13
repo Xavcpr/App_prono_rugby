@@ -16,6 +16,13 @@ class Command(BaseCommand):
         parser.add_argument("--competition", help="Filtre la liste par nom de compétition.")
         parser.add_argument("--season", help="Filtre la liste par année de saison (ex. 2026/2027).")
         parser.add_argument("--round", type=int, help="Filtre la liste par numéro de journée.")
+        parser.add_argument(
+            "--sort",
+            choices=["name", "diff"],
+            default="name",
+            help="Tri des pronos : name (nom du joueur) ou diff (écart Domicile-Extérieur décroissant, "
+                 "du plus optimiste pour le domicile au plus pessimiste).",
+        )
 
     def handle(self, *args, **options):
         qs = Match.objects.select_related(
@@ -61,7 +68,7 @@ class Command(BaseCommand):
                 return
             match = matches[0]
 
-        self._show_match(match)
+        self._show_match(match, sort_by=options["sort"])
 
     def _list_matches(self, qs, options=None):
         matches = list(qs.order_by("round__season__year", "-round__number", "kickoff_at"))
@@ -81,7 +88,7 @@ class Command(BaseCommand):
                 f"| {home} vs {away} | {score}"
             )
 
-    def _show_match(self, match):
+    def _show_match(self, match, sort_by="name"):
         season = match.round.season
         kick = f"{match.kickoff_at:%d/%m/%Y %H:%M}" if match.kickoff_at else "horaire inconnu"
         score_real = (
@@ -99,13 +106,20 @@ class Command(BaseCommand):
         preds = list(
             Prediction.objects.filter(match=match)
             .select_related("player")
-            .order_by("player__name")
         )
+        if sort_by == "diff":
+            preds.sort(key=lambda p: p.home_score_pred - p.away_score_pred, reverse=True)
+        else:
+            preds.sort(key=lambda p: p.player.name)
         if not preds:
             self.stdout.write("  (aucun prono pour ce match)")
             return
         for p in preds:
             parts = [f"{p.player.name}: {p.home_score_pred}-{p.away_score_pred}"]
+            if sort_by == "diff":
+                diff = p.home_score_pred - p.away_score_pred
+                sign = "+" if diff >= 0 else ""
+                parts.append(f"[{sign}{diff}]")
             extras = []
             if p.bonus_home_pred:
                 extras.append("BO D")
