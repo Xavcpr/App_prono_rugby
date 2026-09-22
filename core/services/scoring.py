@@ -509,6 +509,28 @@ def compute_season_ranking_points(season_obj, compute_podium=False):
     return "Calcul terminé (Matchs + Flair)" if not compute_podium else "Calcul terminé (Matchs + Flair + Podium)"
 
 
+def sync_season_match_points(season_obj):
+    """Resynchronise SeasonScore.match_points depuis la somme des DailyScore
+    de la saison. Sûr et idempotent : ne touche ni aux pronostics ni aux
+    bonus de flair/podium (résultats officiels finals).
+
+    À appeler après toute écriture de DailyScore (saisie des scores sur la
+    page bonus, bouton « Recalculer », import TheSportsDB) pour que le
+    classement global / les stats / le HOF soient à jour.
+    """
+    players = Player.objects.filter(user__isnull=False)
+    for p in players:
+        total_matchs = DailyScore.objects.filter(
+            user=p.user,
+            round__season=season_obj,
+        ).aggregate(total=Sum("points"))["total"] or 0
+        ss, _ = SeasonScore.objects.get_or_create(
+            user=p.user, season=season_obj, competition=season_obj.competition
+        )
+        ss.match_points = total_matchs
+        ss.save()
+
+
 def recompute_played_rounds(season_obj):
     """Rejoue le scoring des journées déjà jouées (sc=present) et resynchronise
     SeasonScore.match_points depuis les DailyScore.
@@ -529,16 +551,6 @@ def recompute_played_rounds(season_obj):
     for r in played_rounds:
         process_round_scores(r)
 
-    players = Player.objects.filter(user__isnull=False)
-    for p in players:
-        total_matchs = DailyScore.objects.filter(
-            user=p.user,
-            round__season=season_obj,
-        ).aggregate(total=Sum("points"))["total"] or 0
-        ss, _ = SeasonScore.objects.get_or_create(
-            user=p.user, season=season_obj, competition=season_obj.competition
-        )
-        ss.match_points = total_matchs
-        ss.save()
+    sync_season_match_points(season_obj)
 
     return len(played_rounds)

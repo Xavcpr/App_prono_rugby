@@ -39,7 +39,8 @@ class TestBonusScoresEntry:
         return client
 
     def test_post_scores_updates_match_and_recomputes(self, client, prediction, match_with_scores, round_obj):
-        from core.models import DailyScore
+        from django.db.models import Sum
+        from core.models import DailyScore, SeasonScore
         client = self._staff_client(client, prediction)
         m = match_with_scores
         url = reverse("round_bonus", args=[round_obj.id])
@@ -48,6 +49,12 @@ class TestBonusScoresEntry:
         m.refresh_from_db()
         assert (m.home_score, m.away_score) == (31, 17)
         assert DailyScore.objects.filter(user=prediction.player.user, round=round_obj).exists()
+        expected = DailyScore.objects.filter(
+            user=prediction.player.user, round__season=round_obj.season
+        ).aggregate(total=Sum("points"))["total"]
+        ss = SeasonScore.objects.get(user=prediction.player.user, season=round_obj.season)
+        assert ss.match_points == expected
+        assert ss.match_points > 0
 
     def test_partial_score_not_saved(self, client, prediction, match_with_scores, round_obj):
         from core.models import DailyScore
@@ -109,3 +116,23 @@ class TestBonusScoresEntry:
         assert resp.status_code == 302
         assert imported == []
         assert resp.content.decode() == ""
+
+
+@pytest.mark.django_db
+class TestComputeRoundSync:
+
+    def test_compute_round_syncs_season_match_points(self, client, prediction, match_with_scores, round_obj):
+        from django.db.models import Sum
+        from core.models import DailyScore, SeasonScore
+        user = prediction.player.user
+        user.is_staff = True
+        user.save()
+        client.force_login(user)
+        resp = client.get(reverse("compute_points", args=[round_obj.id]), secure=True)
+        assert resp.status_code == 302
+        expected = DailyScore.objects.filter(
+            user=prediction.player.user, round__season=round_obj.season
+        ).aggregate(total=Sum("points"))["total"]
+        assert expected > 0
+        ss = SeasonScore.objects.get(user=prediction.player.user, season=round_obj.season)
+        assert ss.match_points == expected

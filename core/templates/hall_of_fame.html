@@ -181,7 +181,7 @@
                             {% for h in entry.history_details %}
                                 <div class="list-group-item d-flex justify-content-between align-items-center py-3">
                                     <div>
-                                        <span class="fw-bold text-primary">{{ h.year }}</span>
+                                        <span class="fw-bold text-primary">{{ h.label|default:h.year }}</span>
                                         <br>
                                         <small class="text-muted">{{ h.total }} participants</small>
                                     </div>
