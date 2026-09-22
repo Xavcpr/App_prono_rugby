@@ -509,10 +509,25 @@ def compute_season_ranking_points(season_obj, compute_podium=False):
     return "Calcul terminé (Matchs + Flair)" if not compute_podium else "Calcul terminé (Matchs + Flair + Podium)"
 
 
+def _participated_in_season(player, season_obj):
+    """Un joueur « a participé » à une saison s'il y a déposé au moins un pronostic.
+    Les DailyScore sont créés pour TOUS les comptes à chaque journée jouée, ils ne
+    sont donc pas un signal de participation : on utilise Prediction."""
+    from core.models import Prediction
+
+    return Prediction.objects.filter(
+        player=player, match__round__season=season_obj
+    ).exists()
+
+
 def sync_season_match_points(season_obj):
     """Resynchronise SeasonScore.match_points depuis la somme des DailyScore
     de la saison. Sûr et idempotent : ne touche ni aux pronostics ni aux
     bonus de flair/podium (résultats officiels finals).
+
+    Seuls les joueurs ayant réellement participé (au moins un pronostic dans
+    la saison) sont pris en compte : les entrées fantômes à 0 pt créées pour
+    des comptes qui n'ont jamais joué cette saison sont supprimées.
 
     À appeler après toute écriture de DailyScore (saisie des scores sur la
     page bonus, bouton « Recalculer », import TheSportsDB) pour que le
@@ -520,6 +535,11 @@ def sync_season_match_points(season_obj):
     """
     players = Player.objects.filter(user__isnull=False)
     for p in players:
+        if not _participated_in_season(p, season_obj):
+            SeasonScore.objects.filter(
+                user=p.user, season=season_obj, competition=season_obj.competition
+            ).delete()
+            continue
         total_matchs = DailyScore.objects.filter(
             user=p.user,
             round__season=season_obj,

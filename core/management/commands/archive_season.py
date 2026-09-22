@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand, CommandError
 
-from core.models import Season, SeasonHistory, SeasonScore
+from core.models import Prediction, Season, SeasonHistory, SeasonScore
 
 
 class Command(BaseCommand):
@@ -40,20 +40,33 @@ class Command(BaseCommand):
             + ", ".join(f"{s.competition.name} {s.year}" for s in seasons)
         )
 
-        totals = {}
-        for ss in SeasonScore.objects.filter(
-            season_id__in=[s.id for s in seasons]
-        ).select_related("user"):
-            uname = ss.user.username
-            totals[uname] = totals.get(uname, 0) + (
-                (ss.match_points or 0) + (ss.ranking_points or 0) + (ss.podium_points or 0)
+        group_season_ids = [s.id for s in seasons]
+
+        # Participation réelle : au moins un pronostic déposé dans la saison.
+        # (Les DailyScore existent pour tous les comptes à chaque journée jouée,
+        # on ne peut pas s'y fier ; et les SeasonScore à 0 pt peuvent avoir été
+        # créés par sync/match_points pour des comptes jamais actifs.)
+        participants = set(
+            Prediction.objects.filter(match__round__season_id__in=group_season_ids)
+            .values_list("player__user__username", flat=True)
+            .distinct()
+        )
+        if not participants:
+            raise CommandError(
+                "Aucun participant (aucun pronostic) pour cette saison — rien à archiver."
             )
 
-        if not totals:
-            raise CommandError("Aucun SeasonScore pour cette saison — rien à archiver.")
+        totals = {uname: 0 for uname in participants}
+        for ss in SeasonScore.objects.filter(
+            season_id__in=group_season_ids
+        ).select_related("user"):
+            if ss.user.username in totals:
+                totals[ss.user.username] += (
+                    (ss.match_points or 0) + (ss.ranking_points or 0) + (ss.podium_points or 0)
+                )
 
-        participants = sorted(totals.items(), key=lambda x: (-x[1], x[0].lower()))
-        total_players = len(participants)
+        ranked = sorted(totals.items(), key=lambda x: (-x[1], x[0].lower()))
+        total_players = len(ranked)
 
         if not dry_run:
             deleted, _ = SeasonHistory.objects.filter(season_year=season_year).delete()
@@ -61,7 +74,7 @@ class Command(BaseCommand):
                 self.stdout.write(f"{deleted} ligne(s) existante(s) écrasée(s) pour {season_year}.")
 
         self.stdout.write(f"Classement {season_year - 1}-{season_year} ({total_players} joueurs) :")
-        for i, (uname, pts) in enumerate(participants, 1):
+        for i, (uname, pts) in enumerate(ranked, 1):
             self.stdout.write(f"  {i:>2} | {uname} | {pts} pts")
             if not dry_run:
                 user = User.objects.get(username=uname)

@@ -3,8 +3,8 @@
 Application Django de pronostics rugby (Top 14, Champions Cup, 6 Nations) hébergée sur
 PythonAnywhere : **`xavfabiani.pythonanywhere.com`**.
 
-- **Version** : `core/version.py` (`1.4.2`) — visible sur toutes les pages (footer) et via `/version/`.
-- **Tests** : `python -m pytest tests/ -q` → 118 OK.
+- **Version** : `core/version.py` (`1.4.3`) — visible sur toutes les pages (footer) et via `/version/`.
+- **Tests** : `python -m pytest tests/ -q` → 122 OK.
 - **CI** : GitHub Actions (`.github/workflows/tests.yml`).
 
 ## Installer / lancer en local
@@ -82,6 +82,11 @@ python manage.py sync_match_points          # toutes les saisons 2025+
 python manage.py sync_match_points --season 2026/2027   # une seule saison
 ```
 
+Depuis la v1.4.3, cette commande **supprime aussi les entrées fantômes** :
+seuls les joueurs ayant réellement déposé au moins un pronostic dans la saison
+gardent une ligne `SeasonScore` (un compte qui a rejoint le concours après la
+fin de la saison n'y est plus, ni dans le classement ni dans l'archive).
+
 ### Archiver une saison terminée dans le Hall of Fame
 
 À la fin d'une saison, son classement final (totaux matchs + flair + podium)
@@ -98,6 +103,8 @@ python manage.py archive_season 2026
 
 - `archive_season <annee_fin>` : l'argument est **l'année de fin** de saison.
   Ex. `2026` → saison 2025-2026 ; `2027` → 2026-2027.
+- **Seuls les joueurs ayant déposé au moins un pronostic dans la saison sont
+  inclus** (les comptes créés les années suivantes n'y figurent pas).
 - La commande écrase les lignes `SeasonHistory` existantes de la même année
   (relançable sans risque).
 - Il est aussi possible d'encoder les rangs à la main via `/admin`

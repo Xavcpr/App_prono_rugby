@@ -38,6 +38,7 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 - **Phase 20 — HOF archivage + saison en cours** : corrigé après retour utilisateur. Convention `SeasonHistory.season_year` = **année de FIN** de saison (2024-2025 stocké 2025). Le HOF affiche désormais : (1) les saisons archivées labellisées `2024-2025`, `2018-2019`, etc. (plus de décalage d'un an), et (2) la saison en cours `2026-2027` re-calculée en direct depuis `SeasonScore` (M+F+P des compétitions `2026`/`2026/2027`), labellisée `2026-2027` (jamais `2026`). `_season_label()` et `_compute_hof_entry(display_year=...)`. 2 tests HOF (114 au total).
 - **Phase 21 — README** : création `backend/README.md` (installation, toutes les commandes management dont `show_match_prono` — lire les pronos d'un match, retrouver l'ID, `--list`, filtres, `--sort diff` —, `import_scores`, `sync_match_points`, `send_reminders`, exports Excel) + règle HOF d'archivage.
 - **Phase 22 — Commande archive_season** : `manage.py archive_season <annee_fin>` archive le classement final d'une saison terminée dans `SeasonHistory` depuis les `SeasonScore` (M+F+P, regroupement `year__startswith=<annee_fin-1>` ; ex. `archive_season 2026` → saisons « 2025 » et « 2025/2026 » = 6N 2025 + Top14/CC 2025-2026), avec `--dry-run` ; idempotent (écrase les lignes existantes de la même `season_year`) ; 4 tests (118 au total). Réponse à l'utilisateur : `sync_match_points` déjà exécuté = pas besoin de le relancer ; archiver la 2025-2026 via `archive_season 2026` sur PA.
+- **Phase 23 — Anti-entrées fantômes** : le HOF calculait avec des joueurs à 0 pt qui n'avaient jamais joué la saison (créés par `sync_season_match_points` pour tous les comptes). Désormais la participation = **au moins un pronostic** (`Prediction`) dans la saison. `sync_season_match_points` supprime les lignes fantômes des non-participants ; `archive_season` n'inclut que les participants (les comptes ayant rejoint le concours les années suivantes sont exclus). 3 tests sync + 1 test archive « excludes non-participants » + fixture `_participate` prédictive (122 au total).
 
 ### In Progress
 - *(none)*
@@ -65,9 +66,9 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 ## Critical Context
 - Projet : `App_prono_rugby` sur PA, dépôt git dans `backend/`.
 - Site : `xavfabiani.pythonanywhere.com` — `main` (commit `15d6291`).
-- Version courante : `1.4.2` (`core/version.py`).
+- Version courante : `1.4.3` (`core/version.py`).
 - `.env` sur PA : `CRON_TOKEN=xx`, `EMAIL_HOST_USER=pronorugby83@gmail.com`, `REMINDER_HOURS=24,6`.
-- Tests : `python -m pytest tests/ -q` → 118 OK.
+- Tests : `python -m pytest tests/ -q` → 122 OK.
 - CI : GitHub Actions (`.github/workflows/tests.yml`) — pytest sur push/PR branch `main`.
 - Migrations 0013, 0014 appliquées.
 
