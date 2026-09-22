@@ -3,8 +3,8 @@
 Application Django de pronostics rugby (Top 14, Champions Cup, 6 Nations) hébergée sur
 PythonAnywhere : **`xavfabiani.pythonanywhere.com`**.
 
-- **Version** : `core/version.py` (`1.4.3`) — visible sur toutes les pages (footer) et via `/version/`.
-- **Tests** : `python -m pytest tests/ -q` → 122 OK.
+- **Version** : `core/version.py` (`1.4.5`) — visible sur toutes les pages (footer) et via `/version/`.
+- **Tests** : `python -m pytest tests/ -q` → 127 OK.
 - **CI** : GitHub Actions (`.github/workflows/tests.yml`).
 
 ## Installer / lancer en local

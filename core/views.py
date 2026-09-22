@@ -1890,8 +1890,10 @@ def _season_label(season_year):
     return f"{season_year - 1}-{season_year}"
 
 
-def _compute_hof_entry(data, name, season_year, rank, total_players, current_year, is_active, display_year=None):
-    n = current_year - season_year
+def _compute_hof_entry(data, name, season_year, rank, total_players, ref_year, is_active, display_year=None):
+    # Ancienneté = par rapport à l'année de FIN de la saison courante (ref_year) :
+    # saison en cours → n=0 (100 pts), saison passée → n=1 (×0.9), etc.
+    n = ref_year - season_year
     perf = ((total_players + 1 - rank) * 100) / total_players
     score_annee = perf * (0.9 ** n)
 
@@ -1912,15 +1914,26 @@ def _compute_hof_entry(data, name, season_year, rank, total_players, current_yea
         'label': _season_label(display_year if display_year is not None else season_year),
         'rank': rank,
         'total': total_players,
-        'perf_score': perf
+        'perf_score': perf,
+        'score_annee': score_annee,
     })
 
     if rank < data[name]['best_rank']:
         data[name]['best_rank'] = rank
 
 
+def _hof_ref_year(now=None):
+    """Année de FIN de la saison calendaire en cours, référence d'ancienneté HOF.
+    (sept. → fin = année+1 ; avant août → fin = année en cours)."""
+    now = now or timezone.now()
+    start_year = now.year if now.month >= 8 else now.year - 1
+    return start_year + 1
+
+
 def hall_of_fame_view(request):
-    current_year = datetime.now().year
+    now = timezone.now()
+    current_year = now.year
+    ref_year = _hof_ref_year(now)  # année de FIN de la saison courante
     data = {}
 
     # 1. Historique des saisons passées (SeasonHistory) : saisons terminées,
@@ -1929,7 +1942,7 @@ def hall_of_fame_view(request):
     for record in histories:
         _compute_hof_entry(
             data, record.display_name, record.season_year,
-            record.rank, record.total_players, current_year,
+            record.rank, record.total_players, ref_year,
             record.user is not None
         )
 
@@ -1938,12 +1951,7 @@ def hall_of_fame_view(request):
     # M+F+P des compétitions de la saison (6N + Top 14 + CC). Même
     # regroupement que la page d'accueil : la saison 2026-2027 = Top14/CC
     # 2026-2027 + 6N 2027 (le 6N 2026 appartient à la 2025-2026).
-    now = timezone.now()
-    if now.month < 8:
-        start_year = current_year - 1
-    else:
-        start_year = current_year
-    active_seasons = Season.by_season_year(start_year + 1)
+    active_seasons = Season.by_season_year(ref_year)
     active_ids = [s.id for s in active_seasons]
 
     if active_ids:
@@ -1958,9 +1966,9 @@ def hall_of_fame_view(request):
             total_players = len(sorted_players)
             for i, (uname, _) in enumerate(sorted_players):
                 _compute_hof_entry(
-                    data, uname, current_year,
-                    i + 1, total_players, current_year,
-                    True, display_year=start_year + 1
+                    data, uname, ref_year,
+                    i + 1, total_players, ref_year,
+                    True, display_year=ref_year
                 )
 
     # Tri des détails et classement final. On trie par libellé « 2026-2027 »
@@ -2068,10 +2076,12 @@ def home_view(request):
     # --- 4. HALL OF FAME ---
     hof_data = {}
 
-    # 4a. Historique des saisons passées
+    # 4a. Historique des saisons passées (ancienneté = fin de saison courante,
+    # cohérent avec la page Hall of Fame : saison passée → ×0.9, etc.)
+    hof_ref = _hof_ref_year(now)
     for record in SeasonHistory.objects.all():
         name_db = record.display_name.strip()
-        n = now.year - record.season_year
+        n = hof_ref - record.season_year
         perf = ((record.total_players + 1 - record.rank) * 100) / record.total_players
         score_annee = perf * (0.9 ** n)
         hof_data[name_db] = hof_data.get(name_db, 0) + score_annee

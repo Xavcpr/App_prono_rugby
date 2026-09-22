@@ -119,9 +119,10 @@
                         <div class="col-md-7 border-end-md">
                             <p class="small">Ton score total est la somme de tes performances annuelles pondérées.</p>
                             <div class="bg-white p-2 rounded border text-center mb-3">
-                                <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Score Saison / 100</small>
+                                <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Points de saison</small>
                                 <br>
-                                <strong>(Joueurs Battus / Total) x 100</strong>
+                                <strong>(Joueurs + 1 − Rang) / Joueurs × 100</strong>
+                                <small class="text-muted">(1er = 100, avec décote affichée par saison)</small>
                             </div>
                             <div class="bg-white p-2 rounded border text-center">
                                 <small class="text-muted text-uppercase fw-bold" style="font-size: 0.6rem;">Pondération Temporelle</small>
@@ -189,7 +190,7 @@
                                         <span class="badge {% if h.rank == 1 %}bg-warning{% elif h.rank <= 3 %}bg-info text-white{% else %}bg-secondary{% endif %} rounded-pill">
                                             Rang : {{ h.rank }} / {{ h.total }}
                                         </span>
-                                        <div class="small mt-1 text-success fw-bold">+{{ h.perf_score|floatformat:1 }} pts</div>
+                                        <div class="small mt-1 text-success fw-bold">+{{ h.score_annee|floatformat:1 }} pts</div>
                                     </div>
                                 </div>
                             {% endfor %}

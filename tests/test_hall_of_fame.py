@@ -106,3 +106,28 @@ def test_hall_of_fame_modal_seasons_newest_first(client):
     content = resp.content.decode()
     assert content.index(f"Historique : {u.username}") > 0
     assert content.index(cur_label) < content.index(prev1_label) < content.index(prev2_label)
+
+
+@pytest.mark.django_db
+def test_hall_of_fame_points_decay_by_year(client):
+    # Ancienneté HOF : saison en cours n=0 (100 pts), saison précédente n=1
+    # (×0.9 → 90 pts). Le modal affiche la valeur DÉCOTÉE ; la somme des
+    # saisons = total all-time (100 + 90 = 190).
+    now = datetime.now()
+    ref_year = now.year + 1 if now.month >= 8 else now.year
+    prev_year = ref_year - 1
+
+    u = User.objects.create_user(username="Augustin", password="x")
+    SeasonHistory.objects.create(
+        season_year=prev_year, rank=1, total_players=10, player_name_legacy="Augustin"
+    )
+    comp = Competition.objects.create(name="Top 14", bonus_defense_threshold=7)
+    season = Season.objects.create(competition=comp, year=f"{prev_year}/{ref_year}")
+    SeasonScore.objects.create(user=u, season=season, competition=comp, match_points=10)
+
+    resp = client.get(reverse("hall_of_fame"), secure=True)
+    content = resp.content.decode()
+    # Locale FR : floatformat utilise la virgule (« 190,0 », « +90,0 pts »).
+    assert "190,0" in content
+    assert "+90,0 pts" in content
+    assert "+100,0 pts" in content

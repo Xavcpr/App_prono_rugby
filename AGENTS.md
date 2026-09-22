@@ -40,6 +40,7 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 - **Phase 22 — Commande archive_season** : `manage.py archive_season <annee_fin>` archive le classement final d'une saison terminée dans `SeasonHistory` depuis les `SeasonScore` (M+F+P, regroupement `year__startswith=<annee_fin-1>` ; ex. `archive_season 2026` → saisons « 2025 » et « 2025/2026 » = 6N 2025 + Top14/CC 2025-2026), avec `--dry-run` ; idempotent (écrase les lignes existantes de la même `season_year`) ; 4 tests (118 au total). Réponse à l'utilisateur : `sync_match_points` déjà exécuté = pas besoin de le relancer ; archiver la 2025-2026 via `archive_season 2026` sur PA.
 - **Phase 23 — Anti-entrées fantômes** : le HOF calculait avec des joueurs à 0 pt qui n'avaient jamais joué la saison (créés par `sync_season_match_points` pour tous les comptes). Désormais la participation = **au moins un pronostic** (`Prediction`) dans la saison. `sync_season_match_points` supprime les lignes fantômes des non-participants ; `archive_season` n'inclut que les participants (les comptes ayant rejoint le concours les années suivantes sont exclus). 3 tests sync + 1 test archive « excludes non-participants » + fixture `_participate` prédictive (122 au total).
 - **Phase 24 — Regroupement des saisons corrigé (HOF + archive)** : après retour utilisateur (« bons noms mais pas les bons scores », Augustin 19740 / Xav 16793, Luc 1er et non 3e). Le bug : `archive_season` et le bloc HOF « saison en cours » groupaient avec `year__startswith(...)`, ce qui **déplaçait le 6N 2026** (année `"2026"` → appartient à la 2025-2026) et **écartait le 6N 2027**. Ajout de `Season.group_key()` / `Season.by_season_year()` (même logique que le sélecteur de la page d'accueil) ; `archive_season` l'utilise (+ repli `DailyScore` comme `home_view`, M+F+P) ; le bloc HOF live aussi ; tri des saisons du modal par libellé décroissant (le tri par `year` mettait 2026-2027 après 2025-2026 à année égale). `home_view` réutilise `Season.group_key`. 4 nouveaux tests (126 au total), version **1.4.4**.
+- **Phase 25 — Décote HOF affichée et correctement âgée** : le modal affichait `perf` SANS décote (+100 pts pour tout 1er) alors que le total additionnait `perf × 0.9^n` → le total global était inexpliqué. Deuxièmement l'ancienneté `n` était basée sur l'année civile : la saison 2025-2026 (`season_year=2026`) avait `n=0` avec l'année 2026 → pas de décote (Augustin devrait avoir 90, pas 100). Fix : référence `_hof_ref_year()` = **année de FIN de la saison courante** (`start_year+1`, ex. 2027) ; la saison en cours est enregistrée avec `season_year=ref_year` (n=0) ; le modal affiche `score_annee` (décoté) → somme des saisons = total global. `home_view` (badge HOF) aligné sur la même référence. Explainer de `hall_of_fame.html` corrigé (`(Joueurs+1−Rang)/Joueurs×100`). 1 test dédié (127 au total), version **1.4.5**.
 
 ### In Progress
 - *(none)*
@@ -67,9 +68,9 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 ## Critical Context
 - Projet : `App_prono_rugby` sur PA, dépôt git dans `backend/`.
 - Site : `xavfabiani.pythonanywhere.com` — `main` (commit `d2baafc`).
-- Version courante : `1.4.3` (`core/version.py`).
+- Version courante : `1.4.5` (`core/version.py`).
 - `.env` sur PA : `CRON_TOKEN=xx`, `EMAIL_HOST_USER=pronorugby83@gmail.com`, `REMINDER_HOURS=24,6`.
-- Tests : `python -m pytest tests/ -q` → 122 OK.
+- Tests : `python -m pytest tests/ -q` → 127 OK.
 - CI : GitHub Actions (`.github/workflows/tests.yml`) — pytest sur push/PR branch `main`.
 - Migrations 0013, 0014 appliquées.
 
