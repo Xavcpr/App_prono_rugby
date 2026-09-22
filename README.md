@@ -3,8 +3,8 @@
 Application Django de pronostics rugby (Top 14, Champions Cup, 6 Nations) hébergée sur
 PythonAnywhere : **`xavfabiani.pythonanywhere.com`**.
 
-- **Version** : `core/version.py` (`1.4.1`) — visible sur toutes les pages (footer) et via `/version/`.
-- **Tests** : `python -m pytest tests/ -q` → 114 OK.
+- **Version** : `core/version.py` (`1.4.2`) — visible sur toutes les pages (footer) et via `/version/`.
+- **Tests** : `python -m pytest tests/ -q` → 118 OK.
 - **CI** : GitHub Actions (`.github/workflows/tests.yml`).
 
 ## Installer / lancer en local
@@ -82,6 +82,27 @@ python manage.py sync_match_points          # toutes les saisons 2025+
 python manage.py sync_match_points --season 2026/2027   # une seule saison
 ```
 
+### Archiver une saison terminée dans le Hall of Fame
+
+À la fin d'une saison, son classement final (totaux matchs + flair + podium)
+est enregistré dans l'app (`SeasonScore`). Pour le **rendre permanent** dans le
+Hall of Fame, il faut l'archiver dans `SeasonHistory` :
+
+```bash
+# Aperçu du classement sans rien écrire :
+python manage.py archive_season 2026 --dry-run
+
+# Archive réellement la saison 2025-2026 (saisons « 2025 » / « 2025/2026 » = 6N + Top 14 + CC) :
+python manage.py archive_season 2026
+```
+
+- `archive_season <annee_fin>` : l'argument est **l'année de fin** de saison.
+  Ex. `2026` → saison 2025-2026 ; `2027` → 2026-2027.
+- La commande écrase les lignes `SeasonHistory` existantes de la même année
+  (relançable sans risque).
+- Il est aussi possible d'encoder les rangs à la main via `/admin`
+  (`SeasonHistory`, champ `season_year` = année de fin).
+
 ### Rappels de pronos par email
 
 ```bash
@@ -99,6 +120,7 @@ Envoie les emails H-24 / H-6 avant le premier kickoff de chaque journée (`REMIN
 | `python manage.py export_pronos_excel -s 2026/2027 -c "Top 14" -o pronos.xlsx` | Export Excel des pronos. |
 | `python manage.py backfill_player_seasons` | Lie chaque joueur à ses saisons passées (M2M `Player.seasons`). |
 | `python manage.py create_6nations_2027` | Crée la saison 6 Nations 2027 (matchs depuis TheSportsDB). |
+| `python manage.py archive_season 2026` | Archive le classement final d'une saison dans le Hall of Fame (cf. section dédiée). |
 | `python manage.py send_reminders` | Rappels email H-24/H-6. |
 
 Commandes de maintenance / scraping (usage ponctuel) : `scrape_top14_lnr`,

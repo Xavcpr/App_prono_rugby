@@ -37,6 +37,7 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 - **Phase 19 — Sync SeasonScore.match_points** : bug « classement global non incrémenté » (les journées étaient calculées via DailyScore mais la somme saison `SeasonScore.match_points` jamais resynchronisée → classement/stats/HOF à 0). Ajout de `sync_season_match_points()` dans `scoring.py`, appelée après `process_round_scores` sur la page Bonus, le bouton « Recalculer » et via `recompute_played_rounds` ; commande `manage.py sync_match_points` pour réparer les saisons 2025+ existantes ; 2 tests (113 au total).
 - **Phase 20 — HOF archivage + saison en cours** : corrigé après retour utilisateur. Convention `SeasonHistory.season_year` = **année de FIN** de saison (2024-2025 stocké 2025). Le HOF affiche désormais : (1) les saisons archivées labellisées `2024-2025`, `2018-2019`, etc. (plus de décalage d'un an), et (2) la saison en cours `2026-2027` re-calculée en direct depuis `SeasonScore` (M+F+P des compétitions `2026`/`2026/2027`), labellisée `2026-2027` (jamais `2026`). `_season_label()` et `_compute_hof_entry(display_year=...)`. 2 tests HOF (114 au total).
 - **Phase 21 — README** : création `backend/README.md` (installation, toutes les commandes management dont `show_match_prono` — lire les pronos d'un match, retrouver l'ID, `--list`, filtres, `--sort diff` —, `import_scores`, `sync_match_points`, `send_reminders`, exports Excel) + règle HOF d'archivage.
+- **Phase 22 — Commande archive_season** : `manage.py archive_season <annee_fin>` archive le classement final d'une saison terminée dans `SeasonHistory` depuis les `SeasonScore` (M+F+P, regroupement `year__startswith=<annee_fin-1>` ; ex. `archive_season 2026` → saisons « 2025 » et « 2025/2026 » = 6N 2025 + Top14/CC 2025-2026), avec `--dry-run` ; idempotent (écrase les lignes existantes de la même `season_year`) ; 4 tests (118 au total). Réponse à l'utilisateur : `sync_match_points` déjà exécuté = pas besoin de le relancer ; archiver la 2025-2026 via `archive_season 2026` sur PA.
 
 ### In Progress
 - *(none)*
@@ -64,9 +65,9 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 ## Critical Context
 - Projet : `App_prono_rugby` sur PA, dépôt git dans `backend/`.
 - Site : `xavfabiani.pythonanywhere.com` — `main` (commit `87dbcee`).
-- Version courante : `1.4.1` (`core/version.py`).
+- Version courante : `1.4.2` (`core/version.py`).
 - `.env` sur PA : `CRON_TOKEN=xx`, `EMAIL_HOST_USER=pronorugby83@gmail.com`, `REMINDER_HOURS=24,6`.
-- Tests : `python -m pytest tests/ -q` → 114 OK.
+- Tests : `python -m pytest tests/ -q` → 118 OK.
 - CI : GitHub Actions (`.github/workflows/tests.yml`) — pytest sur push/PR branch `main`.
 - Migrations 0013, 0014 appliquées.
 
