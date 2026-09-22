@@ -65,7 +65,7 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 
 ## Critical Context
 - Projet : `App_prono_rugby` sur PA, dépôt git dans `backend/`.
-- Site : `xavfabiani.pythonanywhere.com` — `main` (commit `15d6291`).
+- Site : `xavfabiani.pythonanywhere.com` — `main` (commit `d2baafc`).
 - Version courante : `1.4.3` (`core/version.py`).
 - `.env` sur PA : `CRON_TOKEN=xx`, `EMAIL_HOST_USER=pronorugby83@gmail.com`, `REMINDER_HOURS=24,6`.
 - Tests : `python -m pytest tests/ -q` → 122 OK.
