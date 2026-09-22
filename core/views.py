@@ -1935,14 +1935,16 @@ def hall_of_fame_view(request):
 
     # 2. Saison en cours (SeasonScore temps réel) : l'entrée est labellisée
     # « 2026-2027 » (saison calendaire rugby), alimentée par les totaux
-    # M+F+P des compétitions de la saison (6N + Top 14 + CC).
+    # M+F+P des compétitions de la saison (6N + Top 14 + CC). Même
+    # regroupement que la page d'accueil : la saison 2026-2027 = Top14/CC
+    # 2026-2027 + 6N 2027 (le 6N 2026 appartient à la 2025-2026).
     now = timezone.now()
     if now.month < 8:
         start_year = current_year - 1
     else:
         start_year = current_year
-    active_seasons = Season.objects.filter(year__startswith=str(start_year))
-    active_ids = list(active_seasons.values_list('id', flat=True))
+    active_seasons = Season.by_season_year(start_year + 1)
+    active_ids = [s.id for s in active_seasons]
 
     if active_ids:
         ss_qs = SeasonScore.objects.filter(season_id__in=active_ids).select_related('user')
@@ -1961,9 +1963,11 @@ def hall_of_fame_view(request):
                     True, display_year=start_year + 1
                 )
 
-    # Tri des détails et classement final
+    # Tri des détails et classement final. On trie par libellé « 2026-2027 »
+    # décroissant : l'année seule ne suffit pas (saison en cours et saison
+    # 2025-2026 ont toutes deux season_year/current_year ≈ 2026).
     for player in data.values():
-        player['history_details'].sort(key=lambda x: x['year'], reverse=True)
+        player['history_details'].sort(key=lambda x: x['label'], reverse=True)
 
     ranking = sorted(data.values(), key=lambda x: x['score'], reverse=True)
 
@@ -1980,20 +1984,11 @@ def home_view(request):
     user = request.user
     now = timezone.now()
 
-    # --- 0. SÃ‰LECTEUR DE SAISON (groupé par année) ---
-    def get_season_key(year_str):
-        if '/' in year_str:
-            return year_str.split('/')[0]
-        if '-' in year_str:
-            return year_str.split('-')[0]
-        if year_str.isdigit():
-            return str(int(year_str) - 1)
-        return year_str
-
+    # --- 0. SELECTEUR DE SAISON (groupé par année) ---
     all_seasons = Season.objects.all().order_by("year")
     year_groups = {}
     for s in all_seasons:
-        key = get_season_key(s.year)
+        key = Season.group_key(s.year)
         # Ne garder que 2025+ (2025-2026 et 2026-2027)
         if not key.isdigit() or int(key) < 2025:
             continue

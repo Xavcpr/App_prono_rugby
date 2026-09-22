@@ -104,6 +104,27 @@ class Season(models.Model):
             return started
         return False
 
+    @staticmethod
+    def group_key(year_str):
+        """Clé de groupe d'une saison = année de DÉBUT de la saison calendaire.
+        '2025/2026' → '2025', '2024-2025' → '2024', '2026' (6 Nations) → '2025'
+        (le 6 Nations joué début 2026 appartient à la saison 2025-2026)."""
+        year_str = str(year_str)
+        if "/" in year_str:
+            return year_str.split("/")[0]
+        if "-" in year_str:
+            return year_str.split("-")[0]
+        if year_str.isdigit():
+            return str(int(year_str) - 1)
+        return year_str
+
+    @classmethod
+    def by_season_year(cls, end_year):
+        """Saisons d'une saison calendaire complète, `end_year` = année de FIN.
+        Ex. 2026 → {6N 2025, Top14/CC 2025-2026, 6N 2026} label 2025-2026."""
+        key = str(int(end_year) - 1)
+        return [s for s in cls.objects.all() if cls.group_key(s.year) == key]
+
 # ----- Journées / Rounds -----
 class Round(models.Model):
     # On définit les choix ici ou on importe ceux que tu avais

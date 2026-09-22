@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 from django.core.management import call_command
 
 from core.models import (
-    Competition, Match, Player, Prediction, Round, Season, SeasonHistory,
+    Competition, DailyScore, Match, Player, Prediction, Round, Season, SeasonHistory,
     SeasonScore, Team,
 )
 
@@ -122,3 +122,50 @@ def test_archive_season_excludes_non_participants():
     assert rows[0].user == u1
     assert rows[0].total_players == 1
     assert rows[0].rank == 1
+
+
+@pytest.mark.django_db
+def test_archive_season_includes_end_year_six_nations():
+    # La saison 2025-2026 comprend aussi le 6 Nations joué début 2026
+    # (Season.year = "2026"). Sans lui, le classement est faux.
+    comp14 = Competition.objects.create(name="Top 14", bonus_defense_threshold=7)
+    comp6n = Competition.objects.create(name="6 Nations", bonus_defense_threshold=7)
+    s14 = Season.objects.create(competition=comp14, year="2025/2026")
+    s6n_end = Season.objects.create(competition=comp6n, year="2026")
+    u1 = User.objects.create_user(username="Alice", password="x")
+    u2 = User.objects.create_user(username="Bob", password="x")
+    _participate(u1, s14)
+    _participate(u1, s6n_end)
+    _participate(u2, s14)
+    SeasonScore.objects.create(user=u1, season=s14, competition=comp14, match_points=500)
+    SeasonScore.objects.create(user=u1, season=s6n_end, competition=comp6n, match_points=100)
+    SeasonScore.objects.create(user=u2, season=s14, competition=comp14, match_points=550)
+
+    call_command("archive_season", "2026")
+
+    rows = {r.user.username: r for r in SeasonHistory.objects.filter(season_year=2026)}
+    # Avec le 6 Nations 2026 : Alice 600 > Bob 550.
+    assert rows["Alice"].rank == 1
+    assert rows["Bob"].rank == 2
+
+
+@pytest.mark.django_db
+def test_archive_season_fallback_daily_score():
+    comp = Competition.objects.create(name="Top 14", bonus_defense_threshold=7)
+    season = Season.objects.create(competition=comp, year="2025/2026")
+    u1 = User.objects.create_user(username="Alice", password="x")
+    u2 = User.objects.create_user(username="Bob", password="x")
+    _participate(u1, season)
+    _participate(u2, season)
+    rnd = Round.objects.get(season=season, number=1)
+    DailyScore.objects.create(user=u1, round=rnd, points=700)
+    DailyScore.objects.create(user=u2, round=rnd, points=300)
+    # Alice a un SeasonScore à 0 pt : on retombe sur la somme des DailyScore
+    # (même règle que home_view), Bob n'a aucun SeasonScore → fallback aussi.
+    SeasonScore.objects.create(user=u1, season=season, competition=comp, match_points=0)
+
+    call_command("archive_season", "2026")
+
+    rows = {r.user.username: r for r in SeasonHistory.objects.filter(season_year=2026)}
+    assert rows["Alice"].rank == 1
+    assert rows["Bob"].rank == 2

@@ -1,14 +1,16 @@
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand, CommandError
+from django.db.models import Sum
 
-from core.models import Prediction, Season, SeasonHistory, SeasonScore
+from core.models import DailyScore, Prediction, Season, SeasonHistory, SeasonScore
 
 
 class Command(BaseCommand):
     help = (
         "Archive le classement final d'une saison terminee dans SeasonHistory "
         "(affichage Hall of Fame). Source : SeasonScore de l'app (totaux "
-        "matchs + flair + podium des competitions de la saison). "
+        "matchs + flair + podium), regroupes comme sur la page d'accueil "
+        "(Top14/CC + 6 Nations debut-annee + 6 Nations fin-annee). "
         "season_year = annee de FIN de saison (ex. 2026 pour la 2025-2026)."
     )
 
@@ -27,12 +29,14 @@ class Command(BaseCommand):
         season_year = options["season_year"]
         dry_run = options["dry_run"]
 
-        prefix = str(season_year - 1)
-        seasons = list(Season.objects.filter(year__startswith=prefix).select_related("competition"))
+        # Même regroupement que la page d'accueil (get_season_key) :
+        # la saison 2025-2026 = 6N 2025 + Top14/CC 2025-2026 + 6N 2026,
+        # la saison 2026-2027 = Top14/CC 2026-2027 + 6N 2027.
+        seasons = Season.by_season_year(season_year)
         if not seasons:
             raise CommandError(
-                f"Aucune saison trouvée commençant par '{prefix}' "
-                "(ex. '2025', '2025/2026'). Vérifie l'année de fin demandée."
+                f"Aucune saison trouvée pour la saison {season_year - 1}-{season_year}. "
+                "Vérifie l'année de fin demandée."
             )
 
         self.stdout.write(
@@ -56,14 +60,32 @@ class Command(BaseCommand):
                 "Aucun participant (aucun pronostic) pour cette saison — rien à archiver."
             )
 
-        totals = {uname: 0 for uname in participants}
+        # Fallback match (DailyScore) : identique à home_view, qui prend
+        # SeasonScore.match_points s'il est > 0 sinon la somme des DailyScore.
+        ds_totals = {
+            row["user__username"]: row["total"] or 0
+            for row in DailyScore.objects.filter(
+                round__season_id__in=group_season_ids
+            ).values("user__username").annotate(total=Sum("points"))
+        }
+
+        ss_totals = {}
         for ss in SeasonScore.objects.filter(
             season_id__in=group_season_ids
         ).select_related("user"):
-            if ss.user.username in totals:
-                totals[ss.user.username] += (
-                    (ss.match_points or 0) + (ss.ranking_points or 0) + (ss.podium_points or 0)
-                )
+            uname = ss.user.username
+            if uname not in participants:
+                continue
+            agg = ss_totals.setdefault(uname, {"match": 0, "ranking": 0, "podium": 0})
+            agg["match"] += ss.match_points or 0
+            agg["ranking"] += ss.ranking_points or 0
+            agg["podium"] += ss.podium_points or 0
+
+        totals = {}
+        for uname in participants:
+            agg = ss_totals.get(uname, {"match": 0, "ranking": 0, "podium": 0})
+            match = agg["match"] if agg["match"] > 0 else ds_totals.get(uname, 0)
+            totals[uname] = match + agg["ranking"] + agg["podium"]
 
         ranked = sorted(totals.items(), key=lambda x: (-x[1], x[0].lower()))
         total_players = len(ranked)

@@ -97,12 +97,16 @@ Hall of Fame, il faut l'archiver dans `SeasonHistory` :
 # Aperçu du classement sans rien écrire :
 python manage.py archive_season 2026 --dry-run
 
-# Archive réellement la saison 2025-2026 (saisons « 2025 » / « 2025/2026 » = 6N + Top 14 + CC) :
+# Archive réellement la saison 2025-2026 (6N 2025 + Top 14/CC 2025-2026 + 6N 2026) :
 python manage.py archive_season 2026
 ```
 
 - `archive_season <annee_fin>` : l'argument est **l'année de fin** de saison.
   Ex. `2026` → saison 2025-2026 ; `2027` → 2026-2027.
+- Le regroupement des compétitions suit la page d'accueil : la saison 2025-2026
+  = 6N 2025 + Top 14/Champions Cup 2025-2026 + 6N 2026 ; la saison 2026-2027 =
+  Top 14/Champions Cup 2026-2027 + 6N 2027. Le total de chaque joueur =
+  **M + F + P** (SeasonScore, avec repli sur la somme des DailyScore).
 - **Seuls les joueurs ayant déposé au moins un pronostic dans la saison sont
   inclus** (les comptes créés les années suivantes n'y figurent pas).
 - La commande écrase les lignes `SeasonHistory` existantes de la même année
