@@ -35,7 +35,8 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 - **Phase 18 — Commande show_match_prono** : `manage.py show_match_prono <id|texte>` affiche tous les pronos (joueur + score prédit + BO/BD + points) d'un match ; `--list` liste les matches avec leurs IDs (filtres `--competition`, `--season`, `--round`) ; recherche par nom d'équipe ; gère les matchs historiques sans équipes (`?`) ; 3 tests (109 au total).
 - **Phase 18b — Tri par écart** : `show_match_prono --sort diff` trie les pronos par écart Domicile-Extérieur décroissant (du plus optimiste pour l'équipe à domicile au plus pessimiste) et affiche l'écart `[+N]`/`[-N]` ; option `--sort`, signe ASCII (console Windows) ; égalité d'écart → départage par points marqués à domicile (le plus grand d'abord) ; 2 tests (111 au total).
 - **Phase 19 — Sync SeasonScore.match_points** : bug « classement global non incrémenté » (les journées étaient calculées via DailyScore mais la somme saison `SeasonScore.match_points` jamais resynchronisée → classement/stats/HOF à 0). Ajout de `sync_season_match_points()` dans `scoring.py`, appelée après `process_round_scores` sur la page Bonus, le bouton « Recalculer » et via `recompute_played_rounds` ; commande `manage.py sync_match_points` pour réparer les saisons 2025+ existantes ; 2 tests (113 au total).
-- **Phase 20 — HOF archivage seul** : le Hall of Fame n'est plus alimenté par la « saison en cours » live (bloc « 2026 » sans sens issu d'un SeasonScore vide) ; il ne contient plus que les saisons terminées (SeasonHistory, classement officiel « tout compris ») avec libellé `2025-2026` ; 1 test (113 au total).
+- **Phase 20 — HOF archivage + saison en cours** : corrigé après retour utilisateur. Convention `SeasonHistory.season_year` = **année de FIN** de saison (2024-2025 stocké 2025). Le HOF affiche désormais : (1) les saisons archivées labellisées `2024-2025`, `2018-2019`, etc. (plus de décalage d'un an), et (2) la saison en cours `2026-2027` re-calculée en direct depuis `SeasonScore` (M+F+P des compétitions `2026`/`2026/2027`), labellisée `2026-2027` (jamais `2026`). `_season_label()` et `_compute_hof_entry(display_year=...)`. 2 tests HOF (114 au total).
+- **Phase 21 — README** : création `backend/README.md` (installation, toutes les commandes management dont `show_match_prono` — lire les pronos d'un match, retrouver l'ID, `--list`, filtres, `--sort diff` —, `import_scores`, `sync_match_points`, `send_reminders`, exports Excel) + règle HOF d'archivage.
 
 ### In Progress
 - *(none)*
@@ -63,9 +64,9 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 ## Critical Context
 - Projet : `App_prono_rugby` sur PA, dépôt git dans `backend/`.
 - Site : `xavfabiani.pythonanywhere.com` — `main` (commit `7f7e9d4`).
-- Version courante : `1.4.0` (`core/version.py`).
+- Version courante : `1.4.1` (`core/version.py`).
 - `.env` sur PA : `CRON_TOKEN=xx`, `EMAIL_HOST_USER=pronorugby83@gmail.com`, `REMINDER_HOURS=24,6`.
-- Tests : `python -m pytest tests/ -q` → 113 OK.
+- Tests : `python -m pytest tests/ -q` → 114 OK.
 - CI : GitHub Actions (`.github/workflows/tests.yml`) — pytest sur push/PR branch `main`.
 - Migrations 0013, 0014 appliquées.
 
@@ -89,3 +90,4 @@ Application de pronostics rugby hébergée sur PythonAnywhere.
 - `core/admin.py` : `PlayerAdmin` avec `filter_horizontal` sur `seasons`
 - `core/version.py` : `__version__` (PEP 440) — à incrémenter à chaque modif déployée
 - `core/context_processors.py` : `APP_VERSION` injecté dans toutes les templates
+- `README.md` : commandes management (show_match_prono, import_scores, sync_match_points, send_reminders, exports) + règle d'archivage HOF

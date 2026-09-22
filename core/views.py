@@ -1885,11 +1885,12 @@ def bareme_view(request):
     })
     
 def _season_label(season_year):
-    """Libellé d'une saison archivée : 2025 → '2025-2026'."""
-    return f"{season_year}-{season_year + 1}"
+    """Libellé d'une saison archivée. Convention SeasonHistory : `season_year`
+    = année de FIN de saison (2024-2025 est stocké 2025) → libellé 2024-2025."""
+    return f"{season_year - 1}-{season_year}"
 
 
-def _compute_hof_entry(data, name, season_year, rank, total_players, current_year, is_active):
+def _compute_hof_entry(data, name, season_year, rank, total_players, current_year, is_active, display_year=None):
     n = current_year - season_year
     perf = ((total_players + 1 - rank) * 100) / total_players
     score_annee = perf * (0.9 ** n)
@@ -1908,7 +1909,7 @@ def _compute_hof_entry(data, name, season_year, rank, total_players, current_yea
     data[name]['seasons_count'] += 1
     data[name]['history_details'].append({
         'year': season_year,
-        'label': _season_label(season_year),
+        'label': _season_label(display_year if display_year is not None else season_year),
         'rank': rank,
         'total': total_players,
         'perf_score': perf
@@ -1922,10 +1923,8 @@ def hall_of_fame_view(request):
     current_year = datetime.now().year
     data = {}
 
-    # 1. Historique des saisons passées (SeasonHistory)
-    # C'est la seule source du HOF : seules les saisons terminées, avec leur
-    # classement officiel « tout compris », sont prises en compte. La saison
-    # en cours évolue dans la page « Classement Général » (home).
+    # 1. Historique des saisons passées (SeasonHistory) : saisons terminées,
+    # classement officiel « tout compris » archivé via l'admin.
     histories = SeasonHistory.objects.all()
     for record in histories:
         _compute_hof_entry(
@@ -1933,6 +1932,34 @@ def hall_of_fame_view(request):
             record.rank, record.total_players, current_year,
             record.user is not None
         )
+
+    # 2. Saison en cours (SeasonScore temps réel) : l'entrée est labellisée
+    # « 2026-2027 » (saison calendaire rugby), alimentée par les totaux
+    # M+F+P des compétitions de la saison (6N + Top 14 + CC).
+    now = timezone.now()
+    if now.month < 8:
+        start_year = current_year - 1
+    else:
+        start_year = current_year
+    active_seasons = Season.objects.filter(year__startswith=str(start_year))
+    active_ids = list(active_seasons.values_list('id', flat=True))
+
+    if active_ids:
+        ss_qs = SeasonScore.objects.filter(season_id__in=active_ids).select_related('user')
+        totals = {}
+        for ss in ss_qs:
+            uname = ss.user.username
+            totals[uname] = totals.get(uname, 0) + (ss.match_points or 0) + (ss.ranking_points or 0) + (ss.podium_points or 0)
+
+        if totals:
+            sorted_players = sorted(totals.items(), key=lambda x: -x[1])
+            total_players = len(sorted_players)
+            for i, (uname, _) in enumerate(sorted_players):
+                _compute_hof_entry(
+                    data, uname, current_year,
+                    i + 1, total_players, current_year,
+                    True, display_year=start_year + 1
+                )
 
     # Tri des détails et classement final
     for player in data.values():
